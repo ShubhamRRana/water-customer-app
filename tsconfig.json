@@ -15,6 +15,7 @@
     "lib": [
       "esnext"
     ],
+    "module": "esnext",
     "moduleResolution": "bundler",
     "noEmit": true,
     "resolveJsonModule": true,

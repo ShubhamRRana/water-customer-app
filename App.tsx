@@ -18,7 +18,7 @@ import { useAuthStore } from './src/store/authStore';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
 
 // Types
-import { User } from './src/types';
+import { User, isCustomerUser } from './src/types';
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -43,10 +43,11 @@ const App: React.FC = () => {
     });
   }, [initializeAuth]);
 
-  // Customer app: when logged in, always show Customer stack
+  // Customer app: only customers may enter. Non-customer users (e.g. admin/driver from session restore) go to Auth.
   const getInitialRouteName = (user: User | null): keyof RootStackParamList => {
     if (!user) return 'Auth';
-    return 'Customer';
+    if (isCustomerUser(user)) return 'Customer';
+    return 'Auth';
   };
 
   // Navigate when user state changes

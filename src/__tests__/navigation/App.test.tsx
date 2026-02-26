@@ -130,7 +130,7 @@ describe('App Navigation Logic', () => {
       expect(route).toBe('Customer');
     });
 
-    it('should return Customer route when user is logged in (customer app always shows Customer stack)', () => {
+    it('should return Customer route when user is customer', () => {
       const anyUser: CustomerUser = {
         id: '1',
         email: 'user@test.com',
@@ -139,8 +139,21 @@ describe('App Navigation Logic', () => {
         role: 'customer',
         createdAt: new Date(),
       };
-      const route = anyUser ? 'Customer' : 'Auth';
+      const route = anyUser.role === 'customer' ? 'Customer' : 'Auth';
       expect(route).toBe('Customer');
+    });
+
+    it('should return Auth route when user is non-customer (admin/driver) on session restore', () => {
+      const adminUser = {
+        id: '2',
+        email: 'admin@test.com',
+        password: 'hashed',
+        name: 'Test Admin',
+        role: 'admin' as const,
+        createdAt: new Date(),
+      };
+      const route = adminUser.role === 'customer' ? 'Customer' : 'Auth';
+      expect(route).toBe('Auth');
     });
 
     it('should call initializeAuth on mount', () => {
