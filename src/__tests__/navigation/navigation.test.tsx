@@ -48,8 +48,6 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 import AuthNavigator from '../../navigation/AuthNavigator';
 import CustomerNavigator from '../../navigation/CustomerNavigator';
-import DriverNavigator from '../../navigation/DriverNavigator';
-import AdminNavigator from '../../navigation/AdminNavigator';
 
 // Mock all screen components
 jest.mock('../../screens/auth/LoginScreen', () => {
@@ -62,12 +60,6 @@ jest.mock('../../screens/auth/RegisterScreen', () => {
   const React = require('react');
   const { View, Text } = require('react-native');
   return () => <View testID="RegisterScreen"><Text>RegisterScreen</Text></View>;
-});
-
-jest.mock('../../screens/auth/RoleEntryScreen', () => {
-  const React = require('react');
-  const { View, Text } = require('react-native');
-  return () => <View testID="RoleEntryScreen"><Text>RoleEntryScreen</Text></View>;
 });
 
 jest.mock('../../screens/customer/CustomerHomeScreen', () => {
@@ -110,54 +102,6 @@ jest.mock('../../screens/customer/PastOrdersScreen', () => {
   const React = require('react');
   const { View, Text } = require('react-native');
   return () => <View testID="PastOrdersScreen"><Text>PastOrdersScreen</Text></View>;
-});
-
-jest.mock('../../screens/driver/OrdersScreen', () => {
-  const React = require('react');
-  const { View, Text } = require('react-native');
-  return () => <View testID="OrdersScreen"><Text>OrdersScreen</Text></View>;
-});
-
-jest.mock('../../screens/driver/DriverEarningsScreen', () => {
-  const React = require('react');
-  const { View, Text } = require('react-native');
-  return () => <View testID="DriverEarningsScreen"><Text>DriverEarningsScreen</Text></View>;
-});
-
-jest.mock('../../screens/driver/CollectPaymentScreen', () => {
-  const React = require('react');
-  const { View, Text } = require('react-native');
-  return () => <View testID="CollectPaymentScreen"><Text>CollectPaymentScreen</Text></View>;
-});
-
-jest.mock('../../screens/admin/AdminProfileScreen', () => {
-  const React = require('react');
-  const { View, Text } = require('react-native');
-  return () => <View testID="AdminProfileScreen"><Text>AdminProfileScreen</Text></View>;
-});
-
-jest.mock('../../screens/admin/AllBookingsScreen', () => {
-  const React = require('react');
-  const { View, Text } = require('react-native');
-  return () => <View testID="AllBookingsScreen"><Text>AllBookingsScreen</Text></View>;
-});
-
-jest.mock('../../screens/admin/DriverManagementScreen', () => {
-  const React = require('react');
-  const { View, Text } = require('react-native');
-  return () => <View testID="DriverManagementScreen"><Text>DriverManagementScreen</Text></View>;
-});
-
-jest.mock('../../screens/admin/VehicleManagementScreen', () => {
-  const React = require('react');
-  const { View, Text } = require('react-native');
-  return () => <View testID="VehicleManagementScreen"><Text>VehicleManagementScreen</Text></View>;
-});
-
-jest.mock('../../screens/admin/ReportsScreen', () => {
-  const React = require('react');
-  const { View, Text } = require('react-native');
-  return () => <View testID="ReportsScreen"><Text>ReportsScreen</Text></View>;
 });
 
 jest.mock('../../components/common/ErrorBoundary', () => {
@@ -205,62 +149,14 @@ describe('Navigation Configuration', () => {
     });
   });
 
-  describe('DriverNavigator', () => {
-    it('should render without crashing', () => {
-      const { getByTestId } = render(<DriverNavigator />);
-      // Should render the StackNavigator
-      expect(getByTestId('StackNavigator')).toBeTruthy();
-    });
-
-    it('should have tab navigator with Orders and Earnings tabs', () => {
-      const { getByTestId } = render(<DriverNavigator />);
-      // Should render the navigator
-      expect(getByTestId('StackNavigator')).toBeTruthy();
-    });
-  });
-
-  describe('AdminNavigator', () => {
-    it('should render without crashing', () => {
-      const { getByTestId } = render(<AdminNavigator />);
-      // Should render the StackNavigator
-      expect(getByTestId('StackNavigator')).toBeTruthy();
-    });
-
-    it('should have all required screens registered', () => {
-      const { getByTestId } = render(<AdminNavigator />);
-      // Should render the navigator
-      expect(getByTestId('StackNavigator')).toBeTruthy();
-    });
-  });
-
   describe('Navigation Type Definitions', () => {
-    it('should export AuthStackParamList type', () => {
-      // Type check - if this compiles, the type is properly exported
-      const testParams: { RoleEntry: undefined } = { RoleEntry: undefined };
+    it('should export AuthStackParamList type (Login and Register only)', () => {
+      const testParams: { Login: undefined; Register: undefined } = { Login: undefined, Register: undefined };
       expect(testParams).toBeDefined();
     });
 
     it('should export CustomerStackParamList type', () => {
-      // Type check - if this compiles, the type is properly exported
       const testParams: { Home: undefined } = { Home: undefined };
-      expect(testParams).toBeDefined();
-    });
-
-    it('should export DriverTabParamList type', () => {
-      // Type check - if this compiles, the type is properly exported
-      const testParams: { Orders: undefined } = { Orders: undefined };
-      expect(testParams).toBeDefined();
-    });
-
-    it('should export DriverStackParamList type', () => {
-      // Type check - if this compiles, the type is properly exported
-      const testParams: { DriverTabs: undefined } = { DriverTabs: undefined };
-      expect(testParams).toBeDefined();
-    });
-
-    it('should export AdminStackParamList type', () => {
-      // Type check - if this compiles, the type is properly exported
-      const testParams: { Bookings: undefined } = { Bookings: undefined };
       expect(testParams).toBeDefined();
     });
   });

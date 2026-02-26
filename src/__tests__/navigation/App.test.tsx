@@ -48,7 +48,7 @@ jest.mock('../../store/authStore', () => ({
 import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
 import App from '../../../App';
-import { CustomerUser, DriverUser, AdminUser } from '../../types';
+import { CustomerUser } from '../../types';
 
 // Mock expo-font
 jest.mock('expo-font', () => ({
@@ -82,18 +82,6 @@ jest.mock('../../navigation/CustomerNavigator', () => {
   const React = require('react');
   const { View, Text } = require('react-native');
   return () => <View testID="CustomerNavigator"><Text>CustomerNavigator</Text></View>;
-});
-
-jest.mock('../../navigation/DriverNavigator', () => {
-  const React = require('react');
-  const { View, Text } = require('react-native');
-  return () => <View testID="DriverNavigator"><Text>DriverNavigator</Text></View>;
-});
-
-jest.mock('../../navigation/AdminNavigator', () => {
-  const React = require('react');
-  const { View, Text } = require('react-native');
-  return () => <View testID="AdminNavigator"><Text>AdminNavigator</Text></View>;
 });
 
 // Mock ErrorBoundary
@@ -142,30 +130,17 @@ describe('App Navigation Logic', () => {
       expect(route).toBe('Customer');
     });
 
-    it('should return Driver route when user is driver', () => {
-      const driverUser: DriverUser = {
-        id: '2',
-        email: 'driver@test.com',
+    it('should return Customer route when user is logged in (customer app always shows Customer stack)', () => {
+      const anyUser: CustomerUser = {
+        id: '1',
+        email: 'user@test.com',
         password: 'hashed',
-        name: 'Test Driver',
-        role: 'driver',
+        name: 'Test User',
+        role: 'customer',
         createdAt: new Date(),
       };
-      const route = driverUser.role === 'driver' ? 'Driver' : 'Auth';
-      expect(route).toBe('Driver');
-    });
-
-    it('should return Admin route when user is admin', () => {
-      const adminUser: AdminUser = {
-        id: '3',
-        email: 'admin@test.com',
-        password: 'hashed',
-        name: 'Test Admin',
-        role: 'admin',
-        createdAt: new Date(),
-      };
-      const route = adminUser.role === 'admin' ? 'Admin' : 'Auth';
-      expect(route).toBe('Admin');
+      const route = anyUser ? 'Customer' : 'Auth';
+      expect(route).toBe('Customer');
     });
 
     it('should call initializeAuth on mount', () => {
@@ -184,19 +159,11 @@ describe('App Navigation Logic', () => {
   });
 
   describe('RootStackParamList type', () => {
-    it('should have correct route names', () => {
-      // Type check - if this compiles, the type is properly defined
-      const routes: Array<keyof { Auth: undefined; Customer: undefined; Driver: undefined; Admin: undefined }> = [
-        'Auth',
-        'Customer',
-        'Driver',
-        'Admin',
-      ];
-      expect(routes).toHaveLength(4);
+    it('should have correct route names (customer app: Auth and Customer only)', () => {
+      const routes: Array<'Auth' | 'Customer'> = ['Auth', 'Customer'];
+      expect(routes).toHaveLength(2);
       expect(routes).toContain('Auth');
       expect(routes).toContain('Customer');
-      expect(routes).toContain('Driver');
-      expect(routes).toContain('Admin');
     });
   });
 });

@@ -21,8 +21,7 @@ import { getErrorMessage } from '../../utils/errors';
 import { AuthStackParamList } from '../../types/index';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
-import { AuthService } from '../../services/auth.service';
-import { Typography, DriverIcon, AdminIcon, CustomerIcon } from '../../components/common';
+import { Typography, CustomerIcon } from '../../components/common';
 import { UI_CONFIG } from '../../constants/config';
 
 type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
@@ -40,7 +39,7 @@ const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [isButtonPressed, setIsButtonPressed] = useState(false);
   
-  const { login, loginWithCredentialsAndRole, isLoading } = useAuthStore();
+  const { loginWithCredentialsAndRole, isLoading } = useAuthStore();
 
   // Real-time validation handlers
   const handleEmailChange = (text: string) => {
@@ -109,88 +108,48 @@ const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
     setErrors({});
 
     try {
-      const preferredRole = route?.params?.preferredRole;
-      
-      // If preferredRole is provided, use loginWithCredentialsAndRole
-      // This sets the pending role BEFORE auth to prevent race conditions
-      if (preferredRole) {
-        await loginWithCredentialsAndRole(sanitizedEmail, password, preferredRole);
-        return;
-      }
-      
-      // No preferredRole - use standard login
-      const loginResult = await AuthService.login(sanitizedEmail, password);
-      
-      if (!loginResult.success) {
-        Alert.alert('Login Failed', loginResult.error || ERROR_MESSAGES.auth.invalidCredentials);
-        return;
-      }
-      
-      // If login requires role selection but no preferredRole was provided, show error
-      if (loginResult.requiresRoleSelection && loginResult.availableRoles) {
-        Alert.alert('Login Failed', 'Please select a role from the role selection screen first.');
-        navigation.navigate('RoleEntry');
-        return;
-      }
-      
-      // Single account login successful
-      if (loginResult.user) {
-        // Use the store's login method to set the user state
-        await login(sanitizedEmail, password);
-      }
+      // Customer app: always log in with customer role
+      await loginWithCredentialsAndRole(sanitizedEmail, password, 'customer');
     } catch (error) {
-      // Check if error is due to role mismatch for custom message
       const errorMessage = getErrorMessage(error, 'Login failed');
       const isRoleMismatch = errorMessage.includes('not found with selected role') || errorMessage.includes('User not found with selected role');
-      
+
       handleError(error, {
-        context: { operation: 'login', email: sanitizedEmail, preferredRole },
+        context: { operation: 'login', email: sanitizedEmail, preferredRole: 'customer' },
         userFacing: true,
         alertMessage: isRoleMismatch ? ERROR_MESSAGES.auth.roleMismatch : undefined,
       });
     }
   };
 
-  const preferredRole = route?.params?.preferredRole;
-
-  // Generate non-overlapping positions for watermarks
+  // Customer app: watermark for customer-only login
   const watermarkPositions = useMemo(() => {
-    if (!preferredRole) return [];
-    
     const screenWidth = Dimensions.get('window').width;
     const screenHeight = Dimensions.get('window').height;
     const iconSize = 10;
-    const minSpacing = 70; // Minimum spacing between icons to prevent overlap
+    const minSpacing = 70;
     const positions: Array<{ top: number; left: number }> = [];
     const watermarkCount = 30;
-    const maxAttempts = 100; // Maximum attempts to find a non-overlapping position
-    
-    // Helper function to check if a position overlaps with existing positions
+    const maxAttempts = 100;
+
     const hasOverlap = (newTop: number, newLeft: number, existingPositions: Array<{ top: number; left: number }>) => {
       for (const pos of existingPositions) {
         const distance = Math.sqrt(
           Math.pow(newTop - pos.top, 2) + Math.pow(newLeft - pos.left, 2)
         );
-        if (distance < minSpacing) {
-          return true;
-        }
+        if (distance < minSpacing) return true;
       }
       return false;
     };
-    
+
     for (let i = 0; i < watermarkCount; i++) {
       let attempts = 0;
       let top: number, left: number;
-      
-      // Try to find a non-overlapping position
       do {
-        top = Math.random() * (screenHeight - iconSize - 40) + 20; // Leave some margin from edges
+        top = Math.random() * (screenHeight - iconSize - 40) + 20;
         left = Math.random() * (screenWidth - iconSize - 40) + 20;
         attempts++;
-        
-        // If we've tried too many times, use a grid-based fallback
         if (attempts > maxAttempts) {
-          // Use a grid-based approach as fallback
           const cols = Math.floor(screenWidth / minSpacing);
           const rows = Math.floor(screenHeight / minSpacing);
           const gridIndex = i % (cols * rows);
@@ -201,30 +160,14 @@ const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
           break;
         }
       } while (hasOverlap(top, left, positions));
-      
       positions.push({ top, left });
     }
-    
     return positions;
-  }, [preferredRole]);
+  }, []);
 
   const renderWatermarkIcon = () => {
-    if (!preferredRole) return null;
-    
-    const iconProps = {
-      size: 50,
-      color: UI_CONFIG.colors.textSecondary,
-    };
-
-    const IconComponent = 
-      preferredRole === 'customer' ? CustomerIcon :
-      preferredRole === 'driver' ? DriverIcon :
-      preferredRole === 'admin' ? AdminIcon :
-      null;
-
-    if (!IconComponent) return null;
-
-    return <IconComponent {...iconProps} />;
+    const iconProps = { size: 50, color: UI_CONFIG.colors.textSecondary };
+    return <CustomerIcon {...iconProps} />;
   };
 
   return (
@@ -233,7 +176,7 @@ const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {preferredRole && watermarkPositions.map((position, index) => (
+        {watermarkPositions.map((position, index) => (
           <View
             key={index}
             style={[
@@ -302,14 +245,12 @@ const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
 
-        {route?.params?.preferredRole !== 'driver' && (
-          <View style={styles.footer}>
-            <Typography variant="body" style={styles.footerText}>Don't have an account? </Typography>
-            <TouchableOpacity onPress={() => navigation.navigate('Register', { preferredRole: route?.params?.preferredRole })}>
-              <Typography variant="body" style={styles.linkText}>Sign Up</Typography>
-            </TouchableOpacity>
-          </View>
-        )}
+        <View style={styles.footer}>
+          <Typography variant="body" style={styles.footerText}>Don't have an account? </Typography>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+            <Typography variant="body" style={styles.linkText}>Sign Up</Typography>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
     </SafeAreaView>

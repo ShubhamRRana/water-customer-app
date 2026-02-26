@@ -10,8 +10,6 @@ import { UI_CONFIG } from './src/constants/config';
 // Lazy load navigators for code splitting
 const AuthNavigator = lazy(() => import('./src/navigation/AuthNavigator'));
 const CustomerNavigator = lazy(() => import('./src/navigation/CustomerNavigator'));
-const DriverNavigator = lazy(() => import('./src/navigation/DriverNavigator'));
-const AdminNavigator = lazy(() => import('./src/navigation/AdminNavigator'));
 
 // Store imports
 import { useAuthStore } from './src/store/authStore';
@@ -25,8 +23,6 @@ import { User } from './src/types';
 export type RootStackParamList = {
   Auth: undefined;
   Customer: undefined;
-  Driver: undefined;
-  Admin: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -47,20 +43,10 @@ const App: React.FC = () => {
     });
   }, [initializeAuth]);
 
-  // Helper function to determine initial route based on user
+  // Customer app: when logged in, always show Customer stack
   const getInitialRouteName = (user: User | null): keyof RootStackParamList => {
     if (!user) return 'Auth';
-    
-    switch (user.role) {
-      case 'customer':
-        return 'Customer';
-      case 'driver':
-        return 'Driver';
-      case 'admin':
-        return 'Admin';
-      default:
-        return 'Auth';
-    }
+    return 'Customer';
   };
 
   // Navigate when user state changes
@@ -105,8 +91,6 @@ const App: React.FC = () => {
             >
               <Stack.Screen name="Auth" component={AuthNavigator} />
               <Stack.Screen name="Customer" component={CustomerNavigator} />
-              <Stack.Screen name="Driver" component={DriverNavigator} />
-              <Stack.Screen name="Admin" component={AdminNavigator} />
             </Stack.Navigator>
           </Suspense>
         </NavigationContainer>

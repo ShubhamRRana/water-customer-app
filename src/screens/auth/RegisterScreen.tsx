@@ -16,7 +16,7 @@ import { useAuthStore } from '../../store/authStore';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../constants/config';
 import { handleError } from '../../utils/errorHandler';
-import { AuthStackParamList, UserRole } from '../../types/index';
+import { AuthStackParamList } from '../../types/index';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { Typography } from '../../components/common';
@@ -36,17 +36,14 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [businessName, setBusinessName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const role: UserRole = route?.params?.preferredRole ?? 'customer';
   const [errors, setErrors] = useState<{
     email?: string;
     password?: string;
     confirmPassword?: string;
     name?: string;
     phone?: string;
-    businessName?: string;
   }>({});
   const [isButtonPressed, setIsButtonPressed] = useState(false);
   
@@ -185,76 +182,23 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   };
 
-  const handleBusinessNameChange = (text: string) => {
-    // Allow spaces during typing - only remove invalid characters, preserve spaces
-    const sanitized = text
-      .replace(/[^a-zA-Z0-9\s&.,'-]/g, '') // Keep only letters, numbers, spaces, and common business characters
-      .replace(/\s+/g, ' '); // Normalize multiple spaces to single space
-    
-    setBusinessName(sanitized);
-    
-    if (sanitized.trim()) {
-      const validation = ValidationUtils.validateBusinessName(sanitized.trim());
-      if (!validation.isValid) {
-        setErrors(prev => ({ ...prev, businessName: validation.error }));
-      } else {
-        setErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors.businessName;
-          return newErrors;
-        });
-      }
-    } else {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors.businessName;
-        return newErrors;
-      });
-    }
-  };
-
   const handleRegister = async () => {
-    // Sanitize inputs
     const sanitizedEmail = SanitizationUtils.sanitizeEmail(email);
     const sanitizedName = SanitizationUtils.sanitizeName(name);
     const sanitizedPhone = SanitizationUtils.sanitizePhone(phone);
-    const sanitizedBusinessName = role === 'admin' ? SanitizationUtils.sanitizeBusinessName(businessName) : '';
-    
-    // Validate inputs
+
     const emailValidation = ValidationUtils.validateEmail(sanitizedEmail);
     const passwordValidation = ValidationUtils.validatePassword(password);
     const nameValidation = ValidationUtils.validateName(sanitizedName);
     const confirmPasswordValidation = ValidationUtils.validateConfirmPassword(password, confirmPassword);
     const phoneValidation = ValidationUtils.validatePhone(sanitizedPhone);
-    const businessNameValidation = role === 'admin' 
-      ? ValidationUtils.validateBusinessName(sanitizedBusinessName.trim(), true)
-      : { isValid: true };
-    
+
     const newErrors: Record<string, string> = {};
-    
-    if (!emailValidation.isValid) {
-      newErrors.email = emailValidation.error || '';
-    }
-    
-    if (!passwordValidation.isValid) {
-      newErrors.password = passwordValidation.error || '';
-    }
-    
-    if (!nameValidation.isValid) {
-      newErrors.name = nameValidation.error || '';
-    }
-    
-    if (!confirmPasswordValidation.isValid) {
-      newErrors.confirmPassword = confirmPasswordValidation.error || '';
-    }
-
-    if (!phoneValidation.isValid) {
-      newErrors.phone = phoneValidation.error || '';
-    }
-
-    if (role === 'admin' && !businessNameValidation.isValid) {
-      newErrors.businessName = businessNameValidation.error || '';
-    }
+    if (!emailValidation.isValid) newErrors.email = emailValidation.error || '';
+    if (!passwordValidation.isValid) newErrors.password = passwordValidation.error || '';
+    if (!nameValidation.isValid) newErrors.name = nameValidation.error || '';
+    if (!confirmPasswordValidation.isValid) newErrors.confirmPassword = confirmPasswordValidation.error || '';
+    if (!phoneValidation.isValid) newErrors.phone = phoneValidation.error || '';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -264,11 +208,11 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
     setErrors({});
 
     try {
-      await register(sanitizedEmail, password, sanitizedName, role, sanitizedPhone, sanitizedBusinessName.trim() || undefined);
+      await register(sanitizedEmail, password, sanitizedName, 'customer', sanitizedPhone);
       Alert.alert('Success', SUCCESS_MESSAGES.auth.registerSuccess);
     } catch (error) {
       handleError(error, {
-        context: { operation: 'register', email: sanitizedEmail, role },
+        context: { operation: 'register', email: sanitizedEmail, role: 'customer' },
         userFacing: true,
       });
     }
@@ -322,21 +266,6 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
             />
             {errors.phone && <Typography variant="caption" style={styles.errorText}>{errors.phone}</Typography>}
           </View>
-
-          {role === 'admin' && (
-            <View style={styles.inputContainer}>
-              <Typography variant="body" style={styles.label}>Business Name</Typography>
-              <TextInput
-                style={[styles.input, errors.businessName && styles.inputError]}
-                value={businessName}
-                onChangeText={handleBusinessNameChange}
-                autoCapitalize="words"
-                placeholder="Enter your business name"
-                maxLength={100}
-              />
-              {errors.businessName && <Typography variant="caption" style={styles.errorText}>{errors.businessName}</Typography>}
-            </View>
-          )}
 
           <View style={styles.inputContainer}>
             <Typography variant="body" style={styles.label}>Password</Typography>

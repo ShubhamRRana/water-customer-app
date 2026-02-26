@@ -197,15 +197,11 @@ export interface Expense {
 
 // Navigation types
 /**
- * Authentication stack navigation parameters
+ * Authentication stack navigation parameters (customer app: Login and Register only)
  */
 export interface AuthStackParamList {
-  RoleEntry: undefined;
-  Login: { preferredRole?: UserRole } | undefined;
-  Register: { preferredRole?: UserRole } | undefined;
-  [key: string]:
-    | undefined
-    | { preferredRole?: UserRole };
+  Login: undefined;
+  Register: undefined;
 }
 
 // Customer navigation types moved to CustomerNavigator.tsx
@@ -219,8 +215,6 @@ export interface DriverStackParamList {
   DriverTabs: undefined;
   CollectPayment: { orderId: string };
 }
-
-// AdminStackParamList is now exported from AdminNavigator.tsx
 
 // Form types
 export interface LoginForm {
