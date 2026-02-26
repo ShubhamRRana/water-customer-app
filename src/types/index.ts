@@ -1,7 +1,8 @@
 // Core types for the Water Tanker Booking App
 
 /**
- * User role types in the system
+ * User role types. Customer app uses only 'customer' for end-users; 'admin' and 'driver'
+ * remain for agency selection (admins as tanker agencies), auth, and data layer compatibility.
  */
 export type UserRole = 'customer' | 'driver' | 'admin';
 
@@ -129,25 +130,6 @@ export interface Pricing {
 }
 
 /**
- * Driver application/registration request
- */
-export interface DriverApplication {
-  id: string;
-  name: string;
-  phone: string;
-  email?: string;
-  vehicleNumber: string;
-  licenseNumber: string;
-  driverLicenseImage: string;
-  vehicleRegistrationImage: string;
-  status: 'pending' | 'approved' | 'rejected';
-  appliedAt: Date;
-  reviewedBy?: string; // admin id
-  reviewedAt?: Date;
-  rejectionReason?: string;
-}
-
-/**
  * Vehicle information managed by admin agencies
  */
 export interface Vehicle {
@@ -202,18 +184,6 @@ export interface Expense {
 export interface AuthStackParamList {
   Login: undefined;
   Register: undefined;
-}
-
-// Customer navigation types moved to CustomerNavigator.tsx
-
-export interface DriverTabParamList {
-  Orders: undefined;
-  Earnings: undefined;
-}
-
-export interface DriverStackParamList {
-  DriverTabs: undefined;
-  CollectPayment: { orderId: string };
 }
 
 // Form types
@@ -289,102 +259,6 @@ export interface PaymentResult {
   success: boolean;
   paymentId?: string;
   error?: string;
-}
-
-// Analytics types
-export interface DashboardStats {
-  totalBookings: number;
-  pendingBookings: number;
-  completedBookings: number;
-  totalRevenue: number;
-  activeDrivers: number;
-  totalCustomers: number;
-}
-
-export interface DriverEarnings {
-  driverId: string;
-  driverName: string;
-  totalEarnings: number;
-  completedOrders: number;
-  averageEarningPerOrder: number;
-  period: 'daily' | 'weekly' | 'monthly';
-}
-
-// Driver Dashboard specific types
-export interface DriverDashboardStats {
-  totalEarnings: number;
-  completedOrders: number;
-  pendingOrders: number;
-  activeOrders: number;
-  todayEarnings: number;
-  weeklyEarnings: number;
-  monthlyEarnings: number;
-  averageRating: number;
-  totalRatings: number;
-  isOnline: boolean;
-  lastActiveAt: Date;
-}
-
-export interface DriverQuickAction {
-  id: string;
-  title: string;
-  subtitle: string;
-  icon: string;
-  color: string;
-  onPress: () => void;
-}
-
-export interface DriverRecentOrder {
-  id: string;
-  customerName: string;
-  customerPhone: string;
-  tankerSize: number;
-  totalPrice: number;
-  status: BookingStatus;
-  deliveryAddress: string;
-  distance: number;
-  createdAt: Date;
-  scheduledFor?: Date;
-}
-
-// Reports and Analytics types
-export interface ReportData {
-  totalBookings: number;
-  totalRevenue: number;
-  completedBookings: number;
-  cancelledBookings: number;
-  pendingBookings: number;
-  activeDrivers: number;
-  totalCustomers: number;
-  averageOrderValue: number;
-  topDrivers: Array<{
-    name: string;
-    earnings: number;
-    orders: number;
-  }>;
-  topCustomers: Array<{
-    name: string;
-    orders: number;
-    totalSpent: number;
-  }>;
-  bookingsByStatus: Array<{
-    status: string;
-    count: number;
-    percentage: number;
-  }>;
-  revenueByMonth: Array<{
-    month: string;
-    revenue: number;
-  }>;
-}
-
-export interface ChartData {
-  labels: string[];
-  datasets: Array<{
-    data: number[];
-    color?: string;
-    label?: string;
-  }>;
 }
 
 // ============================================================================
