@@ -1,0 +1,56 @@
+# Dependencies (installed on build server)
+node_modules/
+
+# Documentation files
+*.md
+!README.md
+
+# Test files
+**/__tests__/
+**/__mocks__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+jest.config.js
+jest.setup.js
+jest.setup.utils.js
+
+# Development files
+.env
+.env*.local
+!.env.example
+
+# Build artifacts
+.expo/
+dist/
+web-build/
+*.tsbuildinfo
+
+# Git
+.git/
+.gitignore
+
+# IDE and Editor files
+.vscode/
+.idea/
+.cursor/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Error logs and temporary files
+*_error.txt
+*.log
+
+# Scripts (not needed for build)
+scripts/
+migrations/
+
+# Mock files
+**/__mocks__/
+
