@@ -1,15 +1,13 @@
-import React, { useEffect, useRef, Suspense, lazy } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
-import { View, ActivityIndicator } from 'react-native';
-import { UI_CONFIG } from './src/constants/config';
 
-// Lazy load navigators for code splitting
-const AuthNavigator = lazy(() => import('./src/navigation/AuthNavigator'));
-const CustomerNavigator = lazy(() => import('./src/navigation/CustomerNavigator'));
+// Static imports (React.lazy/dynamic import not supported by Metro in RN)
+import AuthNavigator from './src/navigation/AuthNavigator';
+import CustomerNavigator from './src/navigation/CustomerNavigator';
 
 // Store imports
 import { useAuthStore } from './src/store/authStore';
@@ -28,7 +26,7 @@ export type RootStackParamList = {
 const Stack = createStackNavigator<RootStackParamList>();
 
 const App: React.FC = () => {
-  const { user, initializeAuth, isLoading } = useAuthStore();
+  const { user, initializeAuth } = useAuthStore();
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
 
   // Load custom fonts
@@ -38,7 +36,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     // Initialize the auth system and load any existing user
-    initializeAuth().catch((error) => {
+    initializeAuth().catch(() => {
       // Error handled by error boundary
     });
   }, [initializeAuth]);
@@ -71,29 +69,20 @@ const App: React.FC = () => {
     return null; // or a loading screen
   }
 
-  // Loading component for lazy-loaded navigators
-  const NavigatorLoadingFallback = () => (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: UI_CONFIG.colors.background }}>
-      <ActivityIndicator size="large" color={UI_CONFIG.colors.primary} />
-    </View>
-  );
-
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
         <NavigationContainer ref={navigationRef}>
           <StatusBar style="auto" />
-          <Suspense fallback={<NavigatorLoadingFallback />}>
-            <Stack.Navigator
-              initialRouteName={getInitialRouteName(user)}
-              screenOptions={{
-                headerShown: false,
-              }}
-            >
-              <Stack.Screen name="Auth" component={AuthNavigator} />
-              <Stack.Screen name="Customer" component={CustomerNavigator} />
-            </Stack.Navigator>
-          </Suspense>
+          <Stack.Navigator
+            initialRouteName={getInitialRouteName(user)}
+            screenOptions={{
+              headerShown: false,
+            }}
+          >
+            <Stack.Screen name="Auth" component={AuthNavigator} />
+            <Stack.Screen name="Customer" component={CustomerNavigator} />
+          </Stack.Navigator>
         </NavigationContainer>
       </SafeAreaProvider>
     </ErrorBoundary>
