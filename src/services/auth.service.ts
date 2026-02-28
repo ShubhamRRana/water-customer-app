@@ -60,7 +60,7 @@ async function fetchUserWithRole(userId: string, role?: UserRole, retryCount: nu
     if (rolesError || !roles || roles.length === 0) {
       // Retry once if roles are not found (might be a race condition after registration)
       if (retryCount === 0) {
-        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+        await new Promise<void>(resolve => setTimeout(() => resolve(), 100)); // Small delay
         return fetchUserWithRole(userId, role, 1);
       }
       return null;
@@ -90,7 +90,7 @@ async function fetchUserWithRole(userId: string, role?: UserRole, retryCount: nu
       
       // If customer data not found and this is the first attempt, retry once
       if (customerError && retryCount === 0) {
-        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+        await new Promise<void>(resolve => setTimeout(() => resolve(), 100)); // Small delay
         return fetchUserWithRole(userId, role, 1);
       }
       
@@ -104,7 +104,7 @@ async function fetchUserWithRole(userId: string, role?: UserRole, retryCount: nu
       
       // If driver data not found and this is the first attempt, retry once
       if (driverError && retryCount === 0) {
-        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+        await new Promise<void>(resolve => setTimeout(() => resolve(), 100)); // Small delay
         return fetchUserWithRole(userId, role, 1);
       }
       
@@ -118,7 +118,7 @@ async function fetchUserWithRole(userId: string, role?: UserRole, retryCount: nu
       
       // If admin data not found and this is the first attempt, retry once
       if (adminError && retryCount === 0) {
-        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+        await new Promise<void>(resolve => setTimeout(() => resolve(), 100)); // Small delay
         return fetchUserWithRole(userId, role, 1);
       }
       
@@ -191,7 +191,7 @@ async function getUserRoles(userId: string): Promise<UserRole[]> {
 
     if (!roles || roles.length === 0) {
       // Check if user exists in users table
-      const { data: userExists, error: userCheckError } = await supabase
+      const { data: userExists, error: _userExistsError } = await supabase
         .from('users')
         .select('id')
         .eq('id', userId)
@@ -319,7 +319,7 @@ export class AuthService {
       rateLimiter.record('register', sanitizedEmail);
 
       // Check if user already exists in users table
-      const { data: existingUser, error: userCheckError } = await supabase
+      const { data: existingUser, error: _userCheckError } = await supabase
         .from('users')
         .select('id')
         .eq('email', sanitizedEmail.toLowerCase())
@@ -354,7 +354,7 @@ export class AuthService {
         }
 
         // User exists and password is correct - check if they already have this role
-        const { data: existingRole, error: roleCheckError } = await supabase
+        const { data: existingRole, error: _roleCheckError } = await supabase
           .from('user_roles')
           .select('*')
           .eq('user_id', existingUser.id)
@@ -440,7 +440,7 @@ export class AuthService {
           userId = signInData.user.id;
 
           // Check if user already has this role
-          const { data: existingRole, error: roleCheckError } = await supabase
+          const { data: existingRole, error: _roleCheckError } = await supabase
             .from('user_roles')
             .select('*')
             .eq('user_id', userId)
@@ -504,7 +504,6 @@ export class AuthService {
           // Skip to role-specific data creation (will be handled below)
         } else if (authError || !authData.user) {
           const errorMessage = authError ? (authError as any).message : 'Registration failed';
-          const errorStatus = authError ? (authError as any).status : undefined;
           securityLogger.logRegistrationAttempt(sanitizedEmail, role, false, errorMessage);
           return {
             success: false,
@@ -529,7 +528,7 @@ export class AuthService {
 
           // Session may exist even when confirm email is on (Supabase can return a session for unconfirmed users).
           // Verify trigger created the row; if we can't see it (RLS blocks unconfirmed session), treat as confirm-email flow.
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise<void>(resolve => setTimeout(() => resolve(), 500));
           const { data: userRow } = await supabase.from('users').select('id').eq('id', userId).maybeSingle();
 
           if (!userRow) {
@@ -566,37 +565,6 @@ export class AuthService {
             };
           }
         }
-      } else if (role === 'driver') {
-        const driverData = additionalData as Partial<DriverUser>;
-        // Use UPSERT to handle case where trigger may have already created the record
-        // This ensures all fields (especially created_by_admin) are set correctly
-        const { error: driverError } = await supabase
-          .from('drivers')
-          .upsert({
-            user_id: userId,
-            vehicle_number: driverData?.vehicleNumber || '',
-            license_number: driverData?.licenseNumber || '',
-            license_expiry: driverData?.licenseExpiry?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
-            driver_license_image_url: driverData?.driverLicenseImage || '',
-            vehicle_registration_image_url: driverData?.vehicleRegistrationImage || '',
-            total_earnings: driverData?.totalEarnings ?? 0,
-            completed_orders: driverData?.completedOrders ?? 0,
-            created_by_admin: driverData?.createdByAdmin ?? false,
-            created_by_admin_id: driverData?.createdByAdminId || null,
-            emergency_contact_name: driverData?.emergencyContactName || null,
-            emergency_contact_phone: driverData?.emergencyContactPhone || null,
-            updated_at: new Date().toISOString(),
-          }, {
-            onConflict: 'user_id'
-          });
-
-        if (driverError) {
-          securityLogger.logRegistrationAttempt(sanitizedEmail, role, false, driverError.message);
-          return {
-            success: false,
-            error: driverError.message || 'Failed to create/update driver profile'
-          };
-        }
       } else if (role === 'admin') {
         const adminData = additionalData as Partial<AdminUser>;
         const { data: existingAdmin } = await supabase
@@ -624,7 +592,7 @@ export class AuthService {
       }
 
       // Small delay to ensure database writes are committed
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise<void>(resolve => setTimeout(() => resolve(), 50));
 
       // Fetch the created user using the newly generated userId
       // Ensure we're using the userId from authData, not from any cached session
@@ -839,8 +807,7 @@ export class AuthService {
         return {
           success: true,
           requiresRoleSelection: true,
-          availableRoles: validRoles,
-          user: undefined
+          availableRoles: validRoles
         };
       }
     } catch (error) {
@@ -881,11 +848,8 @@ export class AuthService {
    * }
    * ```
    */
-  static async loginWithRole(email: string, role: UserRole): Promise<AuthResult> {
+  static async loginWithRole(_email: string, role: UserRole): Promise<AuthResult> {
     try {
-      // Sanitize email input
-      const sanitizedEmail = SanitizationUtils.sanitizeEmail(email);
-      
       // Get current session
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -958,13 +922,14 @@ export class AuthService {
    * ```
    */
   static async logout(): Promise<void> {
+    let userId = 'unknown';
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id || 'unknown';
-      
+      userId = session?.user?.id || 'unknown';
+
       // Sign out from Supabase Auth
       await supabase.auth.signOut();
-      
+
       // Log logout event
       securityLogger.log(
         SecurityEventType.LOGOUT,
@@ -1174,7 +1139,7 @@ export class AuthService {
     } else {
       // Reset all login rate limits by getting all active limits and resetting login ones
       const activeLimits = rateLimiter.getActiveLimits();
-      activeLimits.forEach((entry, key) => {
+      activeLimits.forEach((_, key) => {
         if (key.startsWith('login:')) {
           const email = key.replace('login:', '');
           rateLimiter.reset('login', email);
