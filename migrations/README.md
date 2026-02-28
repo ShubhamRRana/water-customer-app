@@ -167,6 +167,17 @@ supabase db push
 **When to Run**: 
 - Run if you still get RLS violation on `users` after 014, or if you use **Confirm email** and want sign-up to work without requiring a session on the client.
 
+### 018_extend_trigger_create_role_specific_data.sql
+
+**Purpose**: Extends `handle_new_auth_user` to also create role-specific rows (`customers`, `admins`) when a new user signs up. This ensures that when **Confirm email** is enabled (and the client has no session), the full profile exists server-side so the user can log in after confirming.
+
+**Problem Solved**: 
+- With migration 015, only `users` and `user_roles` were created by the trigger. The app then inserted into `customers` or `admins` from the client, which fails RLS when there is no session (confirm email flow).
+- This migration creates those rows in the trigger, so no client-side insert is needed for new signups with confirm email enabled.
+
+**When to Run**: 
+- Run if you use **Confirm email** and see "Account was created but profile setup failed" when registering new users.
+
 ## Verification
 
 After running a migration, verify the changes:

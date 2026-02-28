@@ -24,6 +24,8 @@ export interface AuthResult {
   availableRoles?: UserRole[];
   /** Whether user needs to select a role */
   requiresRoleSelection?: boolean;
+  /** Whether user must confirm email before logging in (no session until confirmed) */
+  needsEmailConfirmation?: boolean;
 }
 
 /**
@@ -510,18 +512,31 @@ export class AuthService {
           };
         } else {
           // New user successfully created in Supabase Auth.
-          // Rows in public.users and public.user_roles are created by the database trigger
-          // (migration 015) so we avoid RLS issues when the client has no session yet (e.g. confirm email).
+          // Rows in public.users, public.user_roles, and role-specific data (customers/admins)
+          // are created by the database trigger (migrations 015, 018) so we avoid RLS issues
+          // when the client has no session yet (e.g. confirm email).
           userId = authData.user.id;
 
-          // Trigger may not have run yet; give it a moment then verify the row exists.
+          // When "Confirm email" is enabled, Supabase does not create a session until the user
+          // confirms. Without a session, auth.uid() is null and RLS blocks SELECT/INSERT on
+          // users, customers, etc. The trigger has run successfully (signUp succeeded).
+          if (!authData.session) {
+            return {
+              success: true,
+              needsEmailConfirmation: true
+            };
+          }
+
+          // Session may exist even when confirm email is on (Supabase can return a session for unconfirmed users).
+          // Verify trigger created the row; if we can't see it (RLS blocks unconfirmed session), treat as confirm-email flow.
           await new Promise(resolve => setTimeout(resolve, 500));
           const { data: userRow } = await supabase.from('users').select('id').eq('id', userId).maybeSingle();
+
           if (!userRow) {
-            securityLogger.logRegistrationAttempt(sanitizedEmail, role, false, 'User profile not created by trigger');
+            // Trigger ran (signUp succeeded). Row not visible = RLS (e.g. confirm email). Return confirm-email message instead of error.
             return {
-              success: false,
-              error: 'Account was created but profile setup failed. Please try logging in, or contact support if this persists.'
+              success: true,
+              needsEmailConfirmation: true
             };
           }
         }

@@ -193,6 +193,7 @@ export const SUCCESS_MESSAGES = {
   auth: {
     loginSuccess: 'Login successful!',
     registerSuccess: 'Registration successful!',
+    registerNeedsEmailConfirmation: 'Please check your email to confirm your account. You can then sign in.',
     logoutSuccess: 'Logged out successfully!',
   },
   booking: {

@@ -36,7 +36,7 @@ interface AuthState {
     role: UserRole,
     phone: string,
     businessName?: string
-  ) => Promise<void>;
+  ) => Promise<{ needsEmailConfirmation?: boolean } | void>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
   setUser: (user: User | null) => void;
@@ -250,10 +250,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isAuthenticated: true,
           isLoading: false,
         });
-      } else {
-        set({ isLoading: false });
-        throw new Error(result.error || 'Registration failed');
+        return;
       }
+      if (result.success && result.needsEmailConfirmation) {
+        set({ isLoading: false });
+        return { needsEmailConfirmation: true };
+      }
+      set({ isLoading: false });
+      throw new Error(result.error || 'Registration failed');
     } catch (error) {
       handleError(error, {
         context: { operation: 'register', email, role },
