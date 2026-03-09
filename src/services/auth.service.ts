@@ -409,7 +409,8 @@ export class AuthService {
       } else {
         // User doesn't exist in users table - try to create in Supabase Auth first
         // But if email already exists in Supabase Auth, try to sign in instead
-        const authSuccessUrl = process.env.EXPO_PUBLIC_AUTH_SUCCESS_URL;
+        const authSuccessUrl =
+          process.env.EXPO_PUBLIC_AUTH_SUCCESS_URL || 'https://tankerhub.in/auth/success';
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: sanitizedEmail,
           password: password,
@@ -419,7 +420,7 @@ export class AuthService {
               role: role,
               phone: sanitizedPhone,
             },
-            ...(authSuccessUrl && { emailRedirectTo: authSuccessUrl }),
+            emailRedirectTo: authSuccessUrl,
           }
         });
 
