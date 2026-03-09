@@ -19,7 +19,7 @@ import { handleError } from '../../utils/errorHandler';
 import { AuthStackParamList } from '../../types/index';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
-import { Typography } from '../../components/common';
+import { Typography, Button, Card } from '../../components/common';
 import { UI_CONFIG } from '../../constants/config';
 
 type RegisterScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Register'>;
@@ -45,7 +45,6 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
     name?: string;
     phone?: string;
   }>({});
-  const [isButtonPressed, setIsButtonPressed] = useState(false);
   
   const { register, isLoading } = useAuthStore();
 
@@ -238,6 +237,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
           <Typography variant="body" style={styles.subtitle}>Sign up to get started</Typography>
         </View>
 
+        <Card padding="large" style={styles.formCard}>
         <View style={styles.form}>
           <View style={styles.inputContainer}>
             <Typography variant="body" style={styles.label}>Full Name</Typography>
@@ -323,22 +323,20 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
 
           {/* Account Type selection removed; role is determined before registration */}
 
-          <TouchableOpacity
-            style={[styles.button, isLoading && styles.buttonDisabled, isButtonPressed && styles.buttonPressed]}
+          <Button
+            title={isLoading ? 'Creating Account...' : 'Create Account'}
             onPress={handleRegister}
+            variant="primary"
             disabled={isLoading}
-            onPressIn={() => setIsButtonPressed(true)}
-            onPressOut={() => setIsButtonPressed(false)}
-          >
-            <Typography variant="body" style={styles.buttonText}>
-              {isLoading ? 'Creating Account...' : 'Create Account'}
-            </Typography>
-          </TouchableOpacity>
+            loading={isLoading}
+            style={styles.submitButton}
+          />
         </View>
+        </Card>
 
         <View style={styles.footer}>
           <Typography variant="body" style={styles.footerText}>Already have an account? </Typography>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Login')}>
             <Typography variant="body" style={styles.linkText}>Sign In</Typography>
           </TouchableOpacity>
         </View>
@@ -369,6 +367,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
+    fontFamily: 'PlayfairDisplay-Regular',
     color: UI_CONFIG.colors.text,
     marginBottom: 8,
   },
@@ -376,8 +375,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: UI_CONFIG.colors.textSecondary,
   },
+  formCard: {
+    marginBottom: 24,
+  },
   form: {
-    marginBottom: 32,
+    marginBottom: 0,
   },
   inputContainer: {
     marginBottom: 20,
@@ -419,43 +421,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
-  
-  button: {
-    backgroundColor: UI_CONFIG.colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 27,
-    paddingVertical: 11,
-    alignItems: 'center',
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: UI_CONFIG.colors.primary,
-    shadowColor: UI_CONFIG.colors.shadow,
-    shadowOffset: {
-      width: 6,
-      height: 6,
-    },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  buttonDisabled: {
-    backgroundColor: UI_CONFIG.colors.disabled,
-    borderColor: UI_CONFIG.colors.disabled,
-    shadowOpacity: 0.3,
-  },
-  buttonPressed: {
-    shadowOffset: {
-      width: 4,
-      height: 4,
-    },
-    shadowRadius: 8,
-    shadowOpacity: 0.5,
-    elevation: 4,
-  },
-  buttonText: {
-    color: UI_CONFIG.colors.textLight,
-    fontSize: 18,
-    fontWeight: '600',
+  submitButton: {
+    marginTop: 16,
   },
   footer: {
     flexDirection: 'row',
@@ -468,8 +435,9 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 16,
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.accent,
     fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });
 

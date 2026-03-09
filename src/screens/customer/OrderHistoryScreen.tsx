@@ -148,7 +148,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
   const getStatusColor = useCallback((status: BookingStatus) => {
     switch (status) {
       case 'pending': return UI_CONFIG.colors.warning;
-      case 'accepted': return UI_CONFIG.colors.primary;
+      case 'accepted': return UI_CONFIG.colors.accent;
       case 'in_transit': return UI_CONFIG.colors.secondary;
       case 'delivered': return UI_CONFIG.colors.success;
       case 'cancelled': return UI_CONFIG.colors.error;
@@ -227,6 +227,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
           <TextInput
             style={styles.searchInput}
             placeholder="Search orders..."
+            placeholderTextColor={UI_CONFIG.colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -257,7 +258,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
               <Ionicons 
                 name={filter.icon as any} 
                 size={16} 
-                color={selectedFilter === filter.key ? UI_CONFIG.colors.textLight : UI_CONFIG.colors.primary} 
+                color={selectedFilter === filter.key ? UI_CONFIG.colors.textLight : UI_CONFIG.colors.text} 
               />
               <Typography variant="caption" style={[
                 styles.filterButtonText,
@@ -309,7 +310,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
 
               <View style={styles.orderDetails}>
                 <View style={styles.detailRow}>
-                  <Ionicons name="water" size={16} color={UI_CONFIG.colors.primary} />
+                  <Ionicons name="water" size={16} color={UI_CONFIG.colors.accent} />
                   <Typography variant="body" style={styles.detailText}>
                     {booking.tankerSize}L Tanker
                   </Typography>
@@ -324,7 +325,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
                   const defaultAddress = user.savedAddresses.find(addr => addr.isDefault) || user.savedAddresses[0];
                   return defaultAddress && defaultAddress.address !== booking.deliveryAddress.address ? (
                     <View style={styles.detailRow}>
-                      <Ionicons name="home" size={16} color={UI_CONFIG.colors.primary} />
+                      <Ionicons name="home" size={16} color={UI_CONFIG.colors.accent} />
                       <Typography variant="body" style={styles.detailText}>
                         Profile: {defaultAddress.address}
                       </Typography>
@@ -500,13 +501,13 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   filterButtonActive: {
-    backgroundColor: UI_CONFIG.colors.primary,
-    borderColor: UI_CONFIG.colors.primary,
+    backgroundColor: UI_CONFIG.colors.accent,
+    borderColor: UI_CONFIG.colors.accent,
   },
   filterButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.text,
     marginLeft: 6,
   },
   filterButtonTextActive: {
@@ -522,7 +523,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   countBadgeActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: UI_CONFIG.colors.overlayMedium,
   },
   countText: {
     fontSize: 12,
@@ -652,7 +653,7 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 12,
     fontWeight: '500',
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.text,
     marginLeft: 4,
   },
   cancelText: {

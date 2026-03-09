@@ -112,7 +112,7 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
   const getStatusColor = (status: BookingStatus) => {
     switch (status) {
       case 'pending': return UI_CONFIG.colors.warning;
-      case 'accepted': return UI_CONFIG.colors.primary;
+      case 'accepted': return UI_CONFIG.colors.accent;
       case 'in_transit': return UI_CONFIG.colors.secondary;
       case 'delivered': return UI_CONFIG.colors.success;
       case 'cancelled': return UI_CONFIG.colors.error;
@@ -198,7 +198,7 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
         <View style={styles.quickActions}>
           <Card style={styles.actionCard} onPress={handleBookTanker}>
             <View style={styles.actionContent}>
-              <Ionicons name="add-circle" size={32} color={UI_CONFIG.colors.primary} />
+              <Ionicons name="add-circle" size={32} color={UI_CONFIG.colors.accent} />
               <Typography variant="body" style={styles.actionText}>Book Tanker</Typography>
             </View>
           </Card>
@@ -242,7 +242,7 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
                 const defaultAddress = user.savedAddresses.find(addr => addr.isDefault) || user.savedAddresses[0];
                 return defaultAddress && defaultAddress.address !== booking.deliveryAddress.address ? (
                   <View style={styles.profileAddressRow}>
-                    <Ionicons name="home" size={16} color={UI_CONFIG.colors.primary} />
+                    <Ionicons name="home" size={16} color={UI_CONFIG.colors.accent} />
                     <Typography variant="caption" style={styles.profileAddress}>
                       Profile: {defaultAddress.address}
                     </Typography>
@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
   orderPrice: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.accent,
   },
   addressRow: {
     flexDirection: 'row',
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
   },
   profileAddress: {
     fontSize: 12,
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.accent,
     marginLeft: 8,
     flex: 1,
     fontStyle: 'italic',

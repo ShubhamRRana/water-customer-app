@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.accent,
   },
   pendingText: {
     color: UI_CONFIG.colors.textSecondary,

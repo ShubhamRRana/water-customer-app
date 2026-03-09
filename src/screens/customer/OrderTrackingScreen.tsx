@@ -135,7 +135,7 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
   const getStatusColor = (status: BookingStatus) => {
     switch (status) {
       case 'pending': return UI_CONFIG.colors.warning;
-      case 'accepted': return UI_CONFIG.colors.primary;
+      case 'accepted': return UI_CONFIG.colors.accent;
       case 'in_transit': return UI_CONFIG.colors.secondary;
       case 'delivered': return UI_CONFIG.colors.success;
       case 'cancelled': return UI_CONFIG.colors.error;
@@ -266,7 +266,7 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
           
           {estimatedDeliveryTime && trackingStatus === 'in_transit' && (
             <View style={styles.estimatedTime}>
-              <Ionicons name="time-outline" size={16} color={UI_CONFIG.colors.primary} />
+              <Ionicons name="time-outline" size={16} color={UI_CONFIG.colors.accent} />
               <Typography variant="body" style={styles.estimatedTimeText}>
                 Estimated delivery: {formatTime(estimatedDeliveryTime)}
               </Typography>
@@ -352,7 +352,7 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
             
             {driverLocation && (
               <View style={styles.locationInfo}>
-                <Ionicons name="navigate" size={16} color={UI_CONFIG.colors.primary} />
+                <Ionicons name="navigate" size={16} color={UI_CONFIG.colors.accent} />
                 <Typography variant="caption" style={styles.locationText}>Driver is on the way</Typography>
               </View>
             )}
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
   },
   estimatedTimeText: {
     fontSize: 16,
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.text,
     marginLeft: 8,
     fontWeight: '500',
   },
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 14,
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.text,
     marginLeft: 8,
     fontWeight: '500',
   },
@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.accent,
   },
   actionsContainer: {
     flexDirection: 'row',

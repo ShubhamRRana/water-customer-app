@@ -65,28 +65,32 @@ export const UI_CONFIG = {
     fallback: ['System'],
   },
   colors: {
-    // Brand colors
-    primary: '#3e5c76', // Medium Blue - for buttons, links, interactive elements (30%)
-    secondary: '#2d4a5f', // Darker Blue - for secondary actions
-    accent: '#fca311', // Gold - for highlights, emphasis (10%)
-    // Background and surfaces (60% - Light Cream)
-    background: '#f0ebd8', // Light Cream/Beige - main backgrounds
-    surface: '#f5f0e0', // Warm Beige - for cards, inputs on cream background (blends with background)
-    surfaceLight: '#f8f6f0', // Lighter cream - for subtle backgrounds
+    // Gold palette — dark & refined
+    primary: '#1a1d24', // Main app background (screens, scroll areas)
+    background: '#1a1d24', // Alternate background where needed
+    surface: '#252a33', // Cards, inputs, drawer panel, elevated surfaces
+    surfaceLight: '#2f3540', // Hover/active states, subtle elevation
+    secondary: '#3d4552', // Secondary buttons, borders, neutral surfaces
+    accent: '#ffc300', // Gold — primary buttons, CTAs, highlights, active states
+    accentMuted: '#a08b4a', // Softer gold for outline buttons, subtle highlights
     // Text colors
-    text: '#0d1321', // Deep Navy - primary text on light backgrounds
-    textSecondary: '#5a5a5a', // Medium gray - secondary text
-    textLight: '#FFFFFF', // White text for dark backgrounds
+    text: '#f0f2f5', // Primary text on dark
+    textSecondary: '#9ca3af', // Secondary text, placeholders, captions
+    textLight: '#ffffff', // Text on gold/primary buttons
     // Border colors
-    border: '#d4c9b0', // Light beige border
-    borderLight: '#e8e0d0', // Lighter border
-    // Status colors (adjusted to work with new palette)
-    success: '#2d8659', // Green - adjusted for cream background
-    warning: '#d68910', // Orange - adjusted for cream background
-    error: '#c0392b', // Red - adjusted for cream background
-    // Additional utility colors
-    disabled: '#b0b0b0', // Gray for disabled states
-    shadow: '#d4c9b0', // Shadow color for cream backgrounds
+    border: '#3d4552', // Borders, dividers
+    borderLight: '#4a5568', // Lighter dividers
+    // Status colors
+    success: '#34d399', // Success states (delivered, completed)
+    warning: '#f59e0b', // Pending, caution
+    error: '#ef4444', // Errors, destructive (logout, cancel)
+    disabled: '#6b7280', // Disabled controls
+    shadow: '#000000', // Shadow color for elevation (use with opacity)
+    // Overlay tokens (replace inline rgba)
+    overlaySubtle: 'rgba(255, 255, 255, 0.06)', // Glass/frosted surfaces
+    overlayLight: 'rgba(255, 255, 255, 0.2)', // Light overlays (e.g. menu on gradient)
+    overlayMedium: 'rgba(255, 255, 255, 0.3)', // Active badges on accent
+    overlayDark: 'rgba(0, 0, 0, 0.6)', // Modal overlays
   },
   spacing: {
     xs: 4,
@@ -94,12 +98,13 @@ export const UI_CONFIG = {
     md: 16,
     lg: 24,
     xl: 32,
+    xxl: 40, // Hero sections, large layouts
   },
   borderRadius: {
-    sm: 4,
-    md: 8,
-    lg: 12,
-    xl: 16,
+    sm: 4, // Chips/tags
+    md: 10, // Softer premium feel
+    lg: 14,
+    xl: 20,
   },
   fontSize: {
     xs: 12,

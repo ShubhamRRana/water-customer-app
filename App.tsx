@@ -73,7 +73,7 @@ const App: React.FC = () => {
     <ErrorBoundary>
       <SafeAreaProvider>
         <NavigationContainer ref={navigationRef}>
-          <StatusBar style="auto" />
+          <StatusBar style="light" />
           <Stack.Navigator
             initialRouteName={getInitialRouteName(user)}
             screenOptions={{

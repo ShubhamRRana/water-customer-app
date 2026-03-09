@@ -541,6 +541,7 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
           <TextInput
             style={styles.textArea}
             placeholder="Enter your delivery address..."
+            placeholderTextColor={UI_CONFIG.colors.textSecondary}
             value={deliveryAddress}
             onChangeText={(text) => {
               setDeliveryAddress(text);
@@ -553,7 +554,7 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
           style={styles.savedAddressButton}
           onPress={() => setShowSavedAddressModal(true)}
         >
-          <Ionicons name="location-outline" size={20} color={UI_CONFIG.colors.primary} />
+          <Ionicons name="location-outline" size={20} color={UI_CONFIG.colors.accent} />
           <Typography variant="body" style={styles.savedAddressButtonText}>Select from Saved Addresses</Typography>
               <Ionicons name="chevron-forward" size={16} color={UI_CONFIG.colors.textSecondary} />
         </TouchableOpacity>
@@ -580,6 +581,7 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
           <TextInput
             style={styles.textArea}
             placeholder="Any special instructions for delivery..."
+            placeholderTextColor={UI_CONFIG.colors.textSecondary}
             value={specialInstructions}
             onChangeText={handleSpecialInstructionsChange}
             multiline
@@ -726,7 +728,7 @@ const styles = StyleSheet.create({
   savedAddressButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.accent,
     flex: 1,
     marginLeft: 8,
   },

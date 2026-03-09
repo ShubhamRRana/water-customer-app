@@ -1,13 +1,14 @@
 import React from 'react';
 import Svg, { Path } from 'react-native-svg';
 import { View, StyleSheet } from 'react-native';
+import { UI_CONFIG } from '../../constants/config';
 
 interface CustomerIconProps {
   size?: number;
   color?: string;
 }
 
-const CustomerIcon: React.FC<CustomerIconProps> = ({ size = 24, color = 'currentColor' }) => {
+const CustomerIcon: React.FC<CustomerIconProps> = ({ size = 24, color = UI_CONFIG.colors.accent }) => {
   return (
     <View style={styles.container}>
       <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

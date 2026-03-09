@@ -20,6 +20,10 @@ interface CardProps {
   onPress?: () => void;
   /** Padding size for the card content */
   padding?: 'small' | 'medium' | 'large';
+  /** Accessibility label for screen readers */
+  accessibilityLabel?: string;
+  /** Accessibility role (e.g. 'button') */
+  accessibilityRole?: 'button' | 'link' | 'none';
 }
 
 /**
@@ -40,6 +44,8 @@ const Card: React.FC<CardProps> = ({
   style,
   onPress,
   padding = 'medium',
+  accessibilityLabel,
+  accessibilityRole,
 }) => {
   const cardStyle = [
     styles.card,
@@ -50,7 +56,13 @@ const Card: React.FC<CardProps> = ({
 
   if (onPress) {
     return (
-      <TouchableOpacity style={cardStyle} onPress={onPress} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={cardStyle}
+        onPress={onPress}
+        activeOpacity={0.7}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityRole={accessibilityRole}
+      >
         {children}
       </TouchableOpacity>
     );
@@ -63,14 +75,13 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: UI_CONFIG.colors.surface,
     borderRadius: UI_CONFIG.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: UI_CONFIG.colors.border,
     shadowColor: UI_CONFIG.colors.shadow,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
   },
   pressable: {
     // Additional styles for pressable cards if needed

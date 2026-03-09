@@ -536,7 +536,7 @@ const styles = StyleSheet.create({
   glassRadioGroup: {
     position: 'relative',
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: UI_CONFIG.colors.overlaySubtle,
     borderRadius: 16,
     overflow: 'hidden',
     alignSelf: 'center',
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
       width: 0,
       height: 0,
     },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.9,
     shadowRadius: 18,
     elevation: 10,
     height: '100%',
@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.accent,
     textAlign: 'center',
     width: '100%',
   },
@@ -669,7 +669,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '500',
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.text,
   },
   dailyRevenue: {
     flex: 1,

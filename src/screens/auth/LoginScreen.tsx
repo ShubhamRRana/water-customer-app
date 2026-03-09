@@ -21,7 +21,7 @@ import { getErrorMessage } from '../../utils/errors';
 import { AuthStackParamList } from '../../types/index';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
-import { Typography, CustomerIcon } from '../../components/common';
+import { Typography, CustomerIcon, Button, Card } from '../../components/common';
 import { UI_CONFIG } from '../../constants/config';
 
 type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
@@ -37,7 +37,6 @@ const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  const [isButtonPressed, setIsButtonPressed] = useState(false);
   
   const { loginWithCredentialsAndRole, isLoading } = useAuthStore();
 
@@ -196,6 +195,7 @@ const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
           <Typography variant="body" style={styles.subtitle}>Sign in to your account</Typography>
         </View>
 
+        <Card padding="large" style={styles.formCard}>
         <View style={styles.form}>
           <View style={styles.inputContainer}>
             <Typography variant="body" style={styles.label}>Email Address</Typography>
@@ -232,22 +232,20 @@ const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
             {errors.password && <Typography variant="caption" style={styles.errorText}>{errors.password}</Typography>}
           </View>
 
-          <TouchableOpacity
-            style={[styles.button, isLoading && styles.buttonDisabled, isButtonPressed && styles.buttonPressed]}
+          <Button
+            title={isLoading ? 'Signing In...' : 'Sign In'}
             onPress={handleLogin}
+            variant="primary"
             disabled={isLoading}
-            onPressIn={() => setIsButtonPressed(true)}
-            onPressOut={() => setIsButtonPressed(false)}
-          >
-            <Typography variant="body" style={styles.buttonText}>
-              {isLoading ? 'Signing In...' : 'Sign In'}
-            </Typography>
-          </TouchableOpacity>
+            loading={isLoading}
+            style={styles.submitButton}
+          />
         </View>
+        </Card>
 
         <View style={styles.footer}>
           <Typography variant="body" style={styles.footerText}>Don't have an account? </Typography>
-          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Register')}>
             <Typography variant="body" style={styles.linkText}>Sign Up</Typography>
           </TouchableOpacity>
         </View>
@@ -280,6 +278,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
+    fontFamily: 'PlayfairDisplay-Regular',
     color: UI_CONFIG.colors.text,
     marginBottom: 8,
   },
@@ -287,8 +286,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: UI_CONFIG.colors.textSecondary,
   },
+  formCard: {
+    marginBottom: 24,
+  },
   form: {
-    marginBottom: 32,
+    marginBottom: 0,
   },
   inputContainer: {
     marginBottom: 20,
@@ -330,42 +332,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
-  button: {
-    backgroundColor: UI_CONFIG.colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 27,
-    paddingVertical: 11,
-    alignItems: 'center',
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: UI_CONFIG.colors.primary,
-    shadowColor: UI_CONFIG.colors.shadow,
-    shadowOffset: {
-      width: 6,
-      height: 6,
-    },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  buttonDisabled: {
-    backgroundColor: UI_CONFIG.colors.disabled,
-    borderColor: UI_CONFIG.colors.disabled,
-    shadowOpacity: 0.3,
-  },
-  buttonPressed: {
-    shadowOffset: {
-      width: 4,
-      height: 4,
-    },
-    shadowRadius: 8,
-    shadowOpacity: 0.5,
-    elevation: 4,
-  },
-  buttonText: {
-    color: UI_CONFIG.colors.textLight,
-    fontSize: 18,
-    fontWeight: '600',
+  submitButton: {
+    marginTop: 16,
   },
   footer: {
     flexDirection: 'row',
@@ -378,8 +346,9 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 16,
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.accent,
     fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   watermarkContainer: {
     position: 'absolute',

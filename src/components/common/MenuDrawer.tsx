@@ -61,7 +61,7 @@ const MenuDrawer = <T extends string>({
                         <Ionicons
                           name={isActive ? (item.icon.replace('-outline', '') as keyof typeof Ionicons.glyphMap) : item.icon}
                           size={24}
-                          color={isActive ? UI_CONFIG.colors.primary : UI_CONFIG.colors.text}
+                          color={isActive ? UI_CONFIG.colors.accent : UI_CONFIG.colors.text}
                         />
                         <Typography
                           variant="body"
@@ -129,7 +129,7 @@ const MenuDrawer = <T extends string>({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: UI_CONFIG.colors.overlayDark,
     justifyContent: 'flex-start',
     alignItems: 'flex-start',
   },
@@ -163,6 +163,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
+    fontFamily: 'PlayfairDisplay-Regular',
     color: UI_CONFIG.colors.text,
   },
   closeButton: {
@@ -188,7 +189,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   menuItemTextActive: {
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.accent,
     fontWeight: '600',
   },
   activeIndicator: {
@@ -197,7 +198,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 4,
-    backgroundColor: UI_CONFIG.colors.primary,
+    backgroundColor: UI_CONFIG.colors.accent,
   },
   logoutSection: {
     marginTop: 'auto',

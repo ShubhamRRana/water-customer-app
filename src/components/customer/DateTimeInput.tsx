@@ -37,6 +37,7 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({
             <TextInput
               style={styles.dateTimeInput}
               placeholder="DD-MM-YYYY"
+              placeholderTextColor={UI_CONFIG.colors.textSecondary}
               value={date}
               onChangeText={onDateChange}
               keyboardType="numeric"
@@ -54,6 +55,7 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({
               <TextInput
                 style={styles.dateTimeInput}
                 placeholder="HH:MM"
+                placeholderTextColor={UI_CONFIG.colors.textSecondary}
                 value={time}
                 onChangeText={onTimeChange}
                 keyboardType="numeric"
@@ -162,9 +164,9 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   timePeriodButtonActive: {
-    backgroundColor: UI_CONFIG.colors.primary,
-    borderColor: UI_CONFIG.colors.primary,
-    shadowColor: UI_CONFIG.colors.primary,
+    backgroundColor: UI_CONFIG.colors.accent,
+    borderColor: UI_CONFIG.colors.accent,
+    shadowColor: UI_CONFIG.colors.accent,
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,

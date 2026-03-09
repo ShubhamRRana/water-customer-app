@@ -218,6 +218,7 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
             <TextInput
               style={styles.addressInput}
               placeholder={editingAddress ? "Edit address..." : "Enter new address..."}
+              placeholderTextColor={UI_CONFIG.colors.textSecondary}
               value={newAddressText}
               onChangeText={(text: string) => {
                 setNewAddressText(text);
@@ -233,11 +234,11 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
               <Ionicons 
                 name={editingAddress ? "checkmark" : "add"} 
                 size={20} 
-                color={newAddressText.trim() ? UI_CONFIG.colors.primary : UI_CONFIG.colors.textSecondary} 
+                color={newAddressText.trim() ? UI_CONFIG.colors.accent : UI_CONFIG.colors.textSecondary} 
               />
               <Typography variant="body" style={[
                 styles.addButtonText,
-                { color: newAddressText.trim() ? UI_CONFIG.colors.primary : UI_CONFIG.colors.textSecondary }
+                { color: newAddressText.trim() ? UI_CONFIG.colors.accent : UI_CONFIG.colors.textSecondary }
               ]}>
                 {editingAddress ? 'Update' : 'Add'}
               </Typography>
@@ -269,7 +270,7 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
                       style={styles.actionButton}
                       onPress={() => handleEditAddress(address)}
                     >
-                      <Ionicons name="create-outline" size={20} color={UI_CONFIG.colors.primary} />
+                      <Ionicons name="create-outline" size={20} color={UI_CONFIG.colors.accent} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.actionButton}
@@ -376,7 +377,7 @@ const styles = StyleSheet.create({
   editModeText: {
     fontSize: 14,
     fontWeight: '600',
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.accent,
   },
   cancelButton: {
     flexDirection: 'row',

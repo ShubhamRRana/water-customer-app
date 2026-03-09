@@ -279,7 +279,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         >
           {/* Header with Gradient */}
           <LinearGradient
-            colors={[UI_CONFIG.colors.primary, UI_CONFIG.colors.secondary]}
+            colors={[UI_CONFIG.colors.surface, UI_CONFIG.colors.surfaceLight]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.headerGradient}
@@ -332,7 +332,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           >
             <View style={styles.infoRow}>
               <View style={styles.infoIconContainer}>
-                <Ionicons name="calendar-outline" size={20} color={UI_CONFIG.colors.primary} />
+                <Ionicons name="calendar-outline" size={20} color={UI_CONFIG.colors.accent} />
               </View>
               <View style={styles.infoContent}>
                 <Typography variant="caption" style={styles.infoLabel}>
@@ -364,7 +364,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               <Ionicons 
                 name={isEditing ? "close-circle" : "create-outline"} 
                 size={22} 
-                color={isEditing ? UI_CONFIG.colors.error : UI_CONFIG.colors.primary} 
+                color={isEditing ? UI_CONFIG.colors.error : UI_CONFIG.colors.accent} 
               />
               <Typography variant="body" style={[
                 styles.actionButtonText,
@@ -400,7 +400,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             >
               <View style={styles.editCard}>
                 <View style={styles.editHeader}>
-                  <Ionicons name="person-outline" size={24} color={UI_CONFIG.colors.primary} />
+                  <Ionicons name="person-outline" size={24} color={UI_CONFIG.colors.accent} />
                   <Typography variant="h3" style={styles.editTitle}>
                     Edit Profile Information
                   </Typography>
@@ -509,7 +509,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   activeOpacity={0.8}
                 >
                   <LinearGradient
-                    colors={[UI_CONFIG.colors.primary, UI_CONFIG.colors.secondary]}
+                    colors={[UI_CONFIG.colors.accent, UI_CONFIG.colors.accentMuted]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.saveButtonGradient}
@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
   menuButton: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: UI_CONFIG.colors.overlayLight,
   },
   headerTitle: {
     fontSize: 24,
@@ -628,7 +628,7 @@ const styles = StyleSheet.create({
   },
   userPhone: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: UI_CONFIG.colors.textLight,
     textAlign: 'center',
   },
   infoCard: {
@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 16,
     fontWeight: '600',
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.accent,
   },
   actionButtonTextActive: {
     color: UI_CONFIG.colors.error,

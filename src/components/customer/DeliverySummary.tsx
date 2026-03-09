@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   amountValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.accent,
   },
   addressValue: {
     fontSize: 16,

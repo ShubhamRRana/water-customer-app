@@ -69,7 +69,7 @@ const Button: React.FC<ButtonProps> = ({
   ], [variant, size, disabled]);
 
   const indicatorColor = useMemo(() => 
-    variant === 'primary' || variant === 'secondary' ? UI_CONFIG.colors.textLight : UI_CONFIG.colors.primary,
+    variant === 'primary' ? UI_CONFIG.colors.textLight : UI_CONFIG.colors.accent,
     [variant]
   );
 
@@ -94,34 +94,29 @@ const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 8,
+    borderRadius: UI_CONFIG.borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: UI_CONFIG.colors.primary,
     borderWidth: 1,
-    borderColor: UI_CONFIG.colors.primary,
     shadowColor: UI_CONFIG.colors.shadow,
-    shadowOffset: {
-      width: 6,
-      height: 6,
-    },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  // Variants
+  // Variants — Primary: gold CTA; Secondary/Outline: surface + accent border
   primary: {
-    backgroundColor: UI_CONFIG.colors.primary,
-    borderColor: UI_CONFIG.colors.primary,
+    backgroundColor: UI_CONFIG.colors.accent,
+    borderColor: UI_CONFIG.colors.accent,
   },
   secondary: {
-    backgroundColor: UI_CONFIG.colors.secondary,
-    borderColor: UI_CONFIG.colors.secondary,
+    backgroundColor: UI_CONFIG.colors.surface,
+    borderColor: UI_CONFIG.colors.accent,
   },
   outline: {
-    backgroundColor: UI_CONFIG.colors.surface,
+    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: UI_CONFIG.colors.primary,
+    borderColor: UI_CONFIG.colors.accent,
   },
   // Sizes
   small: {
@@ -133,14 +128,14 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
   },
   large: {
-    paddingHorizontal: 27,
-    paddingVertical: 11,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
   },
   // States
   disabled: {
     backgroundColor: UI_CONFIG.colors.disabled,
     borderColor: UI_CONFIG.colors.disabled,
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
   },
   // Text styles
   text: {
@@ -151,10 +146,10 @@ const styles = StyleSheet.create({
     color: UI_CONFIG.colors.textLight,
   },
   secondaryText: {
-    color: UI_CONFIG.colors.textLight,
+    color: UI_CONFIG.colors.accent,
   },
   outlineText: {
-    color: UI_CONFIG.colors.primary,
+    color: UI_CONFIG.colors.accent,
   },
   smallText: {
     fontSize: 18,

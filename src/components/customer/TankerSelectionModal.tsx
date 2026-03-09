@@ -60,8 +60,8 @@ const TankerSelectionModal: React.FC<TankerSelectionModalProps> = ({
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <View style={styles.modalContainer}>
         <View style={styles.modalHeader}>
-          <TouchableOpacity onPress={onClose}>
-            <Ionicons name="close" size={24} color={UI_CONFIG.colors.text} />
+          <TouchableOpacity onPress={onClose} accessibilityLabel="Close modal" accessibilityRole="button">
+            <Ionicons name="close" size={24} color={UI_CONFIG.colors.accent} />
           </TouchableOpacity>
           <Typography variant="h3" style={styles.modalTitle}>Select Vehicle</Typography>
           <View style={{ width: 24 }} />
@@ -95,7 +95,7 @@ const TankerSelectionModal: React.FC<TankerSelectionModalProps> = ({
                   <Ionicons
                     name={selectedVehicleId === vehicle.id ? "radio-button-on" : "radio-button-off"}
                     size={24}
-                    color={selectedVehicleId === vehicle.id ? UI_CONFIG.colors.primary : UI_CONFIG.colors.textSecondary}
+                    color={selectedVehicleId === vehicle.id ? UI_CONFIG.colors.accent : UI_CONFIG.colors.textSecondary}
                   />
                 </Card>
               ))}
@@ -118,7 +118,7 @@ const TankerSelectionModal: React.FC<TankerSelectionModalProps> = ({
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
+    backgroundColor: UI_CONFIG.colors.surface,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -148,8 +148,10 @@ const styles = StyleSheet.create({
   },
   selectedTankerCard: {
     backgroundColor: UI_CONFIG.colors.surfaceLight,
-    borderColor: UI_CONFIG.colors.primary,
     borderWidth: 1,
+    borderColor: UI_CONFIG.colors.borderLight,
+    borderLeftWidth: 4,
+    borderLeftColor: UI_CONFIG.colors.accent,
   },
   tankerInfo: {
     flex: 1,

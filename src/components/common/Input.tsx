@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   TextInput,
@@ -44,14 +44,32 @@ const Input: React.FC<InputProps> = ({
   error,
   containerStyle,
   style,
+  onFocus,
+  onBlur,
   ...props
 }) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const handleFocus = (e: Parameters<NonNullable<TextInputProps['onFocus']>>[0]) => {
+    setIsFocused(true);
+    onFocus?.(e);
+  };
+  const handleBlur = (e: Parameters<NonNullable<TextInputProps['onBlur']>>[0]) => {
+    setIsFocused(false);
+    onBlur?.(e);
+  };
   return (
     <View style={[styles.container, containerStyle]}>
       {label && <Typography variant="body" style={styles.label}>{label}</Typography>}
       <TextInput
-        style={[styles.input, error && styles.inputError, style]}
+        style={[
+          styles.input,
+          error && styles.inputError,
+          isFocused && !error && styles.inputFocused,
+          style,
+        ]}
         placeholderTextColor={UI_CONFIG.colors.textSecondary}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         {...props}
       />
       {error && <Typography variant="caption" style={styles.errorText}>{error}</Typography>}
@@ -77,6 +95,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: UI_CONFIG.colors.border,
     color: UI_CONFIG.colors.text,
+  },
+  inputFocused: {
+    borderColor: UI_CONFIG.colors.accent,
   },
   inputError: {
     borderColor: UI_CONFIG.colors.error,

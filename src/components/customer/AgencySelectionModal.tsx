@@ -31,6 +31,7 @@ const AgencySelectionModal: React.FC<AgencySelectionModalProps> = ({
   loading,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
 
   // Filter agencies based on search query (business name or owner name)
   const filteredAgencies = useMemo(() => {
@@ -56,8 +57,8 @@ const AgencySelectionModal: React.FC<AgencySelectionModalProps> = ({
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <View style={styles.modalContainer}>
         <View style={styles.modalHeader}>
-          <TouchableOpacity onPress={onClose}>
-            <Ionicons name="close" size={24} color={UI_CONFIG.colors.text} />
+          <TouchableOpacity onPress={onClose} accessibilityLabel="Close modal" accessibilityRole="button">
+            <Ionicons name="close" size={24} color={UI_CONFIG.colors.accent} />
           </TouchableOpacity>
           <Typography variant="h3" style={styles.modalTitle}>Select Tanker Agency</Typography>
           <View style={{ width: 24 }} />
@@ -65,14 +66,17 @@ const AgencySelectionModal: React.FC<AgencySelectionModalProps> = ({
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>
-          <View style={styles.searchBar}>
-            <Ionicons name="search" size={20} color={UI_CONFIG.colors.textSecondary} />
+          <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
+            <Ionicons name="search" size={20} color={searchFocused ? UI_CONFIG.colors.accent : UI_CONFIG.colors.textSecondary} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search by business or owner name..."
               placeholderTextColor={UI_CONFIG.colors.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              accessibilityLabel="Search agencies"
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
@@ -110,7 +114,7 @@ const AgencySelectionModal: React.FC<AgencySelectionModalProps> = ({
                   <Ionicons
                     name={selectedAgencyId === agency.id ? 'radio-button-on' : 'radio-button-off'}
                     size={24}
-                    color={selectedAgencyId === agency.id ? UI_CONFIG.colors.primary : UI_CONFIG.colors.textSecondary}
+                    color={selectedAgencyId === agency.id ? UI_CONFIG.colors.accent : UI_CONFIG.colors.textSecondary}
                   />
                 </Card>
               ))}
@@ -137,7 +141,7 @@ const AgencySelectionModal: React.FC<AgencySelectionModalProps> = ({
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
+    backgroundColor: UI_CONFIG.colors.surface,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -169,6 +173,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 12,
+    borderWidth: 2,
+    borderColor: UI_CONFIG.colors.border,
+  },
+  searchBarFocused: {
+    borderColor: UI_CONFIG.colors.accent,
   },
   searchInput: {
     flex: 1,
@@ -189,8 +198,10 @@ const styles = StyleSheet.create({
   },
   selectedTankerCard: {
     backgroundColor: UI_CONFIG.colors.surfaceLight,
-    borderColor: UI_CONFIG.colors.primary,
     borderWidth: 1,
+    borderColor: UI_CONFIG.colors.borderLight,
+    borderLeftWidth: 4,
+    borderLeftColor: UI_CONFIG.colors.accent,
   },
   tankerInfo: {
     flex: 1,

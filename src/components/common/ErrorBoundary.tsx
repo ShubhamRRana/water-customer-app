@@ -177,7 +177,7 @@ class ErrorBoundary extends Component<Props, State> {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: UI_CONFIG.colors.surface,
+    backgroundColor: UI_CONFIG.colors.primary,
   },
   scrollContent: {
     flexGrow: 1,
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     padding: 16,
     backgroundColor: UI_CONFIG.colors.background,
-    borderRadius: 8,
+    borderRadius: UI_CONFIG.borderRadius.md,
     borderWidth: 1,
     borderColor: UI_CONFIG.colors.error,
   },
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     maxHeight: 200,
     backgroundColor: UI_CONFIG.colors.surface,
     padding: 8,
-    borderRadius: 4,
+    borderRadius: UI_CONFIG.borderRadius.sm,
   },
   stackText: {
     fontFamily: 'monospace',
