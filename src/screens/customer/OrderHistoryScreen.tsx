@@ -14,7 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuthStore } from '../../store/authStore';
 import { useBookingStore } from '../../store/bookingStore';
-import { isCustomerUser } from '../../types';
 import Card from '../../components/common/Card';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { Typography, CustomerMenuDrawer } from '../../components/common';
@@ -294,7 +293,6 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
           >
               <View style={styles.orderHeader}>
                 <View style={styles.orderInfo}>
-                  <Typography variant="body" style={styles.orderId}>Order #{booking.id.slice(-6)}</Typography>
                   <Typography variant="caption" style={styles.orderDate}>{formatDate(booking.scheduledFor || booking.createdAt)}</Typography>
                 </View>
                 <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
@@ -315,23 +313,6 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
                     {booking.tankerSize}L Tanker
                   </Typography>
                 </View>
-                <View style={styles.detailRow}>
-                  <Ionicons name="location" size={16} color={UI_CONFIG.colors.success} />
-                  <Typography variant="body" style={styles.detailText}>
-                    {booking.deliveryAddress.address}
-                  </Typography>
-                </View>
-                {user && isCustomerUser(user) && user.savedAddresses && user.savedAddresses.length > 0 && (() => {
-                  const defaultAddress = user.savedAddresses.find(addr => addr.isDefault) || user.savedAddresses[0];
-                  return defaultAddress && defaultAddress.address !== booking.deliveryAddress.address ? (
-                    <View style={styles.detailRow}>
-                      <Ionicons name="home" size={16} color={UI_CONFIG.colors.accent} />
-                      <Typography variant="body" style={styles.detailText}>
-                        Profile: {defaultAddress.address}
-                      </Typography>
-                    </View>
-                  ) : null;
-                })()}
                 <View style={styles.detailRow}>
                   <Ionicons name="cash" size={16} color={UI_CONFIG.colors.warning} />
                   {booking.totalPrice > 0 ? (
@@ -354,7 +335,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
 
               {booking.driverName && (
                 <View style={styles.driverInfo}>
-                  <Ionicons name="person" size={16} color={UI_CONFIG.colors.secondary} />
+                  <Ionicons name="person" size={16} color={UI_CONFIG.colors.textLight} />
                   <Typography variant="body" style={styles.driverText}>Driver: {booking.driverName}</Typography>
                   {booking.driverPhone && (
                     <Typography variant="caption" style={styles.driverPhone}>{booking.driverPhone}</Typography>
@@ -573,12 +554,6 @@ const styles = StyleSheet.create({
   orderInfo: {
     flex: 1,
   },
-  orderId: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: UI_CONFIG.colors.text,
-    marginBottom: 4,
-  },
   orderDate: {
     fontSize: 14,
     color: UI_CONFIG.colors.textSecondary,
@@ -622,13 +597,13 @@ const styles = StyleSheet.create({
   },
   driverText: {
     fontSize: 14,
-    color: UI_CONFIG.colors.secondary,
+    color: UI_CONFIG.colors.textLight,
     marginLeft: 8,
     fontWeight: '500',
   },
   driverPhone: {
     fontSize: 14,
-    color: UI_CONFIG.colors.textSecondary,
+    color: UI_CONFIG.colors.textLight,
     marginLeft: 8,
   },
   orderActions: {

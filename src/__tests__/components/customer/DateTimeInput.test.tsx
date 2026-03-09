@@ -1,10 +1,29 @@
 /**
  * DateTimeInput Component Tests
+ * Uses calendar picker for date and time scroller for time
  */
 
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import DateTimeInput from '../../../components/customer/DateTimeInput';
+
+// Mock DateTimePicker
+jest.mock('@react-native-community/datetimepicker', () => {
+  const React = require('react');
+  return function MockDateTimePicker({
+    onChange,
+    value,
+  }: {
+    onChange: (e: { type: string }, d?: Date) => void;
+    value: Date;
+  }) {
+    return React.createElement('Button', {
+      testID: 'date-time-picker',
+      title: 'Pick',
+      onPress: () => onChange({ type: 'set' }, value),
+    });
+  };
+});
 
 // Mock UI_CONFIG
 jest.mock('../../../constants/config', () => ({
@@ -13,7 +32,7 @@ jest.mock('../../../constants/config', () => ({
       text: '#000000',
       textSecondary: '#666666',
       error: '#EF4444',
-      warning: '#F59E0B',
+      accent: '#3B82F6',
       border: '#E5E7EB',
       surface: '#FFFFFF',
       textLight: '#FFFFFF',
@@ -63,171 +82,62 @@ describe('DateTimeInput', () => {
     jest.clearAllMocks();
   });
 
-  describe('Date Input', () => {
-    it('should render date input with placeholder', () => {
-      const { getByPlaceholderText } = render(<DateTimeInput {...defaultProps} />);
-      
-      const dateInput = getByPlaceholderText('DD-MM-YYYY');
-      expect(dateInput).toBeTruthy();
+  describe('Date Picker', () => {
+    it('should render date picker trigger with placeholder text when empty', () => {
+      const { getByText } = render(<DateTimeInput {...defaultProps} />);
+      expect(getByText('Tap to select date')).toBeTruthy();
     });
 
-    it('should display date value', () => {
-      const { getByPlaceholderText } = render(
+    it('should display selected date value', () => {
+      const { getByText } = render(
         <DateTimeInput {...defaultProps} date="25-12-2024" />
       );
-      
-      const dateInput = getByPlaceholderText('DD-MM-YYYY');
-      expect(dateInput.props.value).toBe('25-12-2024');
+      expect(getByText('25-12-2024')).toBeTruthy();
     });
 
-    it('should call onDateChange when date is changed', () => {
-      const { getByPlaceholderText } = render(<DateTimeInput {...defaultProps} />);
-      
-      const dateInput = getByPlaceholderText('DD-MM-YYYY');
-      fireEvent.changeText(dateInput, '25-12-2024');
-      
-      expect(defaultProps.onDateChange).toHaveBeenCalledWith('25-12-2024');
-    });
-
-    it('should have maxLength of 10 for date input', () => {
-      const { getByPlaceholderText } = render(<DateTimeInput {...defaultProps} />);
-      
-      const dateInput = getByPlaceholderText('DD-MM-YYYY');
-      expect(dateInput.props.maxLength).toBe(10);
-    });
-
-    it('should use numeric keyboard for date input', () => {
-      const { getByPlaceholderText } = render(<DateTimeInput {...defaultProps} />);
-      
-      const dateInput = getByPlaceholderText('DD-MM-YYYY');
-      expect(dateInput.props.keyboardType).toBe('numeric');
+    it('should display date label', () => {
+      const { getByText } = render(<DateTimeInput {...defaultProps} />);
+      expect(getByText('Date')).toBeTruthy();
     });
 
     it('should display date error when provided', () => {
       const { getByText } = render(
         <DateTimeInput {...defaultProps} dateError="Invalid date format" />
       );
-      
       expect(getByText('Invalid date format')).toBeTruthy();
     });
-
-    it('should apply error styling when dateError is present', () => {
-      const { getByPlaceholderText } = render(
-        <DateTimeInput {...defaultProps} dateError="Invalid date" />
-      );
-      
-      const dateInput = getByPlaceholderText('DD-MM-YYYY');
-      expect(dateInput).toBeTruthy();
-      // Error styling is applied via parent Card component
-    });
   });
 
-  describe('Time Input', () => {
-    it('should render time input with placeholder', () => {
-      const { getByPlaceholderText } = render(<DateTimeInput {...defaultProps} />);
-      
-      const timeInput = getByPlaceholderText('HH:MM');
-      expect(timeInput).toBeTruthy();
-    });
-
-    it('should display time value', () => {
-      const { getByPlaceholderText } = render(
-        <DateTimeInput {...defaultProps} time="10:30" />
-      );
-      
-      const timeInput = getByPlaceholderText('HH:MM');
-      expect(timeInput.props.value).toBe('10:30');
-    });
-
-    it('should call onTimeChange when time is changed', () => {
-      const { getByPlaceholderText } = render(<DateTimeInput {...defaultProps} />);
-      
-      const timeInput = getByPlaceholderText('HH:MM');
-      fireEvent.changeText(timeInput, '10:30');
-      
-      expect(defaultProps.onTimeChange).toHaveBeenCalledWith('10:30');
-    });
-
-    it('should have maxLength of 5 for time input', () => {
-      const { getByPlaceholderText } = render(<DateTimeInput {...defaultProps} />);
-      
-      const timeInput = getByPlaceholderText('HH:MM');
-      expect(timeInput.props.maxLength).toBe(5);
-    });
-
-    it('should use numeric keyboard for time input', () => {
-      const { getByPlaceholderText } = render(<DateTimeInput {...defaultProps} />);
-      
-      const timeInput = getByPlaceholderText('HH:MM');
-      expect(timeInput.props.keyboardType).toBe('numeric');
-    });
-  });
-
-  describe('Time Period Toggle (AM/PM)', () => {
-    it('should render AM and PM buttons', () => {
+  describe('Time Picker', () => {
+    it('should render time picker trigger with placeholder text when empty', () => {
       const { getByText } = render(<DateTimeInput {...defaultProps} />);
-      
-      expect(getByText('AM')).toBeTruthy();
-      expect(getByText('PM')).toBeTruthy();
+      expect(getByText('Tap to select time')).toBeTruthy();
     });
 
-    it('should call onTimePeriodChange when AM button is pressed', () => {
+    it('should display selected time value with period', () => {
       const { getByText } = render(
-        <DateTimeInput {...defaultProps} timePeriod="PM" />
+        <DateTimeInput {...defaultProps} time="10:30" timePeriod="AM" />
       );
-      
-      const amButton = getByText('AM');
-      fireEvent.press(amButton);
-      
-      expect(defaultProps.onTimePeriodChange).toHaveBeenCalledWith('AM');
+      expect(getByText('10:30 AM')).toBeTruthy();
     });
 
-    it('should call onTimePeriodChange when PM button is pressed', () => {
-      const { getByText } = render(
-        <DateTimeInput {...defaultProps} timePeriod="AM" />
-      );
-      
-      const pmButton = getByText('PM');
-      fireEvent.press(pmButton);
-      
-      expect(defaultProps.onTimePeriodChange).toHaveBeenCalledWith('PM');
-    });
-
-    it('should highlight AM button when AM is selected', () => {
-      const { getByText } = render(
-        <DateTimeInput {...defaultProps} timePeriod="AM" />
-      );
-      
-      const amButton = getByText('AM');
-      // Active styling is applied via style prop
-      expect(amButton).toBeTruthy();
-    });
-
-    it('should highlight PM button when PM is selected', () => {
-      const { getByText } = render(
-        <DateTimeInput {...defaultProps} timePeriod="PM" />
-      );
-      
-      const pmButton = getByText('PM');
-      // Active styling is applied via style prop
-      expect(pmButton).toBeTruthy();
+    it('should display time label', () => {
+      const { getByText } = render(<DateTimeInput {...defaultProps} />);
+      expect(getByText('Time')).toBeTruthy();
     });
   });
 
   describe('Component Structure', () => {
-    it('should render both date and time inputs', () => {
-      const { getByPlaceholderText } = render(<DateTimeInput {...defaultProps} />);
-      
-      expect(getByPlaceholderText('DD-MM-YYYY')).toBeTruthy();
-      expect(getByPlaceholderText('HH:MM')).toBeTruthy();
+    it('should render both date and time picker triggers', () => {
+      const { getByText } = render(<DateTimeInput {...defaultProps} />);
+      expect(getByText('Tap to select date')).toBeTruthy();
+      expect(getByText('Tap to select time')).toBeTruthy();
     });
 
     it('should render labels for date and time', () => {
       const { getByText } = render(<DateTimeInput {...defaultProps} />);
-      
       expect(getByText('Date')).toBeTruthy();
       expect(getByText('Time')).toBeTruthy();
     });
   });
 });
-
