@@ -184,6 +184,7 @@ export interface Expense {
 export interface AuthStackParamList {
   Login: undefined;
   Register: undefined;
+  [key: string]: object | undefined;
 }
 
 // Form types

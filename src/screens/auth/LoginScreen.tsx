@@ -1,11 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import {
   View,
-  Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -15,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
-import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../constants/config';
+import { ERROR_MESSAGES } from '../../constants/config';
 import { handleError } from '../../utils/errorHandler';
 import { getErrorMessage } from '../../utils/errors';
 import { AuthStackParamList } from '../../types/index';
@@ -32,7 +30,7 @@ interface Props {
   route: LoginScreenRouteProp;
 }
 
-const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
+const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -47,8 +45,9 @@ const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
     
     if (sanitized) {
       const validation = ValidationUtils.validateEmail(sanitized);
-      if (!validation.isValid) {
-        setErrors(prev => ({ ...prev, email: validation.error }));
+      const errMsg = validation.error;
+      if (!validation.isValid && errMsg) {
+        setErrors(prev => ({ ...prev, email: errMsg }));
       } else {
         setErrors(prev => {
           const newErrors = { ...prev };
@@ -70,8 +69,9 @@ const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
     
     if (text) {
       const validation = ValidationUtils.validatePassword(text);
-      if (!validation.isValid) {
-        setErrors(prev => ({ ...prev, password: validation.error }));
+      const errMsg = validation.error;
+      if (!validation.isValid && errMsg) {
+        setErrors(prev => ({ ...prev, password: errMsg }));
       } else {
         setErrors(prev => {
           const newErrors = { ...prev };
@@ -98,8 +98,8 @@ const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
 
     if (!emailValidation.isValid || !passwordValidation.isValid) {
       setErrors({
-        email: emailValidation.error,
-        password: passwordValidation.error,
+        ...(emailValidation.error && { email: emailValidation.error }),
+        ...(passwordValidation.error && { password: passwordValidation.error }),
       });
       return;
     }
@@ -116,7 +116,7 @@ const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
       handleError(error, {
         context: { operation: 'login', email: sanitizedEmail, preferredRole: 'customer' },
         userFacing: true,
-        alertMessage: isRoleMismatch ? ERROR_MESSAGES.auth.roleMismatch : undefined,
+        ...(isRoleMismatch && { alertMessage: ERROR_MESSAGES.auth.roleMismatch }),
       });
     }
   };
@@ -191,7 +191,7 @@ const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
         ))}
         <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.header}>
-          <Typography variant="h1" style={styles.title}>Welcome Back</Typography>
+          <Typography variant="h1" style={styles.title}>Welcome to TankerHub</Typography>
           <Typography variant="body" style={styles.subtitle}>Sign in to your account</Typography>
         </View>
 
