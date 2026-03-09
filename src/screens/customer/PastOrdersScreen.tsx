@@ -5,7 +5,6 @@ import {
   ScrollView, 
   TouchableOpacity, 
   RefreshControl,
-  Dimensions,
   Animated,
   Alert
 } from 'react-native';
@@ -26,8 +25,6 @@ import {
 } from '../../utils/reportCalculations';
 import { errorLogger } from '../../utils/errorLogger';
 import { exportReportToExcel } from '../../utils/excelExport';
-
-const { width } = Dimensions.get('window');
 
 type PastOrdersScreenNavigationProp = StackNavigationProp<CustomerStackParamList, 'PastOrders'>;
 

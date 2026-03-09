@@ -24,7 +24,6 @@ export interface MenuDrawerProps<T extends string> {
 const MenuDrawer = <T extends string>({
   visible,
   onClose,
-  onNavigate,
   onLogout,
   currentRoute,
   menuItems,
