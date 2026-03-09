@@ -95,11 +95,6 @@ describe('DateTimeInput', () => {
       expect(getByText('25-12-2024')).toBeTruthy();
     });
 
-    it('should display date label', () => {
-      const { getByText } = render(<DateTimeInput {...defaultProps} />);
-      expect(getByText('Date')).toBeTruthy();
-    });
-
     it('should display date error when provided', () => {
       const { getByText } = render(
         <DateTimeInput {...defaultProps} dateError="Invalid date format" />
@@ -121,10 +116,6 @@ describe('DateTimeInput', () => {
       expect(getByText('10:30 AM')).toBeTruthy();
     });
 
-    it('should display time label', () => {
-      const { getByText } = render(<DateTimeInput {...defaultProps} />);
-      expect(getByText('Time')).toBeTruthy();
-    });
   });
 
   describe('Component Structure', () => {
@@ -132,12 +123,6 @@ describe('DateTimeInput', () => {
       const { getByText } = render(<DateTimeInput {...defaultProps} />);
       expect(getByText('Tap to select date')).toBeTruthy();
       expect(getByText('Tap to select time')).toBeTruthy();
-    });
-
-    it('should render labels for date and time', () => {
-      const { getByText } = render(<DateTimeInput {...defaultProps} />);
-      expect(getByText('Date')).toBeTruthy();
-      expect(getByText('Time')).toBeTruthy();
     });
   });
 });

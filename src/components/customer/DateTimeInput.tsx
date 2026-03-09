@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   },
   inputCard: {
     marginBottom: 8,
-    minHeight: 60,
+    minHeight: 53,
     justifyContent: 'center',
   },
   inputCardError: {
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   pickerCard: {
-    paddingVertical: 12,
+    paddingVertical: 8,
     paddingHorizontal: 16,
   },
   pickerContent: {
