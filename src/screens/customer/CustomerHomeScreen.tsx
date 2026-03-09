@@ -146,7 +146,7 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
                 return 0;
       }
     })
-    .slice(0, 3);
+    .slice(0, 10);
 
   const formatDate = (date: Date | string) => {
     return formatDateTime(date);

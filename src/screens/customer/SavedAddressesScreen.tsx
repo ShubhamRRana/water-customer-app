@@ -265,20 +265,6 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
                       )}
                     </View>
                   </View>
-                  <View style={styles.addressActions}>
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => handleEditAddress(address)}
-                    >
-                      <Ionicons name="create-outline" size={20} color={UI_CONFIG.colors.accent} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => handleDeleteAddress(address.id!)}
-                    >
-                      <Ionicons name="trash-outline" size={20} color={UI_CONFIG.colors.error} />
-                    </TouchableOpacity>
-                  </View>
                 </View>
                 
                 {!address.isDefault && (
@@ -290,6 +276,23 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
                     <Typography variant="caption" style={styles.setDefaultText}>Set as Default</Typography>
                   </TouchableOpacity>
                 )}
+
+                <View style={styles.addressActionsRow}>
+                  <TouchableOpacity
+                    style={styles.bottomActionButton}
+                    onPress={() => handleEditAddress(address)}
+                  >
+                    <Ionicons name="create-outline" size={18} color={UI_CONFIG.colors.accent} />
+                    <Typography variant="caption" style={styles.editButtonText}>Edit</Typography>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.bottomActionButton}
+                    onPress={() => handleDeleteAddress(address.id!)}
+                  >
+                    <Ionicons name="trash-outline" size={18} color={UI_CONFIG.colors.error} />
+                    <Typography variant="caption" style={styles.deleteButtonText}>Delete</Typography>
+                  </TouchableOpacity>
+                </View>
               </Card>
         )}
         style={styles.content}
@@ -497,17 +500,35 @@ const styles = StyleSheet.create({
     color: UI_CONFIG.colors.textSecondary,
     fontStyle: 'italic',
   },
-  addressActions: {
-    flexDirection: 'column',
-    gap: 8,
+  addressActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: UI_CONFIG.colors.border,
   },
-  actionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: UI_CONFIG.colors.background,
-    justifyContent: 'center',
+  bottomActionButton: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: UI_CONFIG.colors.background,
+  },
+  editButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: UI_CONFIG.colors.accent,
+    marginLeft: 4,
+  },
+  deleteButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: UI_CONFIG.colors.error,
+    marginLeft: 4,
   },
   setDefaultButton: {
     flexDirection: 'row',
