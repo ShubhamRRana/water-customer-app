@@ -14,14 +14,42 @@ Deno.serve(async (req: Request) => {
 
   try {
     const payload = await req.json();
-    if (payload?.type !== "DELETE" || payload?.table !== "users" || payload?.schema !== "public") {
-      return new Response(JSON.stringify({ error: "Invalid webhook payload" }), {
+    let userId: string | undefined;
+
+    // Accept Database Webhook payload (when configured in Supabase Dashboard)
+    if (payload?.type === "DELETE" && payload?.table === "users" && payload?.schema === "public") {
+      userId = payload.old_record?.id;
+    }
+    // Accept direct app call: { user_id: "..." } — JWT must match (user deleting own account)
+    else if (payload?.user_id && typeof payload.user_id === "string") {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader?.startsWith("Bearer ")) {
+        return new Response(JSON.stringify({ error: "Authorization required" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const token = authHeader.slice(7);
+      const supabaseAuth = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        { global: { headers: { Authorization: `Bearer ${token}` } } }
+      );
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+      if (authError || !user || user.id !== payload.user_id) {
+        return new Response(JSON.stringify({ error: "Unauthorized: can only delete own auth user" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      userId = payload.user_id;
+    } else {
+      return new Response(JSON.stringify({ error: "Invalid payload: use webhook format or { user_id }" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = payload.old_record?.id;
     if (!userId) {
       return new Response(JSON.stringify({ error: "Missing user id in payload" }), {
         status: 400,

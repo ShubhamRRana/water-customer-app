@@ -1083,6 +1083,13 @@ export class AuthService {
       }
 
       await dataAccess.users.deleteCustomerAccount(customerId);
+      // Remove user from Auth so they no longer appear under Authentication → Users
+      const { error: fnError } = await supabase.functions.invoke('delete-auth-user-on-account-deletion', {
+        body: { user_id: customerId },
+      });
+      if (fnError) {
+        console.warn('Auth user cleanup failed (DB already deleted):', fnError);
+      }
       await AuthService.logout();
       return { success: true };
     } catch (error) {
@@ -1110,6 +1117,12 @@ export class AuthService {
       }
 
       await dataAccess.users.deleteAdminAccount(adminId);
+      const { error: fnError } = await supabase.functions.invoke('delete-auth-user-on-account-deletion', {
+        body: { user_id: adminId },
+      });
+      if (fnError) {
+        console.warn('Auth user cleanup failed (DB already deleted):', fnError);
+      }
       await AuthService.logout();
       return { success: true };
     } catch (error) {
