@@ -48,15 +48,14 @@ function dateToTimeAndPeriod(d: Date): { time: string; period: 'AM' | 'PM' } {
 }
 
 /**
- * Get initial Date for date picker from date string or default to tomorrow
+ * Get initial Date for date picker from date string or default to today
  */
 function getInitialDate(dateStr: string): Date {
   const parsed = parseDateString(dateStr);
   if (parsed) return parsed;
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(0, 0, 0, 0);
-  return tomorrow;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
 }
 
 /**

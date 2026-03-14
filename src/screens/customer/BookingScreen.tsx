@@ -41,6 +41,14 @@ interface PriceBreakdown {
   totalPrice: number;
 }
 
+const getTodayDateString = (): string => {
+  const today = new Date();
+  const day = String(today.getDate()).padStart(2, '0');
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const year = today.getFullYear();
+  return `${day}-${month}-${year}`;
+};
+
 const BookingScreen: React.FC<BookingScreenProps> = () => {
   const navigation = useNavigation<BookingScreenNavigationProp>();
   const { user, isLoading: authLoading, initializeAuth } = useAuthStore();
@@ -53,7 +61,7 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
   const [availableVehicles, setAvailableVehicles] = useState<Array<{ id: string; vehicleCapacity: number; amount?: number; vehicleNumber: string }>>([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
-  const [deliveryDate, setDeliveryDate] = useState<string>('');
+  const [deliveryDate, setDeliveryDate] = useState<string>(() => getTodayDateString());
   const [deliveryTime, setDeliveryTime] = useState<string>('');
   const [timePeriod, setTimePeriod] = useState<'AM' | 'PM'>('PM');
   const [specialInstructions, setSpecialInstructions] = useState('');
