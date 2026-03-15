@@ -164,6 +164,8 @@ export const ERROR_MESSAGES = {
     networkError: 'Network error during authentication.',
     adminCreatedDriverOnly: 'Only admin-created drivers can login. Please contact the administrator to create your driver account.',
     roleMismatch: 'Invalid credentials for this account type. Please use the correct login page for your account.',
+    forgotPasswordFailed: 'Unable to send reset link. If an account exists for this email, you will receive a link shortly.',
+    forgotPasswordRateLimit: 'Too many reset attempts. Please try again after {{resetTime}}.',
   },
   booking: {
     createFailed: 'Failed to create booking.',
@@ -200,6 +202,7 @@ export const SUCCESS_MESSAGES = {
     registerSuccess: 'Registration successful!',
     registerNeedsEmailConfirmation: 'Please check your email to confirm your account. You can then sign in.',
     logoutSuccess: 'Logged out successfully!',
+    forgotPasswordSuccess: 'If an account exists for this email, you will receive a reset link. Check your inbox and spam.',
   },
   booking: {
     created: 'Booking created successfully!',

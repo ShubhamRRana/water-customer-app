@@ -232,6 +232,14 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             {errors.password && <Typography variant="caption" style={styles.errorText}>{errors.password}</Typography>}
           </View>
 
+          <TouchableOpacity
+            style={styles.forgotPasswordLink}
+            onPress={() => navigation.navigate('ForgotPassword')}
+            activeOpacity={0.7}
+          >
+            <Typography variant="body" style={styles.linkText}>Forgot password?</Typography>
+          </TouchableOpacity>
+
           <Button
             title={isLoading ? 'Signing In...' : 'Sign In'}
             onPress={handleLogin}
@@ -334,6 +342,10 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: 16,
+  },
+  forgotPasswordLink: {
+    alignSelf: 'flex-end',
+    marginBottom: 8,
   },
   footer: {
     flexDirection: 'row',

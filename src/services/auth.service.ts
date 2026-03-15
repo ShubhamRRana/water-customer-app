@@ -1132,6 +1132,64 @@ export class AuthService {
   }
 
   /**
+   * Request a password reset email for the given address.
+   * Supabase sends a time-limited link; the user opens it and sets a new password (e.g. on a web page or in-app).
+   * Rate-limited and sanitized; does not reveal whether the email exists.
+   *
+   * @param email - User's email address (will be sanitized)
+   * @returns Promise resolving to { success, error? }
+   */
+  static async requestPasswordReset(email: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const sanitizedEmail = SanitizationUtils.sanitizeEmail(email);
+
+      const emailValidation = ValidationUtils.validateEmail(sanitizedEmail, true);
+      if (!emailValidation.isValid) {
+        return {
+          success: false,
+          error: emailValidation.error || 'Invalid email address',
+        };
+      }
+
+      const rateLimitCheck = rateLimiter.isAllowed('password_reset', sanitizedEmail);
+      if (!rateLimitCheck.allowed) {
+        securityLogger.logRateLimitExceeded('password_reset');
+        return {
+          success: false,
+          error: ERROR_MESSAGES.auth.forgotPasswordRateLimit.replace(
+            '{{resetTime}}',
+            new Date(rateLimitCheck.resetTime).toLocaleTimeString()
+          ),
+        };
+      }
+
+      const redirectTo =
+        process.env.EXPO_PUBLIC_PASSWORD_RESET_REDIRECT_URL ||
+        process.env.EXPO_PUBLIC_AUTH_SUCCESS_URL ||
+        'https://tankerhub.in/auth/success';
+
+      const { error } = await supabase.auth.resetPasswordForEmail(sanitizedEmail, { redirectTo });
+
+      if (error) {
+        rateLimiter.record('password_reset', sanitizedEmail);
+        // Do not reveal whether the email exists; use a generic message
+        return {
+          success: false,
+          error: ERROR_MESSAGES.auth.forgotPasswordFailed,
+        };
+      }
+
+      rateLimiter.record('password_reset', sanitizedEmail);
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        error: ERROR_MESSAGES.auth.forgotPasswordFailed || getErrorMessage(err, 'Failed to send reset link. Please try again.'),
+      };
+    }
+  }
+
+  /**
    * Reset rate limit for login attempts for a specific email or all emails.
    * 
    * Useful for unblocking users who have exceeded rate limits during testing or legitimate use.
