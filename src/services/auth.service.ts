@@ -1190,6 +1190,248 @@ export class AuthService {
   }
 
   /**
+   * Send OTP to the given email for in-app password reset.
+   * Uses Supabase signInWithOtp; the project's email template can be configured to send a 6-digit OTP.
+   *
+   * @param email - User's email address (will be sanitized)
+   * @returns Promise resolving to { success, error? }
+   */
+  static async requestPasswordResetOtp(email: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const sanitizedEmail = SanitizationUtils.sanitizeEmail(email);
+      const emailValidation = ValidationUtils.validateEmail(sanitizedEmail, true);
+      if (!emailValidation.isValid) {
+        return {
+          success: false,
+          error: emailValidation.error || 'Invalid email address',
+        };
+      }
+      const rateLimitCheck = rateLimiter.isAllowed('password_reset', sanitizedEmail);
+      if (!rateLimitCheck.allowed) {
+        securityLogger.logRateLimitExceeded('password_reset');
+        return {
+          success: false,
+          error: ERROR_MESSAGES.auth.forgotPasswordRateLimit.replace(
+            '{{resetTime}}',
+            new Date(rateLimitCheck.resetTime).toLocaleTimeString()
+          ),
+        };
+      }
+      const redirectTo =
+        process.env.EXPO_PUBLIC_PASSWORD_RESET_REDIRECT_URL ||
+        process.env.EXPO_PUBLIC_AUTH_SUCCESS_URL ||
+        'https://tankerhub.in/auth/success';
+      const { error } = await supabase.auth.signInWithOtp({
+        email: sanitizedEmail,
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: redirectTo,
+        },
+      });
+      if (error) {
+        rateLimiter.record('password_reset', sanitizedEmail);
+        return {
+          success: false,
+          error: ERROR_MESSAGES.auth.forgotPasswordFailed,
+        };
+      }
+      rateLimiter.record('password_reset', sanitizedEmail);
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        error: ERROR_MESSAGES.auth.forgotPasswordFailed || getErrorMessage(err, 'Failed to send OTP. Please try again.'),
+      };
+    }
+  }
+
+  /**
+   * Normalize Indian 10-digit phone to E.164 for Supabase (+91xxxxxxxxxx).
+   */
+  static toE164Phone(phone: string): string {
+    const digits = SanitizationUtils.sanitizePhone(phone);
+    if (digits.length === 10) return `+91${digits}`;
+    if (digits.length === 12 && digits.startsWith('91')) return `+${digits}`;
+    return digits ? `+91${digits.slice(-10)}` : '';
+  }
+
+  /**
+   * Send OTP to the given phone for password reset. Uses Supabase Phone auth (SMS).
+   * Phone will be normalized to E.164 (+91 for Indian numbers).
+   *
+   * @param phone - User's phone (10-digit Indian or E.164, will be sanitized)
+   * @returns Promise resolving to { success, error? }
+   */
+  static async requestPasswordResetOtpByPhone(phone: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const sanitized = SanitizationUtils.sanitizePhone(phone);
+      const phoneValidation = ValidationUtils.validatePhone(sanitized, true);
+      if (!phoneValidation.isValid) {
+        return {
+          success: false,
+          error: phoneValidation.error || 'Invalid phone number',
+        };
+      }
+      const e164 = AuthService.toE164Phone(phone);
+      const rateLimitCheck = rateLimiter.isAllowed('password_reset', e164);
+      if (!rateLimitCheck.allowed) {
+        securityLogger.logRateLimitExceeded('password_reset');
+        return {
+          success: false,
+          error: ERROR_MESSAGES.auth.forgotPasswordRateLimit.replace(
+            '{{resetTime}}',
+            new Date(rateLimitCheck.resetTime).toLocaleTimeString()
+          ),
+        };
+      }
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: e164,
+        options: { shouldCreateUser: false },
+      });
+      if (error) {
+        rateLimiter.record('password_reset', e164);
+        return {
+          success: false,
+          error: ERROR_MESSAGES.auth.forgotPasswordFailedPhone,
+        };
+      }
+      rateLimiter.record('password_reset', e164);
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        error: ERROR_MESSAGES.auth.forgotPasswordFailedPhone || getErrorMessage(err, 'Failed to send OTP. Please try again.'),
+      };
+    }
+  }
+
+  /**
+   * Verify SMS OTP and set new password. Call after the user receives the OTP from requestPasswordResetOtpByPhone.
+   *
+   * @param phone - Same phone used when requesting OTP (10-digit or E.164, will be normalized)
+   * @param token - The 6-digit OTP from SMS
+   * @param newPassword - The new password to set
+   * @returns Promise resolving to { success, error? }
+   */
+  static async verifyOtpAndUpdatePasswordByPhone(
+    phone: string,
+    token: string,
+    newPassword: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const e164 = AuthService.toE164Phone(phone);
+      const trimmedToken = token.trim();
+      const trimmedPassword = newPassword.trim();
+      if (!trimmedToken) {
+        return { success: false, error: 'Please enter the OTP sent to your phone.' };
+      }
+      const passwordValidation = ValidationUtils.validatePassword(trimmedPassword);
+      if (!passwordValidation.isValid) {
+        return {
+          success: false,
+          error: passwordValidation.error || ERROR_MESSAGES.auth.weakPassword,
+        };
+      }
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        phone: e164,
+        token: trimmedToken,
+        type: 'sms',
+      });
+      if (verifyError) {
+        return { success: false, error: verifyError.message || 'Invalid or expired OTP. Please request a new one.' };
+      }
+      const { error: updateError } = await supabase.auth.updateUser({ password: trimmedPassword });
+      if (updateError) {
+        return { success: false, error: updateError.message };
+      }
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        error: getErrorMessage(err, 'Failed to update password. Please try again.'),
+      };
+    }
+  }
+
+  /**
+   * Verify OTP and set new password. Call after the user receives the OTP from requestPasswordResetOtp.
+   *
+   * @param email - Same email used when requesting OTP
+   * @param token - The 6-digit OTP (or token from email)
+   * @param newPassword - The new password to set
+   * @returns Promise resolving to { success, error? }
+   */
+  static async verifyOtpAndUpdatePassword(
+    email: string,
+    token: string,
+    newPassword: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const sanitizedEmail = SanitizationUtils.sanitizeEmail(email);
+      const trimmedToken = token.trim();
+      const trimmedPassword = newPassword.trim();
+      if (!trimmedToken) {
+        return { success: false, error: 'Please enter the OTP sent to your email.' };
+      }
+      const passwordValidation = ValidationUtils.validatePassword(trimmedPassword);
+      if (!passwordValidation.isValid) {
+        return {
+          success: false,
+          error: passwordValidation.error || ERROR_MESSAGES.auth.weakPassword,
+        };
+      }
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: sanitizedEmail,
+        token: trimmedToken,
+        type: 'email',
+      });
+      if (verifyError) {
+        return { success: false, error: verifyError.message || 'Invalid or expired OTP. Please request a new one.' };
+      }
+      const { error: updateError } = await supabase.auth.updateUser({ password: trimmedPassword });
+      if (updateError) {
+        return { success: false, error: updateError.message };
+      }
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        error: getErrorMessage(err, 'Failed to update password. Please try again.'),
+      };
+    }
+  }
+
+  /**
+   * Update the current user's password (e.g. after opening the app from a password reset link).
+   * Must be called when the session is a recovery session (from the reset email link).
+   *
+   * @param newPassword - The new password to set
+   * @returns Promise resolving to { success, error? }
+   */
+  static async updatePassword(newPassword: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const trimmed = newPassword.trim();
+      const passwordValidation = ValidationUtils.validatePassword(trimmed);
+      if (!passwordValidation.isValid) {
+        return {
+          success: false,
+          error: passwordValidation.error || ERROR_MESSAGES.auth.weakPassword,
+        };
+      }
+      const { error } = await supabase.auth.updateUser({ password: trimmed });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        error: getErrorMessage(err, 'Failed to update password. Please try again.'),
+      };
+    }
+  }
+
+  /**
    * Reset rate limit for login attempts for a specific email or all emails.
    * 
    * Useful for unblocking users who have exceeded rate limits during testing or legitimate use.

@@ -11,7 +11,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthService } from '../../services/auth.service';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
-import { SUCCESS_MESSAGES } from '../../constants/config';
 import { AuthStackParamList } from '../../types/index';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -27,56 +26,48 @@ interface Props {
 }
 
 const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
-  const [email, setEmail] = useState('');
-  const [errors, setErrors] = useState<{ email?: string }>({});
+  const [phone, setPhone] = useState('');
+  const [errors, setErrors] = useState<{ phone?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
 
-  const handleEmailChange = (text: string) => {
-    const sanitized = SanitizationUtils.sanitizeEmail(text);
-    setEmail(sanitized);
+  const handlePhoneChange = (text: string) => {
+    const sanitized = SanitizationUtils.sanitizePhone(text);
+    setPhone(sanitized);
     if (sanitized) {
-      const validation = ValidationUtils.validateEmail(sanitized);
+      const validation = ValidationUtils.validatePhone(sanitized);
       if (!validation.isValid && validation.error) {
-        setErrors(prev => ({ ...prev, email: validation.error }));
+        setErrors(prev => ({ ...prev, phone: validation.error }));
       } else {
         setErrors(prev => {
           const next = { ...prev };
-          delete next.email;
+          delete next.phone;
           return next;
         });
       }
     } else {
       setErrors(prev => {
         const next = { ...prev };
-        delete next.email;
+        delete next.phone;
         return next;
       });
     }
   };
 
   const handleSubmit = async () => {
-    const sanitizedEmail = SanitizationUtils.sanitizeEmail(email);
-    const emailValidation = ValidationUtils.validateEmail(sanitizedEmail);
-
-    if (!emailValidation.isValid) {
-      setErrors({
-        email: emailValidation.error || 'Invalid email address',
-      });
+    const sanitizedPhone = SanitizationUtils.sanitizePhone(phone);
+    const phoneValidation = ValidationUtils.validatePhone(sanitizedPhone);
+    if (!phoneValidation.isValid) {
+      setErrors({ phone: phoneValidation.error || 'Invalid phone number' });
       return;
     }
-
     setErrors({});
     setIsSubmitting(true);
-    setSubmitted(false);
-
-    const result = await AuthService.requestPasswordReset(sanitizedEmail);
+    const result = await AuthService.requestPasswordResetOtpByPhone(sanitizedPhone);
     setIsSubmitting(false);
-
     if (result.success) {
-      setSubmitted(true);
+      navigation.navigate('ResetPassword', { phone: AuthService.toE164Phone(sanitizedPhone) });
     } else {
-      setErrors({ email: result.error });
+      setErrors({ phone: result.error });
     }
   };
 
@@ -92,72 +83,57 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
               Reset password
             </Typography>
             <Typography variant="body" style={styles.subtitle}>
-              Enter your email and we'll send you a link to reset your password.
+              Enter your phone number and we'll send an OTP to reset your password.
             </Typography>
           </View>
 
           <Card padding="large" style={styles.formCard}>
-            {submitted ? (
-              <View style={styles.successBlock}>
-                <Typography variant="body" style={styles.successText}>
-                  {SUCCESS_MESSAGES.auth.forgotPasswordSuccess}
+            <View style={styles.form}>
+              <View style={styles.inputContainer}>
+                <Typography variant="body" style={styles.label}>
+                  Phone Number
                 </Typography>
-                <Button
-                  title="Back to Sign In"
-                  onPress={() => navigation.navigate('Login')}
-                  variant="primary"
-                  style={styles.backButton}
+                <TextInput
+                  style={[styles.input, errors.phone && styles.inputError]}
+                  value={phone}
+                  onChangeText={handlePhoneChange}
+                  keyboardType="phone-pad"
+                  placeholder="10-digit mobile number"
+                  maxLength={10}
+                  editable={!isSubmitting}
                 />
-              </View>
-            ) : (
-              <View style={styles.form}>
-                <View style={styles.inputContainer}>
-                  <Typography variant="body" style={styles.label}>
-                    Email Address
+                {errors.phone && (
+                  <Typography variant="caption" style={styles.errorText}>
+                    {errors.phone}
                   </Typography>
-                  <TextInput
-                    style={[styles.input, errors.email && styles.inputError]}
-                    value={email}
-                    onChangeText={handleEmailChange}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    editable={!isSubmitting}
-                  />
-                  {errors.email && (
-                    <Typography variant="caption" style={styles.errorText}>
-                      {errors.email}
-                    </Typography>
-                  )}
-                </View>
-
-                <Button
-                  title={isSubmitting ? 'Sending...' : 'Send reset link'}
-                  onPress={handleSubmit}
-                  variant="primary"
-                  disabled={isSubmitting}
-                  loading={isSubmitting}
-                  style={styles.submitButton}
-                />
+                )}
               </View>
-            )}
+
+              <Button
+                title={isSubmitting ? 'Sending OTP...' : 'Send OTP'}
+                onPress={handleSubmit}
+                variant="primary"
+                disabled={isSubmitting}
+                loading={isSubmitting}
+                style={styles.submitButton}
+              />
+            </View>
           </Card>
 
-          {!submitted && (
-            <View style={styles.footer}>
-              <Typography variant="body" style={styles.footerText}>
-                Remember your password?{' '}
+          <View style={styles.footer}>
+            <Typography variant="body" style={styles.footerText}>
+              Remember your password?{' '}
+            </Typography>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('Login')}
+              disabled={isSubmitting}
+            >
+              <Typography variant="body" style={styles.linkText}>
+                Sign In
               </Typography>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate('Login')}
-                disabled={isSubmitting}
-              >
-                <Typography variant="body" style={styles.linkText}>
-                  Sign In
-                </Typography>
-              </TouchableOpacity>
-            </View>
-          )}
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -228,17 +204,6 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: 16,
-  },
-  successBlock: {
-    paddingVertical: 8,
-  },
-  successText: {
-    fontSize: 16,
-    color: UI_CONFIG.colors.text,
-    marginBottom: 24,
-  },
-  backButton: {
-    marginTop: 8,
   },
   footer: {
     flexDirection: 'row',

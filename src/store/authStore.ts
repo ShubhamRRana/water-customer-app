@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { Linking } from 'react-native';
 import { User, UserRole, AdminUser } from '../types/index';
 import { AuthService } from '../services/auth.service';
 import { supabase } from '../lib/supabaseClient';
@@ -25,6 +26,9 @@ interface AuthState {
   unsubscribeAuth: (() => void) | null;
   /** Role-specific login in progress - prevents auth listener from overriding role */
   pendingLoginRole: UserRole | null;
+  /** True when session is from password reset link; show Set new password screen */
+  needsPasswordReset: boolean;
+  clearNeedsPasswordReset: () => void;
   login: (email: string, password: string) => Promise<void>;
   loginWithRole: (email: string, role: UserRole) => Promise<void>;
   loginWithCredentialsAndRole: (email: string, password: string, role: UserRole) => Promise<void>;
@@ -68,6 +72,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   unsubscribeAuth: null,
   pendingLoginRole: null,
+  needsPasswordReset: false,
+
+  clearNeedsPasswordReset: () => set({ needsPasswordReset: false }),
 
   initializeAuth: async () => {
     set({ isLoading: true });
@@ -85,6 +92,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           return;
         }
         throw sessionError;
+      }
+
+      // If no session, check for password reset deep link (app opened from reset email link)
+      if (!session?.user) {
+        try {
+          const url = await Linking.getInitialURL();
+          if (url) {
+            const hashIndex = url.indexOf('#');
+            if (hashIndex !== -1) {
+              const fragment = url.slice(hashIndex + 1);
+              const params = fragment.split('&').reduce<Record<string, string>>((acc, pair) => {
+                const [k, v] = pair.split('=');
+                if (k && v) acc[decodeURIComponent(k)] = decodeURIComponent(v);
+                return acc;
+              }, {});
+              if (params.access_token && params.refresh_token && params.type === 'recovery') {
+                const { error } = await supabase.auth.setSession({
+                  access_token: params.access_token,
+                  refresh_token: params.refresh_token,
+                });
+                if (!error) {
+                  set({ user: null, isAuthenticated: false, needsPasswordReset: true, isLoading: false });
+                  get().subscribeToAuthChanges();
+                  return;
+                }
+              }
+            }
+          }
+        } catch (_) {
+          // Ignore URL parse errors
+        }
       }
 
       if (session?.user) {
@@ -341,12 +379,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
       };
 
+      if (event === 'PASSWORD_RECOVERY' && session?.user) {
+        set({ user: null, isAuthenticated: false, needsPasswordReset: true });
+        return;
+      }
       if (event === 'SIGNED_IN' && session?.user) {
         const { pendingLoginRole, user: currentUser } = get();
         if (pendingLoginRole || currentUser) return;
         await fetchAndSetUser(session.user.id);
       } else if (event === 'SIGNED_OUT') {
-        set({ user: null, isAuthenticated: false, pendingLoginRole: null });
+        set({ user: null, isAuthenticated: false, pendingLoginRole: null, needsPasswordReset: false });
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
         const { pendingLoginRole } = get();
         if (pendingLoginRole) return;
