@@ -211,7 +211,6 @@ export interface BookingForm {
   tankerSize: number;
   deliveryAddress: Address;
   scheduledFor?: Date;
-  specialInstructions?: string;
 }
 
 export interface AddressForm {

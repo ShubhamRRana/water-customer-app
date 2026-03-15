@@ -235,6 +235,25 @@ export class SanitizationUtils {
   }
 
   /**
+   * Sanitize text for live input (e.g. special instructions) - same security as sanitizeText
+   * but does NOT trim, so spaces between words are preserved while typing.
+   * Use this for controlled inputs; trim on submit if needed.
+   */
+  static sanitizeTextForInput(text: string, maxLength: number = 1000): string {
+    if (text == null || typeof text !== 'string') {
+      return '';
+    }
+    return text
+      // Remove script tags and dangerous HTML
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<[^>]+>/g, '')
+      .replace(/javascript:/gi, '')
+      .replace(/data:/gi, '')
+      .replace(/\0/g, '')
+      .substring(0, maxLength);
+  }
+
+  /**
    * Sanitize an object by sanitizing all string values
    */
   static sanitizeObject<T extends Record<string, unknown>>(

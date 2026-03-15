@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   Alert,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -64,7 +66,6 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
   const [deliveryDate, setDeliveryDate] = useState<string>(() => getTodayDateString());
   const [deliveryTime, setDeliveryTime] = useState<string>('');
   const [timePeriod, setTimePeriod] = useState<'AM' | 'PM'>('PM');
-  const [specialInstructions, setSpecialInstructions] = useState('');
   const [showTankerModal, setShowTankerModal] = useState(false);
   const [showAgencyModal, setShowAgencyModal] = useState(false);
   const [showSavedAddressModal, setShowSavedAddressModal] = useState(false);
@@ -275,12 +276,6 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
     return scheduledDate;
   };
 
-  // Memoized handler for special instructions input
-  const handleSpecialInstructionsChange = useCallback((text: string) => {
-    const sanitized = SanitizationUtils.sanitizeText(text, 500);
-    setSpecialInstructions(sanitized);
-  }, []);
-
   // Memoized modal close handlers
   const handleCloseTankerModal = useCallback(() => {
     setShowTankerModal(false);
@@ -481,7 +476,18 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+      >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={UI_CONFIG.colors.text} />
@@ -582,22 +588,6 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
         />
       </View>
 
-      {/* Special Instructions */}
-      <View style={styles.section}>
-        <Typography variant="h3" style={styles.sectionTitle}>Special Instructions (Optional)</Typography>
-        <Card style={styles.inputCard}>
-          <TextInput
-            style={styles.textArea}
-            placeholder="Any special instructions for delivery..."
-            placeholderTextColor={UI_CONFIG.colors.textSecondary}
-            value={specialInstructions}
-            onChangeText={handleSpecialInstructionsChange}
-            multiline
-            numberOfLines={3}
-          />
-        </Card>
-      </View>
-
       {/* Book Now Button */}
       <View style={styles.section}>
         <Button
@@ -633,6 +623,7 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
         navigation={navigation}
       />
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -642,9 +633,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: UI_CONFIG.colors.background,
   },
+  keyboardAvoid: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: UI_CONFIG.colors.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 24,
   },
   loadingContainer: {
     flex: 1,
