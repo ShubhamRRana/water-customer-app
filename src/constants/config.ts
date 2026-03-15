@@ -165,7 +165,6 @@ export const ERROR_MESSAGES = {
     adminCreatedDriverOnly: 'Only admin-created drivers can login. Please contact the administrator to create your driver account.',
     roleMismatch: 'Invalid credentials for this account type. Please use the correct login page for your account.',
     forgotPasswordFailed: 'Unable to send reset link. If an account exists for this email, you will receive a link shortly.',
-    forgotPasswordFailedPhone: 'Unable to send OTP. If an account exists for this phone number, please try again or use email reset.',
     forgotPasswordRateLimit: 'Too many reset attempts. Please try again after {{resetTime}}.',
   },
   booking: {
@@ -204,7 +203,6 @@ export const SUCCESS_MESSAGES = {
     registerNeedsEmailConfirmation: 'Please check your email to confirm your account. You can then sign in.',
     logoutSuccess: 'Logged out successfully!',
     forgotPasswordSuccess: 'If an account exists for this email, you will receive a reset link. Check your inbox and spam.',
-    forgotPasswordSuccessPhone: 'OTP sent to your phone. Enter the code on the next screen to set a new password.',
     resetPasswordSuccess: 'Your password has been changed successfully. You can now sign in with your new password.',
   },
   booking: {

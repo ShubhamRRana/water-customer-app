@@ -234,7 +234,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
           <TouchableOpacity
             style={styles.forgotPasswordLink}
-            onPress={() => navigation.navigate('ResetPassword', { email: email.trim() || undefined })}
+            onPress={() => navigation.navigate('ForgotPassword')}
             activeOpacity={0.7}
           >
             <Typography variant="body" style={styles.linkText}>Forgot password?</Typography>

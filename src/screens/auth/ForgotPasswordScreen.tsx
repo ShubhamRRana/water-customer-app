@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthService } from '../../services/auth.service';
-import { ValidationUtils, SanitizationUtils } from '../../utils';
+import { ValidationUtils } from '../../utils';
 import { AuthStackParamList } from '../../types/index';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -26,48 +26,53 @@ interface Props {
 }
 
 const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
-  const [phone, setPhone] = useState('');
-  const [errors, setErrors] = useState<{ phone?: string }>({});
+  const [email, setEmail] = useState('');
+  const [errors, setErrors] = useState<{ email?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
-  const handlePhoneChange = (text: string) => {
-    const sanitized = SanitizationUtils.sanitizePhone(text);
-    setPhone(sanitized);
-    if (sanitized) {
-      const validation = ValidationUtils.validatePhone(sanitized);
+  const handleEmailChange = (text: string) => {
+    const trimmed = text.trim();
+    setEmail(trimmed);
+    if (trimmed) {
+      const validation = ValidationUtils.validateEmail(trimmed, true);
       if (!validation.isValid && validation.error) {
-        setErrors(prev => ({ ...prev, phone: validation.error }));
+        setErrors(prev => ({ ...prev, email: validation.error! }));
       } else {
         setErrors(prev => {
           const next = { ...prev };
-          delete next.phone;
+          delete next.email;
           return next;
         });
       }
     } else {
       setErrors(prev => {
         const next = { ...prev };
-        delete next.phone;
+        delete next.email;
         return next;
       });
     }
   };
 
-  const handleSubmit = async () => {
-    const sanitizedPhone = SanitizationUtils.sanitizePhone(phone);
-    const phoneValidation = ValidationUtils.validatePhone(sanitizedPhone);
-    if (!phoneValidation.isValid) {
-      setErrors({ phone: phoneValidation.error || 'Invalid phone number' });
+  const handleEmailSubmit = async () => {
+    const trimmedEmail = email.trim();
+    const emailValidation = ValidationUtils.validateEmail(trimmedEmail, true);
+    if (!emailValidation.isValid) {
+      setErrors({ email: emailValidation.error || 'Invalid email address' });
       return;
     }
-    setErrors({});
+    setErrors(prev => {
+      const next = { ...prev };
+      delete next.email;
+      return next;
+    });
     setIsSubmitting(true);
-    const result = await AuthService.requestPasswordResetOtpByPhone(sanitizedPhone);
+    const result = await AuthService.requestPasswordReset(trimmedEmail);
     setIsSubmitting(false);
     if (result.success) {
-      navigation.navigate('ResetPassword', { phone: AuthService.toE164Phone(sanitizedPhone) });
+      setEmailSent(true);
     } else {
-      setErrors({ phone: result.error });
+      setErrors(prev => ({ ...prev, email: result.error ?? 'Unable to send reset link' }));
     }
   };
 
@@ -83,7 +88,7 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
               Reset password
             </Typography>
             <Typography variant="body" style={styles.subtitle}>
-              Enter your phone number and we'll send an OTP to reset your password.
+              Enter your email and we'll send a link to reset your password.
             </Typography>
           </View>
 
@@ -91,32 +96,38 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.form}>
               <View style={styles.inputContainer}>
                 <Typography variant="body" style={styles.label}>
-                  Phone Number
+                  Email
                 </Typography>
                 <TextInput
-                  style={[styles.input, errors.phone && styles.inputError]}
-                  value={phone}
-                  onChangeText={handlePhoneChange}
-                  keyboardType="phone-pad"
-                  placeholder="10-digit mobile number"
-                  maxLength={10}
-                  editable={!isSubmitting}
+                  style={[styles.input, errors.email && styles.inputError]}
+                  value={email}
+                  onChangeText={handleEmailChange}
+                  keyboardType="email-address"
+                  placeholder="Your registered email"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!isSubmitting && !emailSent}
                 />
-                {errors.phone && (
+                {errors.email && (
                   <Typography variant="caption" style={styles.errorText}>
-                    {errors.phone}
+                    {errors.email}
                   </Typography>
                 )}
               </View>
-
-              <Button
-                title={isSubmitting ? 'Sending OTP...' : 'Send OTP'}
-                onPress={handleSubmit}
-                variant="primary"
-                disabled={isSubmitting}
-                loading={isSubmitting}
-                style={styles.submitButton}
-              />
+              {emailSent ? (
+                <Typography variant="body" style={styles.successText}>
+                  If an account exists for this email, you will receive a reset link. Check your inbox and spam.
+                </Typography>
+              ) : (
+                <Button
+                  title={isSubmitting ? 'Sending...' : 'Send reset link'}
+                  onPress={handleEmailSubmit}
+                  variant="primary"
+                  disabled={isSubmitting}
+                  loading={isSubmitting}
+                  style={styles.submitButton}
+                />
+              )}
             </View>
           </Card>
 
@@ -204,6 +215,11 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: 16,
+  },
+  successText: {
+    color: UI_CONFIG.colors.text,
+    marginTop: 8,
+    textAlign: 'center',
   },
   footer: {
     flexDirection: 'row',

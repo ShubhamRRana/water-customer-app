@@ -185,7 +185,6 @@ export interface AuthStackParamList {
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
-  ResetPassword: { phone?: string };
   [key: string]: object | undefined;
 }
 
