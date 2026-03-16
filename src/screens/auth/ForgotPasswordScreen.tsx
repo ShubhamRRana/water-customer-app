@@ -29,7 +29,6 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [errors, setErrors] = useState<{ email?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
 
   const handleEmailChange = (text: string) => {
     const trimmed = text.trim();
@@ -70,7 +69,6 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
     const result = await AuthService.requestPasswordReset(trimmedEmail);
     setIsSubmitting(false);
     if (result.success) {
-      setEmailSent(true);
     } else {
       setErrors(prev => ({ ...prev, email: result.error ?? 'Unable to send reset link' }));
     }
@@ -106,7 +104,7 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
                   placeholder="Your registered email"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  editable={!isSubmitting && !emailSent}
+                  editable={!isSubmitting}
                 />
                 {errors.email && (
                   <Typography variant="caption" style={styles.errorText}>
@@ -114,20 +112,14 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
                   </Typography>
                 )}
               </View>
-              {emailSent ? (
-                <Typography variant="body" style={styles.successText}>
-                  If an account exists for this email, you will receive a reset link. Check your inbox and spam.
-                </Typography>
-              ) : (
-                <Button
-                  title={isSubmitting ? 'Sending...' : 'Send reset link'}
-                  onPress={handleEmailSubmit}
-                  variant="primary"
-                  disabled={isSubmitting}
-                  loading={isSubmitting}
-                  style={styles.submitButton}
-                />
-              )}
+              <Button
+                title={isSubmitting ? 'Sending...' : 'Send reset link'}
+                onPress={handleEmailSubmit}
+                variant="primary"
+                disabled={isSubmitting}
+                loading={isSubmitting}
+                style={styles.submitButton}
+              />
             </View>
           </Card>
 
