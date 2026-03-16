@@ -493,7 +493,7 @@ Before you begin, ensure you have the following installed:
 
 ```bash
 git clone <repository-url>
-cd WaterTankerAppv1
+cd water-customer-app
 ```
 
 ### 2. Install Dependencies
@@ -553,6 +553,11 @@ Ensure your Supabase project has the following tables configured:
 
 ```bash
 npm start
+
+# Or use platform-specific commands
+npm run android
+npm run ios
+npm run web
 ```
 
 Then choose your platform:
@@ -563,7 +568,7 @@ Then choose your platform:
 ## Project Structure
 
 ```
-WaterTankerAppv1/
+water-customer-app/
 ├── src/
 │   ├── components/          # Reusable UI components
 │   │   ├── admin/          # Admin-specific components
