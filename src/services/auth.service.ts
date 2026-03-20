@@ -1172,11 +1172,32 @@ export class AuthService {
 
       if (error) {
         rateLimiter.record('password_reset', sanitizedEmail);
+
+        const errAny = error as unknown as { status?: number; code?: string; message?: string };
+        const status = errAny?.status;
+        const code = errAny?.code;
+        const message = typeof errAny?.message === 'string' ? errAny.message.toLowerCase() : '';
+
+        // Supabase returns a 429 with `over_email_send_rate_limit` when auth recovery is throttled.
+        const isEmailSendRateLimit =
+          status === 429 ||
+          code === 'over_email_send_rate_limit' ||
+          message.includes('over_email_send_rate_limit') ||
+          message.includes('email rate limit') ||
+          message.includes('rate limit');
+
+        if (isEmailSendRateLimit) {
+          const resetTime = rateLimiter.getResetTime('password_reset', sanitizedEmail);
+          const resetTimeText = resetTime ? new Date(resetTime).toLocaleTimeString() : 'soon';
+
+          return {
+            success: false,
+            error: ERROR_MESSAGES.auth.forgotPasswordRateLimit.replace('{{resetTime}}', resetTimeText),
+          };
+        }
+
         // Do not reveal whether the email exists; use a generic message
-        return {
-          success: false,
-          error: ERROR_MESSAGES.auth.forgotPasswordFailed,
-        };
+        return { success: false, error: ERROR_MESSAGES.auth.forgotPasswordFailed };
       }
 
       rateLimiter.record('password_reset', sanitizedEmail);
