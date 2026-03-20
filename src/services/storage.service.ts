@@ -229,6 +229,55 @@ export class StorageService {
   }
 
   /**
+   * Upload society trip tanker photo (customer app)
+   */
+  static async uploadSocietyTripPhoto(
+    imageUri: string,
+    customerId: string,
+    tripId?: string
+  ): Promise<UploadResult> {
+    try {
+      const timestamp = Date.now();
+      const fileName = tripId
+        ? `trip-${tripId}-${timestamp}.jpg`
+        : `trip-${customerId}-${timestamp}.jpg`;
+      const filePath = `society-trips/${customerId}/${fileName}`;
+
+      const arrayBuffer = await fetch(imageUri).then((res) => res.arrayBuffer());
+
+      const { error } = await supabase.storage
+        .from('bank-qr-codes')
+        .upload(filePath, arrayBuffer, {
+          contentType: 'image/jpeg',
+          upsert: true,
+        });
+
+      if (error) {
+        throw new Error(`Failed to upload image: ${error.message}`);
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('bank-qr-codes')
+        .getPublicUrl(filePath);
+
+      if (!urlData?.publicUrl) {
+        throw new Error('Failed to get public URL for uploaded image');
+      }
+
+      return {
+        url: urlData.publicUrl,
+        path: filePath,
+      };
+    } catch (error) {
+      handleError(error, {
+        context: { operation: 'uploadSocietyTripPhoto', customerId, tripId },
+        userFacing: false,
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Extract file path from a Supabase Storage URL
    * @param url - Full public URL of the image
    * @returns File path relative to the bucket

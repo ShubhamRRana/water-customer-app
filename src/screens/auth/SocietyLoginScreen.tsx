@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   TextInput,
@@ -11,35 +11,34 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuthStore } from '../../store/authStore';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
 import { ERROR_MESSAGES } from '../../constants/config';
 import { handleError } from '../../utils/errorHandler';
 import { getErrorMessage } from '../../utils/errors';
 import { AuthStackParamList } from '../../types/index';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { Typography, CustomerIcon, Button, Card } from '../../components/common';
+import { Typography, Button, Card } from '../../components/common';
 import { UI_CONFIG } from '../../constants/config';
 
-type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
+type SocietyLoginNavigationProp = StackNavigationProp<AuthStackParamList, 'SocietyLogin'>;
 
 interface Props {
-  navigation: LoginScreenNavigationProp;
+  navigation: SocietyLoginNavigationProp;
 }
 
-const LoginScreen: React.FC<Props> = ({ navigation }) => {
+const SocietyLoginScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  
+
   const { loginWithCredentialsAndRole, isLoading } = useAuthStore();
 
-  // Real-time validation handlers
   const handleEmailChange = (text: string) => {
     const sanitized = SanitizationUtils.sanitizeEmail(text);
     setEmail(sanitized);
-    
+
     if (sanitized) {
       const validation = ValidationUtils.validateEmail(sanitized);
       const errMsg = validation.error;
@@ -47,23 +46,23 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         setErrors(prev => ({ ...prev, email: errMsg }));
       } else {
         setErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors.email;
-          return newErrors;
+          const next = { ...prev };
+          delete next.email;
+          return next;
         });
       }
     } else {
       setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors.email;
-        return newErrors;
+        const next = { ...prev };
+        delete next.email;
+        return next;
       });
     }
   };
 
   const handlePasswordChange = (text: string) => {
     setPassword(text);
-    
+
     if (text) {
       const validation = ValidationUtils.validatePassword(text);
       const errMsg = validation.error;
@@ -71,25 +70,22 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         setErrors(prev => ({ ...prev, password: errMsg }));
       } else {
         setErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors.password;
-          return newErrors;
+          const next = { ...prev };
+          delete next.password;
+          return next;
         });
       }
     } else {
       setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors.password;
-        return newErrors;
+        const next = { ...prev };
+        delete next.password;
+        return next;
       });
     }
   };
 
   const handleLogin = async () => {
-    // Sanitize inputs
     const sanitizedEmail = SanitizationUtils.sanitizeEmail(email);
-    
-    // Validate inputs
     const emailValidation = ValidationUtils.validateEmail(sanitizedEmail);
     const passwordValidation = ValidationUtils.validatePassword(password);
 
@@ -104,35 +100,33 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     setErrors({});
 
     try {
-      // Customer app: always log in with customer role
-      await loginWithCredentialsAndRole(sanitizedEmail, password, 'customer', 'individual');
+      await loginWithCredentialsAndRole(sanitizedEmail, password, 'customer', 'society');
     } catch (error) {
       const errorMessage = getErrorMessage(error, 'Login failed');
-      const isRoleMismatch = errorMessage.includes('not found with selected role') || errorMessage.includes('User not found with selected role');
+      const isRoleMismatch =
+        errorMessage.includes('not found with selected role') ||
+        errorMessage.includes('User not found with selected role');
 
       handleError(error, {
-        context: { operation: 'login', email: sanitizedEmail, preferredRole: 'customer' },
+        context: { operation: 'society_login', email: sanitizedEmail, preferredRole: 'customer' },
         userFacing: true,
         ...(isRoleMismatch && { alertMessage: ERROR_MESSAGES.auth.roleMismatch }),
       });
     }
   };
 
-  // Customer app: watermark for customer-only login
   const watermarkPositions = useMemo(() => {
     const screenWidth = Dimensions.get('window').width;
     const screenHeight = Dimensions.get('window').height;
-    const iconSize = 10;
+    const iconSize = 50;
     const minSpacing = 70;
     const positions: Array<{ top: number; left: number }> = [];
-    const watermarkCount = 30;
+    const watermarkCount = 24;
     const maxAttempts = 100;
 
-    const hasOverlap = (newTop: number, newLeft: number, existingPositions: Array<{ top: number; left: number }>) => {
-      for (const pos of existingPositions) {
-        const distance = Math.sqrt(
-          Math.pow(newTop - pos.top, 2) + Math.pow(newLeft - pos.left, 2)
-        );
+    const hasOverlap = (newTop: number, newLeft: number, existing: Array<{ top: number; left: number }>) => {
+      for (const pos of existing) {
+        const distance = Math.sqrt(Math.pow(newTop - pos.top, 2) + Math.pow(newLeft - pos.left, 2));
         if (distance < minSpacing) return true;
       }
       return false;
@@ -140,7 +134,8 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
     for (let i = 0; i < watermarkCount; i++) {
       let attempts = 0;
-      let top: number, left: number;
+      let top: number;
+      let left: number;
       do {
         top = Math.random() * (screenHeight - iconSize - 40) + 20;
         left = Math.random() * (screenWidth - iconSize - 40) + 20;
@@ -161,11 +156,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     return positions;
   }, []);
 
-  const renderWatermarkIcon = () => {
-    const iconProps = { size: 50, color: UI_CONFIG.colors.textSecondary };
-    return <CustomerIcon {...iconProps} />;
-  };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -183,79 +173,107 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               },
             ]}
           >
-            {renderWatermarkIcon()}
+            <Ionicons name="business-outline" size={50} color={UI_CONFIG.colors.textSecondary} />
           </View>
         ))}
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.header}>
-          <Typography variant="h1" style={styles.title}>Welcome to TankerHub</Typography>
-          <Typography variant="body" style={styles.subtitle}>
-            Sign in to your account
+
+        <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+          <TouchableOpacity
+            style={styles.backRow}
+            onPress={() => navigation.navigate('RoleSelection')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Ionicons name="chevron-back" size={24} color={UI_CONFIG.colors.accent} />
+            <Typography variant="body" style={styles.backLabel}>
+              Account type
+            </Typography>
+          </TouchableOpacity>
+
+          <View style={styles.header}>
+            <Typography variant="h1" style={styles.title}>
+              Society sign in
+            </Typography>
+            <Typography variant="body" style={styles.subtitle}>
+              Use your society account to coordinate water orders for your community
+            </Typography>
+          </View>
+
+          <Card padding="large" style={styles.formCard}>
+            <View style={styles.form}>
+              <View style={styles.inputContainer}>
+                <Typography variant="body" style={styles.label}>
+                  Email address
+                </Typography>
+                <TextInput
+                  style={[styles.input, errors.email && styles.inputError]}
+                  value={email}
+                  onChangeText={handleEmailChange}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {errors.email ? (
+                  <Typography variant="caption" style={styles.errorText}>
+                    {errors.email}
+                  </Typography>
+                ) : null}
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Typography variant="body" style={styles.label}>
+                  Password
+                </Typography>
+                <View style={styles.passwordInputContainer}>
+                  <TextInput
+                    style={[styles.input, styles.passwordInput, errors.password && styles.inputError]}
+                    value={password}
+                    onChangeText={handlePasswordChange}
+                    secureTextEntry={!showPassword}
+                  />
+                  <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowPassword(!showPassword)}>
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={24}
+                      color={UI_CONFIG.colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+                {errors.password ? (
+                  <Typography variant="caption" style={styles.errorText}>
+                    {errors.password}
+                  </Typography>
+                ) : null}
+              </View>
+
+              <Button
+                title={isLoading ? 'Signing in…' : 'Sign in to society account'}
+                onPress={handleLogin}
+                variant="primary"
+                disabled={isLoading}
+                loading={isLoading}
+                style={styles.submitButton}
+              />
+            </View>
+          </Card>
+
+          <View style={styles.footer}>
+            <Typography variant="body" style={styles.footerText}>
+              New to TankerHub?{' '}
+            </Typography>
+            <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Register')}>
+              <Typography variant="body" style={styles.linkText}>
+                Create an account
+              </Typography>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+
+        <View style={styles.bottomNoticeWrapper} pointerEvents="none">
+          <Typography variant="caption" style={styles.bottomNoticeText}>
+            Reset password is not available yet. Please keep your password safe.
           </Typography>
         </View>
-
-        <Card padding="large" style={styles.formCard}>
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Typography variant="body" style={styles.label}>Email Address</Typography>
-            <TextInput
-              style={[styles.input, errors.email && styles.inputError]}
-              value={email}
-              onChangeText={handleEmailChange}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            {errors.email && <Typography variant="caption" style={styles.errorText}>{errors.email}</Typography>}
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Typography variant="body" style={styles.label}>Password</Typography>
-            <View style={styles.passwordInputContainer}>
-              <TextInput
-                style={[styles.input, styles.passwordInput, errors.password && styles.inputError]}
-                value={password}
-                onChangeText={handlePasswordChange}
-                secureTextEntry={!showPassword}
-              />
-              <TouchableOpacity
-                style={styles.eyeIcon}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={24}
-                  color={UI_CONFIG.colors.textSecondary}
-                />
-              </TouchableOpacity>
-            </View>
-            {errors.password && <Typography variant="caption" style={styles.errorText}>{errors.password}</Typography>}
-          </View>
-
-          <Button
-            title={isLoading ? 'Signing In...' : 'Sign In'}
-            onPress={handleLogin}
-            variant="primary"
-            disabled={isLoading}
-            loading={isLoading}
-            style={styles.submitButton}
-          />
-        </View>
-        </Card>
-
-        <View style={styles.footer}>
-          <Typography variant="body" style={styles.footerText}>Don't have an account? </Typography>
-          <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Register')}>
-            <Typography variant="body" style={styles.linkText}>Sign Up</Typography>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-
-      <View style={styles.bottomNoticeWrapper} pointerEvents="none">
-        <Typography variant="caption" style={styles.bottomNoticeText}>
-          Reset password feature is not available yet. Do not forget your password.
-        </Typography>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -277,9 +295,19 @@ const styles = StyleSheet.create({
     paddingBottom: 96,
     zIndex: 1,
   },
+  backRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginBottom: 16,
+  },
+  backLabel: {
+    color: UI_CONFIG.colors.accent,
+    fontWeight: '600',
+  },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 32,
   },
   title: {
     fontSize: 28,
@@ -287,10 +315,14 @@ const styles = StyleSheet.create({
     fontFamily: 'PlayfairDisplay-Regular',
     color: UI_CONFIG.colors.text,
     marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     color: UI_CONFIG.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: 8,
   },
   formCard: {
     marginBottom: 24,
@@ -345,6 +377,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   footerText: {
     fontSize: 16,
@@ -379,5 +412,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoginScreen;
-
+export default SocietyLoginScreen;

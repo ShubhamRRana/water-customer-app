@@ -211,7 +211,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
         Alert.alert(
           'Confirm your email',
           SUCCESS_MESSAGES.auth.registerNeedsEmailConfirmation,
-          [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+          [{ text: 'OK', onPress: () => navigation.navigate('Login', { accountType: 'individual' }) }]
         );
       } else {
         Alert.alert('Success', SUCCESS_MESSAGES.auth.registerSuccess);
@@ -335,7 +335,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.footer}>
           <Typography variant="body" style={styles.footerText}>Already have an account? </Typography>
-          <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Login')}>
+          <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Login', { accountType: 'individual' })}>
             <Typography variant="body" style={styles.linkText}>Sign In</Typography>
           </TouchableOpacity>
         </View>

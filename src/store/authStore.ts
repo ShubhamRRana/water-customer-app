@@ -1,10 +1,34 @@
 import { create } from 'zustand';
 import { Linking } from 'react-native';
-import { User, UserRole, AdminUser } from '../types/index';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { User, UserRole, AdminUser, CustomerAccountKind } from '../types/index';
 import { AuthService } from '../services/auth.service';
 import { supabase } from '../lib/supabaseClient';
 import { handleError } from '../utils/errorHandler';
 import { ErrorSeverity } from '../utils/errorLogger';
+
+const CUSTOMER_ACCOUNT_KIND_KEY = '@water_customer_account_kind';
+
+async function readStoredCustomerAccountKind(): Promise<CustomerAccountKind> {
+  try {
+    const raw = await AsyncStorage.getItem(CUSTOMER_ACCOUNT_KIND_KEY);
+    return raw === 'society' ? 'society' : 'individual';
+  } catch {
+    return 'individual';
+  }
+}
+
+async function writeStoredCustomerAccountKind(kind: CustomerAccountKind | null): Promise<void> {
+  try {
+    if (kind == null) {
+      await AsyncStorage.removeItem(CUSTOMER_ACCOUNT_KIND_KEY);
+    } else {
+      await AsyncStorage.setItem(CUSTOMER_ACCOUNT_KIND_KEY, kind);
+    }
+  } catch {
+    // non-fatal
+  }
+}
 
 /** Returns true if the error is a network failure (e.g. device can't reach Supabase). */
 function isNetworkFailure(error: unknown): boolean {
@@ -28,10 +52,17 @@ interface AuthState {
   pendingLoginRole: UserRole | null;
   /** True when session is from password reset link; show Set new password screen */
   needsPasswordReset: boolean;
+  /** Set when logging in via individual vs society flow; restored from storage with session */
+  customerAccountKind: CustomerAccountKind | null;
   clearNeedsPasswordReset: () => void;
   login: (email: string, password: string) => Promise<void>;
   loginWithRole: (email: string, role: UserRole) => Promise<void>;
-  loginWithCredentialsAndRole: (email: string, password: string, role: UserRole) => Promise<void>;
+  loginWithCredentialsAndRole: (
+    email: string,
+    password: string,
+    role: UserRole,
+    customerAccountKind?: CustomerAccountKind
+  ) => Promise<void>;
   setPendingLoginRole: (role: UserRole | null) => void;
   register: (
     email: string,
@@ -73,6 +104,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   unsubscribeAuth: null,
   pendingLoginRole: null,
   needsPasswordReset: false,
+  customerAccountKind: null,
 
   clearNeedsPasswordReset: () => set({ needsPasswordReset: false }),
 
@@ -87,7 +119,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         session = result.data?.session ?? null;
       } catch (sessionError) {
         if (isNetworkFailure(sessionError)) {
-          set({ user: null, isAuthenticated: false, isLoading: false });
+          set({ user: null, isAuthenticated: false, isLoading: false, customerAccountKind: null });
           get().subscribeToAuthChanges();
           return;
         }
@@ -131,29 +163,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           userData = await AuthService.getCurrentUserData(session.user.id);
         } catch (userError) {
           if (isNetworkFailure(userError)) {
-            set({ user: null, isAuthenticated: false, isLoading: false });
+            set({ user: null, isAuthenticated: false, isLoading: false, customerAccountKind: null });
             get().subscribeToAuthChanges();
             return;
           }
           throw userError;
         }
+        const kind = userData ? await readStoredCustomerAccountKind() : null;
         set({
           user: userData,
           isAuthenticated: !!userData,
           isLoading: false,
+          customerAccountKind: userData ? kind : null,
         });
       } else {
         set({
           user: null,
           isAuthenticated: false,
           isLoading: false,
+          customerAccountKind: null,
         });
       }
 
       get().subscribeToAuthChanges();
     } catch (error) {
       if (isNetworkFailure(error)) {
-        set({ user: null, isAuthenticated: false, isLoading: false });
+        set({ user: null, isAuthenticated: false, isLoading: false, customerAccountKind: null });
         get().subscribeToAuthChanges();
         return;
       }
@@ -228,17 +263,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  loginWithCredentialsAndRole: async (email: string, password: string, role: UserRole) => {
+  loginWithCredentialsAndRole: async (
+    email: string,
+    password: string,
+    role: UserRole,
+    accountKind?: CustomerAccountKind
+  ) => {
     // Set pending role BEFORE auth to prevent listener from overriding with wrong role
     set({ isLoading: true, pendingLoginRole: role });
     try {
       const result = await AuthService.login(email, password, role);
       if (result.success && result.user) {
+        const kind = accountKind ?? 'individual';
+        await writeStoredCustomerAccountKind(kind);
         set({
           user: result.user,
           isAuthenticated: true,
           isLoading: false,
           pendingLoginRole: null,
+          customerAccountKind: kind,
         });
       } else {
         // Login failed - sign out to clean up and clear pending role
@@ -311,10 +354,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       await AuthService.logout();
+      await writeStoredCustomerAccountKind(null);
       set({
         user: null,
         isAuthenticated: false,
         isLoading: false,
+        customerAccountKind: null,
       });
     } catch (error) {
       handleError(error, {
@@ -373,14 +418,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const fetchAndSetUser = async (userId: string) => {
         try {
           const userData = await AuthService.getCurrentUserData(userId);
-          if (userData) set({ user: userData, isAuthenticated: true });
+          if (userData) {
+            const kind = await readStoredCustomerAccountKind();
+            set({ user: userData, isAuthenticated: true, customerAccountKind: kind });
+          }
         } catch (err) {
           if (!isNetworkFailure(err)) handleError(err, { context: { operation: 'onAuthStateChange' }, userFacing: false, severity: ErrorSeverity.MEDIUM });
         }
       };
 
       if (event === 'PASSWORD_RECOVERY' && session?.user) {
-        set({ user: null, isAuthenticated: false, needsPasswordReset: true });
+        void writeStoredCustomerAccountKind(null);
+        set({ user: null, isAuthenticated: false, needsPasswordReset: true, customerAccountKind: null });
         return;
       }
       if (event === 'SIGNED_IN' && session?.user) {
@@ -388,7 +437,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (pendingLoginRole || currentUser) return;
         await fetchAndSetUser(session.user.id);
       } else if (event === 'SIGNED_OUT') {
-        set({ user: null, isAuthenticated: false, pendingLoginRole: null, needsPasswordReset: false });
+        void writeStoredCustomerAccountKind(null);
+        set({
+          user: null,
+          isAuthenticated: false,
+          pendingLoginRole: null,
+          needsPasswordReset: false,
+          customerAccountKind: null,
+        });
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
         const { pendingLoginRole } = get();
         if (pendingLoginRole) return;

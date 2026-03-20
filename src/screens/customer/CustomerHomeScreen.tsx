@@ -34,7 +34,7 @@ interface CustomerHomeScreenProps {
 
 const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
   const navigation = useNavigation<CustomerHomeScreenNavigationProp>();
-  const { user, logout } = useAuthStore();
+  const { user, logout, customerAccountKind } = useAuthStore();
   const { 
     bookings, 
     isLoading: bookingsLoading, 
@@ -106,6 +106,14 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
       }
     } catch (error) {
       Alert.alert('Navigation Error', 'Unable to navigate to booking screen. Please try again.');
+    }
+  };
+
+  const handleAddTrip = () => {
+    try {
+      navigation.navigate('AddTrip');
+    } catch (error) {
+      Alert.alert('Navigation Error', 'Unable to open Add trip. Please try again.');
     }
   };
 
@@ -195,20 +203,37 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
       {/* Quick Actions */}
       <View style={styles.section}>
         <Typography variant="h3" style={styles.sectionTitle}>Quick Actions</Typography>
-        <View style={styles.quickActions}>
-          <Card style={styles.actionCard} onPress={handleBookTanker}>
-            <View style={styles.actionContent}>
-              <Ionicons name="add-circle" size={32} color={UI_CONFIG.colors.accent} />
-              <Typography variant="body" style={styles.actionText}>Book Tanker</Typography>
-            </View>
-          </Card>
-          <Card style={styles.actionCard} onPress={() => navigation.navigate('SavedAddresses')}>
-            <View style={styles.actionContent}>
-              <Ionicons name="location" size={32} color={UI_CONFIG.colors.success} />
-              <Typography variant="body" style={styles.actionText}>Saved Addresses</Typography>
-            </View>
-          </Card>
-        </View>
+        {customerAccountKind === 'society' ? (
+          <View style={styles.quickActions}>
+            <Card style={styles.actionCard} onPress={handleAddTrip}>
+              <View style={styles.actionContent}>
+                <Ionicons name="car-sport" size={32} color={UI_CONFIG.colors.secondary} />
+                <Typography variant="body" style={styles.actionText}>Add trip</Typography>
+              </View>
+            </Card>
+            <Card style={styles.actionCard} onPress={handleBookTanker}>
+              <View style={styles.actionContent}>
+                <Ionicons name="calendar" size={32} color={UI_CONFIG.colors.accent} />
+                <Typography variant="body" style={styles.actionText}>Create booking</Typography>
+              </View>
+            </Card>
+          </View>
+        ) : (
+          <View style={styles.quickActions}>
+            <Card style={styles.actionCard} onPress={handleBookTanker}>
+              <View style={styles.actionContent}>
+                <Ionicons name="add-circle" size={32} color={UI_CONFIG.colors.accent} />
+                <Typography variant="body" style={styles.actionText}>Book Tanker</Typography>
+              </View>
+            </Card>
+            <Card style={styles.actionCard} onPress={() => navigation.navigate('SavedAddresses')}>
+              <View style={styles.actionContent}>
+                <Ionicons name="location" size={32} color={UI_CONFIG.colors.success} />
+                <Typography variant="body" style={styles.actionText}>Saved Addresses</Typography>
+              </View>
+            </Card>
+          </View>
+        )}
       </View>
 
       {/* Recent Orders */}

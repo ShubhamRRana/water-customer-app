@@ -6,6 +6,9 @@
  */
 export type UserRole = 'customer' | 'driver' | 'admin';
 
+/** Which customer login path was used (society vs individual); persisted for session restore */
+export type CustomerAccountKind = 'individual' | 'society';
+
 /**
  * Address information for deliveries and user saved addresses
  */
@@ -78,6 +81,19 @@ export type BookingStatus = 'pending' | 'accepted' | 'in_transit' | 'delivered' 
 /**
  * Booking entity representing a water tanker delivery order
  */
+/**
+ * Society-logged tanker trip (not a platform booking; free-text agency + photo)
+ */
+export interface SocietyTrip {
+  id: string;
+  customerId: string;
+  agencyName: string;
+  scheduledAt: Date;
+  tankerSizeLiters: number;
+  photoUrl: string;
+  createdAt: Date;
+}
+
 export interface Booking {
   id: string;
   customerId: string;
@@ -182,7 +198,9 @@ export interface Expense {
  * Authentication stack navigation parameters (customer app: Login and Register only)
  */
 export interface AuthStackParamList {
-  Login: undefined;
+  RoleSelection: undefined;
+  Login: { accountType?: 'individual' };
+  SocietyLogin: undefined;
   Register: undefined;
   [key: string]: object | undefined;
 }
