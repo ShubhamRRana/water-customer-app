@@ -184,7 +184,6 @@ export interface Expense {
 export interface AuthStackParamList {
   Login: undefined;
   Register: undefined;
-  ForgotPassword: undefined;
   [key: string]: object | undefined;
 }
 

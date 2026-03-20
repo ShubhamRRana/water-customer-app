@@ -232,14 +232,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             {errors.password && <Typography variant="caption" style={styles.errorText}>{errors.password}</Typography>}
           </View>
 
-          <TouchableOpacity
-            style={styles.forgotPasswordLink}
-            onPress={() => navigation.navigate('ForgotPassword')}
-            activeOpacity={0.7}
-          >
-            <Typography variant="body" style={styles.linkText}>Forgot password?</Typography>
-          </TouchableOpacity>
-
           <Button
             title={isLoading ? 'Signing In...' : 'Sign In'}
             onPress={handleLogin}
@@ -258,6 +250,12 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <View style={styles.bottomNoticeWrapper} pointerEvents="none">
+        <Typography variant="caption" style={styles.bottomNoticeText}>
+          Reset password feature is not available yet. Do not forget your password.
+        </Typography>
+      </View>
     </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -277,6 +275,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
+    paddingBottom: 96,
     zIndex: 1,
   },
   header: {
@@ -343,10 +342,6 @@ const styles = StyleSheet.create({
   submitButton: {
     marginTop: 16,
   },
-  forgotPasswordLink: {
-    alignSelf: 'flex-end',
-    marginBottom: 8,
-  },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -369,6 +364,19 @@ const styles = StyleSheet.create({
     opacity: 0.06,
     zIndex: 0,
     pointerEvents: 'none',
+  },
+  bottomNoticeWrapper: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 16,
+    zIndex: 2,
+    alignItems: 'center',
+  },
+  bottomNoticeText: {
+    textAlign: 'center',
+    color: UI_CONFIG.colors.textSecondary,
+    lineHeight: 18,
   },
 });
 
