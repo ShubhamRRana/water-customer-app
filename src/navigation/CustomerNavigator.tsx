@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import CustomerHomeScreen from '../screens/customer/CustomerHomeScreen';
 import BookingScreen from '../screens/customer/BookingScreen';
 import OrderTrackingScreen from '../screens/customer/OrderTrackingScreen';
@@ -30,11 +32,17 @@ const Stack = createStackNavigator<CustomerStackParamList>();
 
 const CustomerNavigator: React.FC = () => {
   const showSocietySubscriptionIntro = useAuthStore(s => s.showSocietySubscriptionIntro);
+  const rootNavigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+
+  useEffect(() => {
+    if (!showSocietySubscriptionIntro) return;
+    rootNavigation.navigate('Customer', { screen: 'SubscriptionComingSoon' });
+  }, [showSocietySubscriptionIntro, rootNavigation]);
 
   return (
     <ErrorBoundary resetKeys={['Customer']}>
       <Stack.Navigator
-        initialRouteName={showSocietySubscriptionIntro ? 'SubscriptionComingSoon' : 'Home'}
+        initialRouteName="Home"
         screenOptions={{
           headerShown: false,
         }}

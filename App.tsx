@@ -17,11 +17,9 @@ import ErrorBoundary from './src/components/common/ErrorBoundary';
 
 // Types
 import { User, isCustomerUser } from './src/types';
+import type { RootStackParamList } from './src/navigation/rootNavigation';
 
-export type RootStackParamList = {
-  Auth: undefined;
-  Customer: undefined;
-};
+export type { RootStackParamList };
 
 const Stack = createStackNavigator<RootStackParamList>();
 

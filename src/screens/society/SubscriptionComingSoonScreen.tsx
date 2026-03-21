@@ -18,15 +18,13 @@ interface Props {
 }
 
 const SubscriptionComingSoonScreen: React.FC<Props> = ({ navigation }) => {
-  const dismissSocietySubscriptionIntro = useAuthStore(s => s.dismissSocietySubscriptionIntro);
-
   const goHome = useCallback(() => {
-    dismissSocietySubscriptionIntro();
+    useAuthStore.getState().dismissSocietySubscriptionIntro();
     navigation.reset({
       index: 0,
       routes: [{ name: 'Home' }],
     });
-  }, [dismissSocietySubscriptionIntro, navigation]);
+  }, [navigation]);
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {

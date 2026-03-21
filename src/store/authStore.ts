@@ -449,12 +449,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     // Subscribe to Supabase Auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string, session: { user: { id: string } } | null) => {
-      const fetchAndSetUser = async (userId: string) => {
+      const fetchAndSetUser = async (userId: string, authEvent: string) => {
         try {
           const userData = await AuthService.getCurrentUserData(userId);
           if (userData) {
             const kind = await readStoredCustomerAccountKind();
-            set({ user: userData, isAuthenticated: true, customerAccountKind: kind });
+            const showIntro =
+              kind === 'individual'
+                ? false
+                : authEvent === 'SIGNED_IN'
+                  ? true
+                  : get().showSocietySubscriptionIntro;
+            set({
+              user: userData,
+              isAuthenticated: true,
+              customerAccountKind: kind,
+              showSocietySubscriptionIntro: showIntro,
+            });
           }
         } catch (err) {
           if (!isNetworkFailure(err)) handleError(err, { context: { operation: 'onAuthStateChange' }, userFacing: false, severity: ErrorSeverity.MEDIUM });
@@ -475,7 +486,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (event === 'SIGNED_IN' && session?.user) {
         const { pendingLoginRole, user: currentUser } = get();
         if (pendingLoginRole || currentUser) return;
-        await fetchAndSetUser(session.user.id);
+        await fetchAndSetUser(session.user.id, event);
       } else if (event === 'SIGNED_OUT') {
         void writeStoredCustomerAccountKind(null);
         set({
@@ -489,7 +500,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
         const { pendingLoginRole } = get();
         if (pendingLoginRole) return;
-        await fetchAndSetUser(session.user.id);
+        await fetchAndSetUser(session.user.id, event);
       }
     });
     
