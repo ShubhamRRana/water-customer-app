@@ -9,10 +9,13 @@ import SavedAddressesScreen from '../screens/customer/SavedAddressesScreen';
 import PastOrdersScreen from '../screens/customer/PastOrdersScreen';
 import AddTripScreen from '../screens/society/AddTripScreen';
 import TripDetailsScreen from '../screens/society/TripDetailsScreen';
+import SubscriptionComingSoonScreen from '../screens/society/SubscriptionComingSoonScreen';
 import ErrorBoundary from '../components/common/ErrorBoundary';
+import { useAuthStore } from '../store/authStore';
 
 export type CustomerStackParamList = {
   Home: undefined;
+  SubscriptionComingSoon: undefined;
   Orders: undefined;
   Profile: undefined;
   Booking: undefined;
@@ -26,13 +29,17 @@ export type CustomerStackParamList = {
 const Stack = createStackNavigator<CustomerStackParamList>();
 
 const CustomerNavigator: React.FC = () => {
+  const showSocietySubscriptionIntro = useAuthStore(s => s.showSocietySubscriptionIntro);
+
   return (
     <ErrorBoundary resetKeys={['Customer']}>
       <Stack.Navigator
+        initialRouteName={showSocietySubscriptionIntro ? 'SubscriptionComingSoon' : 'Home'}
         screenOptions={{
           headerShown: false,
         }}
       >
+        <Stack.Screen name="SubscriptionComingSoon" component={SubscriptionComingSoonScreen} />
         <Stack.Screen name="Home" component={CustomerHomeScreen} />
         <Stack.Screen name="Orders" component={OrderHistoryScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />

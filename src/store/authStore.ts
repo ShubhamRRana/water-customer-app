@@ -54,6 +54,9 @@ interface AuthState {
   needsPasswordReset: boolean;
   /** Set when logging in via individual vs society flow; restored from storage with session */
   customerAccountKind: CustomerAccountKind | null;
+  /** After society login, show subscription intro once before home */
+  showSocietySubscriptionIntro: boolean;
+  dismissSocietySubscriptionIntro: () => void;
   clearNeedsPasswordReset: () => void;
   login: (email: string, password: string) => Promise<void>;
   loginWithRole: (email: string, role: UserRole) => Promise<void>;
@@ -105,6 +108,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   pendingLoginRole: null,
   needsPasswordReset: false,
   customerAccountKind: null,
+  showSocietySubscriptionIntro: false,
+
+  dismissSocietySubscriptionIntro: () => set({ showSocietySubscriptionIntro: false }),
 
   clearNeedsPasswordReset: () => set({ needsPasswordReset: false }),
 
@@ -119,7 +125,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         session = result.data?.session ?? null;
       } catch (sessionError) {
         if (isNetworkFailure(sessionError)) {
-          set({ user: null, isAuthenticated: false, isLoading: false, customerAccountKind: null });
+          set({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            customerAccountKind: null,
+            showSocietySubscriptionIntro: false,
+          });
           get().subscribeToAuthChanges();
           return;
         }
@@ -145,7 +157,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                   refresh_token: params.refresh_token,
                 });
                 if (!error) {
-                  set({ user: null, isAuthenticated: false, needsPasswordReset: true, isLoading: false });
+                  set({
+                    user: null,
+                    isAuthenticated: false,
+                    needsPasswordReset: true,
+                    isLoading: false,
+                    showSocietySubscriptionIntro: false,
+                  });
                   get().subscribeToAuthChanges();
                   return;
                 }
@@ -163,7 +181,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           userData = await AuthService.getCurrentUserData(session.user.id);
         } catch (userError) {
           if (isNetworkFailure(userError)) {
-            set({ user: null, isAuthenticated: false, isLoading: false, customerAccountKind: null });
+            set({
+              user: null,
+              isAuthenticated: false,
+              isLoading: false,
+              customerAccountKind: null,
+              showSocietySubscriptionIntro: false,
+            });
             get().subscribeToAuthChanges();
             return;
           }
@@ -175,6 +199,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isAuthenticated: !!userData,
           isLoading: false,
           customerAccountKind: userData ? kind : null,
+          showSocietySubscriptionIntro: false,
         });
       } else {
         set({
@@ -182,13 +207,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isAuthenticated: false,
           isLoading: false,
           customerAccountKind: null,
+          showSocietySubscriptionIntro: false,
         });
       }
 
       get().subscribeToAuthChanges();
     } catch (error) {
       if (isNetworkFailure(error)) {
-        set({ user: null, isAuthenticated: false, isLoading: false, customerAccountKind: null });
+        set({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          customerAccountKind: null,
+          showSocietySubscriptionIntro: false,
+        });
         get().subscribeToAuthChanges();
         return;
       }
@@ -282,6 +314,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isLoading: false,
           pendingLoginRole: null,
           customerAccountKind: kind,
+          showSocietySubscriptionIntro: kind === 'society',
         });
       } else {
         // Login failed - sign out to clean up and clear pending role
@@ -360,6 +393,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: false,
         isLoading: false,
         customerAccountKind: null,
+        showSocietySubscriptionIntro: false,
       });
     } catch (error) {
       handleError(error, {
@@ -429,7 +463,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (event === 'PASSWORD_RECOVERY' && session?.user) {
         void writeStoredCustomerAccountKind(null);
-        set({ user: null, isAuthenticated: false, needsPasswordReset: true, customerAccountKind: null });
+        set({
+          user: null,
+          isAuthenticated: false,
+          needsPasswordReset: true,
+          customerAccountKind: null,
+          showSocietySubscriptionIntro: false,
+        });
         return;
       }
       if (event === 'SIGNED_IN' && session?.user) {
@@ -444,6 +484,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           pendingLoginRole: null,
           needsPasswordReset: false,
           customerAccountKind: null,
+          showSocietySubscriptionIntro: false,
         });
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
         const { pendingLoginRole } = get();
