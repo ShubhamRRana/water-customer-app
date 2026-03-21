@@ -31,7 +31,7 @@ interface OrderHistoryScreenProps {
 }
 
 const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) => {
-  const { user, logout } = useAuthStore();
+  const { user, logout, customerAccountKind } = useAuthStore();
   const { bookings, isLoading, fetchCustomerBookings, cancelBooking } = useBookingStore();
   
   const [refreshing, setRefreshing] = useState(false);
@@ -193,7 +193,9 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
     );
   }
 
-  const handleMenuNavigate = (route: 'Home' | 'Orders' | 'Profile' | 'PastOrders') => {
+  const handleMenuNavigate = (
+    route: 'Home' | 'Orders' | 'Profile' | 'PastOrders' | 'TripDetails',
+  ) => {
     if (route === 'Orders') {
       // Already on Orders, just close menu
       return;
@@ -388,6 +390,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
         onNavigate={handleMenuNavigate}
         onLogout={handleLogout}
         currentRoute="Orders"
+        customerAccountKind={customerAccountKind}
       />
     </SafeAreaView>
   );

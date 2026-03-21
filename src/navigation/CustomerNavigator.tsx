@@ -7,7 +7,8 @@ import OrderHistoryScreen from '../screens/customer/OrderHistoryScreen';
 import ProfileScreen from '../screens/customer/ProfileScreen';
 import SavedAddressesScreen from '../screens/customer/SavedAddressesScreen';
 import PastOrdersScreen from '../screens/customer/PastOrdersScreen';
-import AddTripScreen from '../screens/customer/AddTripScreen';
+import AddTripScreen from '../screens/society/AddTripScreen';
+import TripDetailsScreen from '../screens/society/TripDetailsScreen';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 
 export type CustomerStackParamList = {
@@ -16,6 +17,7 @@ export type CustomerStackParamList = {
   Profile: undefined;
   Booking: undefined;
   AddTrip: undefined;
+  TripDetails: undefined;
   OrderTracking: { orderId: string };
   SavedAddresses: undefined;
   PastOrders: undefined;
@@ -36,6 +38,7 @@ const CustomerNavigator: React.FC = () => {
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="Booking" component={BookingScreen} />
         <Stack.Screen name="AddTrip" component={AddTripScreen} />
+        <Stack.Screen name="TripDetails" component={TripDetailsScreen} />
         <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
         <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen} />
         <Stack.Screen name="PastOrders" component={PastOrdersScreen} />

@@ -74,7 +74,7 @@ jest.mock('../../screens/customer/BookingScreen', () => {
   return () => <View testID="BookingScreen"><Text>BookingScreen</Text></View>;
 });
 
-jest.mock('../../screens/customer/AddTripScreen', () => {
+jest.mock('../../screens/society/AddTripScreen', () => {
   const React = require('react');
   const { View, Text } = require('react-native');
   return () => <View testID="AddTripScreen"><Text>AddTripScreen</Text></View>;

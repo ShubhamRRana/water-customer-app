@@ -1,8 +1,8 @@
-import React from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useMemo } from 'react';
 import MenuDrawer, { MenuItem } from './MenuDrawer';
+import { CustomerAccountKind } from '../../types';
 
-export type CustomerRoute = 'Home' | 'Orders' | 'Profile' | 'PastOrders';
+export type CustomerRoute = 'Home' | 'Orders' | 'Profile' | 'PastOrders' | 'TripDetails';
 
 interface CustomerMenuDrawerProps {
   visible: boolean;
@@ -10,6 +10,8 @@ interface CustomerMenuDrawerProps {
   onNavigate: (route: CustomerRoute) => void;
   onLogout: () => void;
   currentRoute?: CustomerRoute;
+  /** When `society`, shows Trip details (society-logged tanker trips). */
+  customerAccountKind?: CustomerAccountKind | null;
 }
 
 const CustomerMenuDrawer: React.FC<CustomerMenuDrawerProps> = ({
@@ -18,36 +20,50 @@ const CustomerMenuDrawer: React.FC<CustomerMenuDrawerProps> = ({
   onNavigate,
   onLogout,
   currentRoute,
+  customerAccountKind,
 }) => {
-  const menuItems: MenuItem<CustomerRoute>[] = [
-    {
-      label: 'Home',
-      icon: 'home-outline',
-      route: 'Home',
-      onPress: () => {
-        onNavigate('Home');
-        onClose();
+  const menuItems: MenuItem<CustomerRoute>[] = useMemo(() => {
+    const base: MenuItem<CustomerRoute>[] = [
+      {
+        label: 'Home',
+        icon: 'home-outline',
+        route: 'Home',
+        onPress: () => {
+          onNavigate('Home');
+          onClose();
+        },
       },
-    },
-    {
-      label: 'Orders',
-      icon: 'list-outline',
-      route: 'Orders',
-      onPress: () => {
-        onNavigate('Orders');
-        onClose();
+      {
+        label: 'Orders',
+        icon: 'list-outline',
+        route: 'Orders',
+        onPress: () => {
+          onNavigate('Orders');
+          onClose();
+        },
       },
-    },
-    {
-      label: 'Past Orders',
-      icon: 'time-outline',
-      route: 'PastOrders',
-      onPress: () => {
-        onNavigate('PastOrders');
-        onClose();
+      {
+        label: 'Past Orders',
+        icon: 'time-outline',
+        route: 'PastOrders',
+        onPress: () => {
+          onNavigate('PastOrders');
+          onClose();
+        },
       },
-    },
-    {
+    ];
+    if (customerAccountKind === 'society') {
+      base.push({
+        label: 'Trip details',
+        icon: 'document-text-outline',
+        route: 'TripDetails',
+        onPress: () => {
+          onNavigate('TripDetails');
+          onClose();
+        },
+      });
+    }
+    base.push({
       label: 'Profile',
       icon: 'person-circle-outline',
       route: 'Profile',
@@ -55,8 +71,9 @@ const CustomerMenuDrawer: React.FC<CustomerMenuDrawerProps> = ({
         onNavigate('Profile');
         onClose();
       },
-    },
-  ];
+    });
+    return base;
+  }, [customerAccountKind, onClose, onNavigate]);
 
   return (
     <MenuDrawer
@@ -64,8 +81,8 @@ const CustomerMenuDrawer: React.FC<CustomerMenuDrawerProps> = ({
       onClose={onClose}
       onNavigate={onNavigate}
       onLogout={onLogout}
-      currentRoute={currentRoute}
       menuItems={menuItems}
+      {...(currentRoute !== undefined ? { currentRoute } : {})}
     />
   );
 };

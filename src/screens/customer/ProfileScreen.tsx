@@ -31,7 +31,7 @@ interface ProfileScreenProps {
 }
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
-  const { user, updateUser, logout, isLoading } = useAuthStore();
+  const { user, updateUser, logout, isLoading, customerAccountKind } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -258,7 +258,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     );
   }
 
-  const handleMenuNavigate = (route: 'Home' | 'Orders' | 'Profile' | 'PastOrders') => {
+  const handleMenuNavigate = (
+    route: 'Home' | 'Orders' | 'Profile' | 'PastOrders' | 'TripDetails',
+  ) => {
     if (route === 'Profile') {
       return;
     }
@@ -535,6 +537,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         onNavigate={handleMenuNavigate}
         onLogout={handleLogout}
         currentRoute="Profile"
+        customerAccountKind={customerAccountKind}
       />
     </SafeAreaView>
   );

@@ -33,7 +33,7 @@ interface PastOrdersScreenProps {
 }
 
 const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
-  const { user, logout } = useAuthStore();
+  const { user, logout, customerAccountKind } = useAuthStore();
   const { bookings, fetchCustomerBookings } = useBookingStore();
   const [refreshing, setRefreshing] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -130,7 +130,9 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handleMenuNavigate = (route: 'Home' | 'Orders' | 'Profile' | 'PastOrders') => {
+  const handleMenuNavigate = (
+    route: 'Home' | 'Orders' | 'Profile' | 'PastOrders' | 'TripDetails',
+  ) => {
     if (route === 'PastOrders') {
       // Already on PastOrders, just close menu
       return;
@@ -470,6 +472,7 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
         onNavigate={handleMenuNavigate}
         onLogout={handleLogout}
         currentRoute="PastOrders"
+        customerAccountKind={customerAccountKind}
       />
     </SafeAreaView>
   );

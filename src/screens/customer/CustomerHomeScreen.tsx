@@ -85,7 +85,9 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
     }
   };
 
-  const handleMenuNavigate = (route: 'Home' | 'Orders' | 'Profile' | 'PastOrders') => {
+  const handleMenuNavigate = (
+    route: 'Home' | 'Orders' | 'Profile' | 'PastOrders' | 'TripDetails',
+  ) => {
     if (route === 'Home') {
       // Already on Home, just close menu
       return;
@@ -310,6 +312,7 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
         onNavigate={handleMenuNavigate}
         onLogout={handleLogout}
         currentRoute="Home"
+        customerAccountKind={customerAccountKind}
       />
     </SafeAreaView>
   );

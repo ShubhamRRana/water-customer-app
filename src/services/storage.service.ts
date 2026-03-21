@@ -47,7 +47,7 @@ export class StorageService {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: aspectRatio || [1, 1], // Default to square for QR codes, can be overridden for receipts
         quality: 0.8,
