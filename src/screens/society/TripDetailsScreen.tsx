@@ -308,9 +308,9 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
                     contentContainerStyle={styles.thumbStrip}
                   >
                     {item.photoUrls.length > 0 ? (
-                      item.photoUrls.map((url, idx) => (
+                      item.photoUrls.map((url) => (
                         <TouchableOpacity
-                          key={`${item.id}-img-${idx}`}
+                          key={`${item.id}-${url}`}
                           onPress={() => openPhoto(url)}
                           activeOpacity={0.85}
                           style={styles.thumbCell}

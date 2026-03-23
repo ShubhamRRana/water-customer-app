@@ -303,10 +303,11 @@ export class StorageService {
     tripId?: string
   ): Promise<UploadResult> {
     try {
-      const timestamp = Date.now();
+      // Must be unique per call: parallel uploads (e.g. Promise.all in AddTrip) often share the same Date.now().
+      const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
       const fileName = tripId
-        ? `trip-${tripId}-${timestamp}.jpg`
-        : `trip-${customerId}-${timestamp}.jpg`;
+        ? `trip-${tripId}-${uniqueSuffix}.jpg`
+        : `trip-${customerId}-${uniqueSuffix}.jpg`;
       const filePath = `society-trips/${customerId}/${fileName}`;
 
       const arrayBuffer = await fetch(imageUri).then((res) => res.arrayBuffer());

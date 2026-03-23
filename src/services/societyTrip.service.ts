@@ -22,7 +22,8 @@ type SocietyTripRow = {
 
 function parsePhotoUrls(raw: unknown): string[] {
   if (Array.isArray(raw)) {
-    return raw.filter((u): u is string => typeof u === 'string' && u.length > 0);
+    const urls = raw.filter((u): u is string => typeof u === 'string' && u.length > 0);
+    return [...new Set(urls)];
   }
   return [];
 }
