@@ -7,7 +7,7 @@ export interface CreateSocietyTripInput {
   agencyName: string;
   scheduledAt: Date;
   tankerSizeLiters: number;
-  photoUrl: string;
+  photoUrls: string[];
 }
 
 type SocietyTripRow = {
@@ -16,9 +16,16 @@ type SocietyTripRow = {
   agency_name: string;
   scheduled_at: string;
   tanker_size_liters: number;
-  photo_url: string;
+  photo_urls: unknown;
   created_at: string;
 };
+
+function parsePhotoUrls(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.filter((u): u is string => typeof u === 'string' && u.length > 0);
+  }
+  return [];
+}
 
 function mapRow(row: SocietyTripRow): SocietyTrip {
   return {
@@ -27,7 +34,7 @@ function mapRow(row: SocietyTripRow): SocietyTrip {
     agencyName: row.agency_name,
     scheduledAt: new Date(row.scheduled_at),
     tankerSizeLiters: row.tanker_size_liters,
-    photoUrl: row.photo_url,
+    photoUrls: parsePhotoUrls(row.photo_urls),
     createdAt: new Date(row.created_at),
   };
 }
@@ -38,7 +45,7 @@ export class SocietyTripService {
       const { data, error } = await supabase
         .from('society_trips')
         .select(
-          'id, customer_id, agency_name, scheduled_at, tanker_size_liters, photo_url, created_at',
+          'id, customer_id, agency_name, scheduled_at, tanker_size_liters, photo_urls, created_at',
         )
         .eq('customer_id', customerId)
         .order('scheduled_at', { ascending: false });
@@ -64,7 +71,7 @@ export class SocietyTripService {
         agency_name: input.agencyName.trim(),
         scheduled_at: input.scheduledAt.toISOString(),
         tanker_size_liters: input.tankerSizeLiters,
-        photo_url: input.photoUrl,
+        photo_urls: input.photoUrls,
       });
 
       if (error) {
@@ -73,6 +80,27 @@ export class SocietyTripService {
     } catch (error) {
       handleError(error, {
         context: { operation: 'createSocietyTrip', customerId: input.customerId },
+        userFacing: false,
+      });
+      throw error;
+    }
+  }
+
+  static async deleteTripsForCustomer(customerId: string, tripIds: string[]): Promise<void> {
+    if (tripIds.length === 0) return;
+    try {
+      const { error } = await supabase
+        .from('society_trips')
+        .delete()
+        .eq('customer_id', customerId)
+        .in('id', tripIds);
+
+      if (error) {
+        throw new Error(error.message || 'Failed to delete trips');
+      }
+    } catch (error) {
+      handleError(error, {
+        context: { operation: 'deleteSocietyTrips', customerId, tripIds },
         userFacing: false,
       });
       throw error;

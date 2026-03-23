@@ -32,6 +32,8 @@ import { createScheduledDate as createScheduledDateFromUtils } from '../../utils
 import { isAdminUser, isCustomerUser } from '../../types';
 import { handleError } from '../../utils/errorHandler';
 
+const MAX_TRIP_PHOTOS = 10;
+
 type AddTripNavigationProp = StackNavigationProp<CustomerStackParamList, 'AddTrip'>;
 
 const getTodayDateString = (): string => {
@@ -48,7 +50,7 @@ const AddTripScreen: React.FC = () => {
   const { fetchUsersByRole, users: allUsers, isLoading: usersLoading } = useUserStore();
   const { fetchVehiclesByAgency } = useVehicleStore();
 
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [selectedAgency, setSelectedAgency] = useState<{
     id: string;
     name: string;
@@ -181,10 +183,32 @@ const AddTripScreen: React.FC = () => {
     };
   };
 
-  const onPickPhoto = async () => {
+  const removePhotoAt = useCallback((index: number) => {
+    setPhotoUris(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const onTakeTankerPhoto = async () => {
+    if (photoUris.length >= MAX_TRIP_PHOTOS) {
+      Alert.alert('Photo limit', `You can add up to ${MAX_TRIP_PHOTOS} photos per trip.`);
+      return;
+    }
     try {
-      const uri = await StorageService.pickImage([4, 3]);
-      if (uri) setPhotoUri(uri);
+      const uri = await StorageService.takePhoto([4, 3]);
+      if (uri) setPhotoUris(prev => [...prev, uri]);
+    } catch (error) {
+      handleError(error, { context: { operation: 'addTripTakePhoto' }, userFacing: true });
+    }
+  };
+
+  const onUploadTankerPhoto = async () => {
+    const remaining = MAX_TRIP_PHOTOS - photoUris.length;
+    if (remaining <= 0) {
+      Alert.alert('Photo limit', `You can add up to ${MAX_TRIP_PHOTOS} photos per trip.`);
+      return;
+    }
+    try {
+      const uris = await StorageService.pickImages(remaining);
+      if (uris.length) setPhotoUris(prev => [...prev, ...uris].slice(0, MAX_TRIP_PHOTOS));
     } catch (error) {
       handleError(error, { context: { operation: 'addTripPickPhoto' }, userFacing: true });
     }
@@ -196,7 +220,7 @@ const AddTripScreen: React.FC = () => {
       effectiveTankerLiters > 0 &&
       effectiveTankerLiters <= 100000;
     return (
-      !photoUri ||
+      photoUris.length === 0 ||
       !selectedAgency?.name?.trim() ||
       !tripDate.trim() ||
       !tripTime.trim() ||
@@ -204,7 +228,7 @@ const AddTripScreen: React.FC = () => {
       !sizeOk ||
       isSubmitting
     );
-  }, [photoUri, selectedAgency, tripDate, tripTime, dateError, effectiveTankerLiters, isSubmitting]);
+  }, [photoUris.length, selectedAgency, tripDate, tripTime, dateError, effectiveTankerLiters, isSubmitting]);
 
   const handleAgencySelection = useCallback(
     (agency: { id: string; name: string; ownerName?: string }) => {
@@ -257,8 +281,8 @@ const AddTripScreen: React.FC = () => {
       Alert.alert('Error', 'You must be signed in to add a trip.');
       return;
     }
-    if (!photoUri) {
-      Alert.alert('Photo required', 'Please add a photo of the tanker.');
+    if (photoUris.length === 0) {
+      Alert.alert('Photos required', 'Please add at least one photo of the tanker.');
       return;
     }
     const d = validateDate(tripDate);
@@ -289,13 +313,15 @@ const AddTripScreen: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const { url: photoUrl } = await StorageService.uploadSocietyTripPhoto(photoUri, user.id);
+      const photoUrls = await Promise.all(
+        photoUris.map(uri => StorageService.uploadSocietyTripPhoto(uri, user.id).then(r => r.url)),
+      );
       await SocietyTripService.createTrip({
         customerId: user.id,
         agencyName: name,
         scheduledAt: scheduled,
         tankerSizeLiters: liters,
-        photoUrl,
+        photoUrls,
       });
       Alert.alert('Trip saved', 'Your trip has been recorded.', [
         { text: 'OK', onPress: () => navigation.goBack() },
@@ -331,19 +357,59 @@ const AddTripScreen: React.FC = () => {
           </View>
 
           <View style={styles.section}>
-            <Typography variant="h3" style={styles.sectionTitle}>Tanker photo</Typography>
-            <TouchableOpacity activeOpacity={0.85} onPress={onPickPhoto}>
-              <Card style={styles.photoCard}>
-                {photoUri ? (
-                  <Image source={{ uri: photoUri }} style={styles.photoPreview} resizeMode="cover" />
-                ) : (
-                  <View style={styles.photoPlaceholder}>
-                    <Ionicons name="camera-outline" size={40} color={UI_CONFIG.colors.textSecondary} />
-                    <Typography variant="body" style={styles.photoHint}>Tap to add photo</Typography>
-                  </View>
-                )}
-              </Card>
-            </TouchableOpacity>
+            <Typography variant="h3" style={styles.sectionTitle}>Tanker photos</Typography>
+            <Card style={styles.photoCard}>
+              {photoUris.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.photoStripContent}
+                >
+                  {photoUris.map((uri, index) => (
+                    <View key={`${uri}-${index}`} style={styles.photoThumbWrap}>
+                      <Image source={{ uri }} style={styles.photoThumb} resizeMode="cover" />
+                      <TouchableOpacity
+                        style={styles.photoRemoveBtn}
+                        onPress={() => removePhotoAt(index)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Remove photo"
+                      >
+                        <Ionicons name="close-circle" size={26} color={UI_CONFIG.colors.textLight} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+              ) : (
+                <View style={styles.photoPlaceholder}>
+                  <Ionicons name="camera-outline" size={40} color={UI_CONFIG.colors.textSecondary} />
+                  <Typography variant="body" style={styles.photoHint}>
+                    Add one or more photos using the options below
+                  </Typography>
+                </View>
+              )}
+            </Card>
+            <Typography variant="caption" style={styles.photoCountHint}>
+              {photoUris.length}/{MAX_TRIP_PHOTOS} photos
+            </Typography>
+            <View style={styles.photoActions}>
+              <TouchableOpacity
+                style={styles.photoActionButton}
+                onPress={onTakeTankerPhoto}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="camera" size={20} color={UI_CONFIG.colors.accent} />
+                <Typography variant="body" style={styles.photoActionLabel}>Add photo</Typography>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.photoActionButton}
+                onPress={onUploadTankerPhoto}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="images-outline" size={20} color={UI_CONFIG.colors.accent} />
+                <Typography variant="body" style={styles.photoActionLabel}>Upload from device</Typography>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.section}>
@@ -520,9 +586,32 @@ const styles = StyleSheet.create({
     padding: 0,
     minHeight: 180,
   },
-  photoPreview: {
-    width: '100%',
-    height: 200,
+  photoStripContent: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  photoThumbWrap: {
+    position: 'relative',
+    marginRight: 10,
+  },
+  photoThumb: {
+    width: 120,
+    height: 120,
+    borderRadius: 10,
+    backgroundColor: UI_CONFIG.colors.surfaceLight,
+  },
+  photoRemoveBtn: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 14,
+  },
+  photoCountHint: {
+    marginTop: 8,
+    color: UI_CONFIG.colors.textSecondary,
   },
   photoPlaceholder: {
     minHeight: 180,
@@ -533,6 +622,31 @@ const styles = StyleSheet.create({
   photoHint: {
     marginTop: 8,
     color: UI_CONFIG.colors.textSecondary,
+    textAlign: 'center',
+  },
+  photoActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  photoActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: UI_CONFIG.colors.border,
+    backgroundColor: UI_CONFIG.colors.surface,
+  },
+  photoActionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: UI_CONFIG.colors.text,
+    flexShrink: 1,
   },
   inputCard: {
     paddingHorizontal: 16,

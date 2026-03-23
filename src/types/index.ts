@@ -90,7 +90,8 @@ export interface SocietyTrip {
   agencyName: string;
   scheduledAt: Date;
   tankerSizeLiters: number;
-  photoUrl: string;
+  /** Public URLs of tanker photos (at least one when created from the app). */
+  photoUrls: string[];
   createdAt: Date;
 }
 

@@ -57,10 +57,76 @@ export class StorageService {
         return null;
       }
 
-      return result.assets[0].uri;
+      const first = result.assets[0];
+      return first?.uri ?? null;
     } catch (error) {
       handleError(error, {
         context: { operation: 'pickImage' },
+        userFacing: false,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Pick multiple images from the library (no per-image cropping; mutually exclusive with single pick+crop).
+   */
+  static async pickImages(maxSelection: number = 10): Promise<string[]> {
+    try {
+      const hasPermission = await this.requestImagePickerPermissions();
+      if (!hasPermission) {
+        throw new Error('Permission to access camera roll or camera is required');
+      }
+
+      const limit = maxSelection > 0 ? maxSelection : 0;
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        selectionLimit: limit,
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets?.length) {
+        return [];
+      }
+
+      return result.assets.map(a => a.uri).filter((uri): uri is string => Boolean(uri));
+    } catch (error) {
+      handleError(error, {
+        context: { operation: 'pickImages' },
+        userFacing: false,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Capture a photo with the device camera (same aspect/editing options as pickImage).
+   */
+  static async takePhoto(aspectRatio?: [number, number]): Promise<string | null> {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        throw new Error('Permission to use the camera is required');
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: aspectRatio || [1, 1],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return null;
+      }
+
+      const first = result.assets[0];
+      return first?.uri ?? null;
+    } catch (error) {
+      handleError(error, {
+        context: { operation: 'takePhoto' },
         userFacing: false,
       });
       throw error;
