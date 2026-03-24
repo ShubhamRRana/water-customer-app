@@ -9,6 +9,7 @@ import {
   Platform,
   Image,
   Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,6 +45,26 @@ const getTodayDateString = (): string => {
   return `${day}-${month}-${year}`;
 };
 
+/** Parses tanker amount (₹); required for save. */
+const parseTankerAmountInput = (text: string): { amount: number | null; error?: string } => {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return { amount: null, error: 'Enter the tanker amount.' };
+  }
+  const digitsOnly = trimmed.replace(/[^\d]/g, '');
+  if (!digitsOnly) {
+    return { amount: null, error: 'Enter a valid amount in rupees.' };
+  }
+  const n = parseInt(digitsOnly, 10);
+  if (!Number.isFinite(n) || n < 0) {
+    return { amount: null, error: 'Amount must be zero or positive.' };
+  }
+  if (n > 100000000) {
+    return { amount: null, error: 'Amount is too large.' };
+  }
+  return { amount: n };
+};
+
 const AddTripScreen: React.FC = () => {
   const navigation = useNavigation<AddTripNavigationProp>();
   const { user } = useAuthStore();
@@ -74,6 +95,7 @@ const AddTripScreen: React.FC = () => {
   const [tripTime, setTripTime] = useState('');
   const [timePeriod, setTimePeriod] = useState<'AM' | 'PM'>('PM');
   const [dateError, setDateError] = useState('');
+  const [tankerAmountText, setTankerAmountText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const tankerAgencies = useMemo(() => {
@@ -110,6 +132,7 @@ const AddTripScreen: React.FC = () => {
   useEffect(() => {
     setSelectedVehicle(null);
     setFallbackTankerLiters(null);
+    setTankerAmountText('');
   }, [selectedAgency?.id]);
 
   useEffect(() => {
@@ -214,11 +237,17 @@ const AddTripScreen: React.FC = () => {
     }
   };
 
+  const parsedTankerAmount = useMemo(
+    () => parseTankerAmountInput(tankerAmountText),
+    [tankerAmountText],
+  );
+
   const isSubmitDisabled = useMemo(() => {
     const sizeOk =
       effectiveTankerLiters != null &&
       effectiveTankerLiters > 0 &&
       effectiveTankerLiters <= 100000;
+    const amountOk = parsedTankerAmount.amount != null && !parsedTankerAmount.error;
     return (
       photoUris.length === 0 ||
       !selectedAgency?.name?.trim() ||
@@ -226,9 +255,20 @@ const AddTripScreen: React.FC = () => {
       !tripTime.trim() ||
       !!dateError ||
       !sizeOk ||
+      !amountOk ||
       isSubmitting
     );
-  }, [photoUris.length, selectedAgency, tripDate, tripTime, dateError, effectiveTankerLiters, isSubmitting]);
+  }, [
+    photoUris.length,
+    selectedAgency,
+    tripDate,
+    tripTime,
+    dateError,
+    effectiveTankerLiters,
+    parsedTankerAmount.amount,
+    parsedTankerAmount.error,
+    isSubmitting,
+  ]);
 
   const handleAgencySelection = useCallback(
     (agency: { id: string; name: string; ownerName?: string }) => {
@@ -246,6 +286,11 @@ const AddTripScreen: React.FC = () => {
         vehicleNumber: vehicle.vehicleNumber || '',
       });
       setFallbackTankerLiters(null);
+      setTankerAmountText(
+        vehicle.amount != null && Number.isFinite(vehicle.amount)
+          ? String(Math.round(vehicle.amount))
+          : '',
+      );
       setShowTankerModal(false);
     },
     [],
@@ -310,6 +355,11 @@ const AddTripScreen: React.FC = () => {
       Alert.alert('Agency', 'Choose an agency from the list.');
       return;
     }
+    const amountParsed = parseTankerAmountInput(tankerAmountText);
+    if (amountParsed.error || amountParsed.amount == null) {
+      Alert.alert('Tanker amount', amountParsed.error ?? 'Enter the tanker amount.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -321,6 +371,7 @@ const AddTripScreen: React.FC = () => {
         agencyName: name,
         scheduledAt: scheduled,
         tankerSizeLiters: liters,
+        tankerAmount: amountParsed.amount,
         photoUrls,
       });
       Alert.alert('Trip saved', 'Your trip has been recorded.', [
@@ -452,6 +503,21 @@ const AddTripScreen: React.FC = () => {
           </View>
 
           <View style={styles.section}>
+            <Typography variant="h3" style={styles.sectionTitle}>Tanker amount</Typography>
+            <Card style={styles.inputCard}>
+              <TextInput
+                style={styles.amountInput}
+                placeholder="e.g. 1200 (₹)"
+                placeholderTextColor={UI_CONFIG.colors.textSecondary}
+                value={tankerAmountText}
+                onChangeText={setTankerAmountText}
+                keyboardType="number-pad"
+                maxLength={12}
+              />
+            </Card>
+          </View>
+
+          <View style={styles.section}>
             <Typography variant="h3" style={styles.sectionTitle}>Date and time</Typography>
             <DateTimeInput
               date={tripDate}
@@ -519,6 +585,7 @@ const AddTripScreen: React.FC = () => {
                     onPress={() => {
                       setFallbackTankerLiters(opt.size);
                       setSelectedVehicle(null);
+                      setTankerAmountText('');
                       setShowSizeFallbackModal(false);
                     }}
                   >
@@ -651,6 +718,13 @@ const styles = StyleSheet.create({
   inputCard: {
     paddingHorizontal: 16,
     paddingVertical: 12,
+    marginBottom: 0,
+    minHeight: 52,
+    justifyContent: 'center',
+  },
+  amountInput: {
+    fontSize: 16,
+    color: UI_CONFIG.colors.text,
   },
   selectionCard: {
     marginBottom: 8,

@@ -25,6 +25,7 @@ import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
 import { BOOKING_CONFIG, UI_CONFIG } from '../../constants/config';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
+import { PricingUtils } from '../../utils/pricing';
 import { SocietyTripService } from '../../services/societyTrip.service';
 
 type TripDetailsNavigationProp = StackNavigationProp<CustomerStackParamList, 'TripDetails'>;
@@ -284,71 +285,101 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
           }
           renderItem={({ item }) => {
             const isSelected = selectedIds.includes(item.id);
+            const multiPhoto = item.photoUrls.length > 1;
+
+            const thumbScroll = (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={multiPhoto ? styles.thumbWrapMulti : styles.thumbWrapSingle}
+                contentContainerStyle={styles.thumbStrip}
+              >
+                {item.photoUrls.length > 0 ? (
+                  item.photoUrls.map((url) => (
+                    <TouchableOpacity
+                      key={`${item.id}-${url}`}
+                      onPress={() => openPhoto(url)}
+                      activeOpacity={0.85}
+                      style={styles.thumbCell}
+                    >
+                      <Image source={{ uri: url }} style={styles.thumb} resizeMode="cover" />
+                      <View style={styles.thumbHint}>
+                        <Ionicons name="expand-outline" size={14} color={UI_CONFIG.colors.textLight} />
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <View style={[styles.thumb, styles.thumbEmpty]} />
+                )}
+              </ScrollView>
+            );
+
+            const tripInfoBlock = (
+              <View style={[styles.tripInfo, multiPhoto && styles.tripInfoBelowPhotos]}>
+                <Typography variant="body" style={styles.agencyName} numberOfLines={2}>
+                  {item.agencyName}
+                </Typography>
+                <Typography variant="caption" style={styles.meta}>
+                  {formatDateTime(item.scheduledAt)}
+                </Typography>
+                <Typography variant="caption" style={styles.meta}>
+                  {item.tankerSizeLiters}L tanker
+                </Typography>
+                {item.tankerAmount != null ? (
+                  <Typography variant="caption" style={styles.meta}>
+                    Amount: {PricingUtils.formatPrice(item.tankerAmount)}
+                  </Typography>
+                ) : null}
+              </View>
+            );
+
+            const deleteBtn = !selectionMode ? (
+              <TouchableOpacity
+                style={styles.tripDeleteBtn}
+                onPress={() => confirmDeleteSingle(item)}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Delete trip"
+              >
+                <Ionicons name="trash-outline" size={22} color={UI_CONFIG.colors.error} />
+              </TouchableOpacity>
+            ) : null;
+
+            const checkbox = selectionMode ? (
+              <TouchableOpacity
+                style={styles.selectCheckbox}
+                onPress={() => toggleTripSelected(item.id)}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+              >
+                <Ionicons
+                  name={isSelected ? 'checkbox' : 'square-outline'}
+                  size={24}
+                  color={isSelected ? UI_CONFIG.colors.accent : UI_CONFIG.colors.textSecondary}
+                />
+              </TouchableOpacity>
+            ) : null;
+
             return (
               <Card style={[styles.tripCard, selectionMode && isSelected && styles.tripCardSelected]}>
-                <View style={styles.tripRow}>
-                  {selectionMode ? (
-                    <TouchableOpacity
-                      style={styles.selectCheckbox}
-                      onPress={() => toggleTripSelected(item.id)}
-                      activeOpacity={0.7}
-                      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                    >
-                      <Ionicons
-                        name={isSelected ? 'checkbox' : 'square-outline'}
-                        size={24}
-                        color={isSelected ? UI_CONFIG.colors.accent : UI_CONFIG.colors.textSecondary}
-                      />
-                    </TouchableOpacity>
-                  ) : null}
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.thumbWrap}
-                    contentContainerStyle={styles.thumbStrip}
-                  >
-                    {item.photoUrls.length > 0 ? (
-                      item.photoUrls.map((url) => (
-                        <TouchableOpacity
-                          key={`${item.id}-${url}`}
-                          onPress={() => openPhoto(url)}
-                          activeOpacity={0.85}
-                          style={styles.thumbCell}
-                        >
-                          <Image source={{ uri: url }} style={styles.thumb} resizeMode="cover" />
-                          <View style={styles.thumbHint}>
-                            <Ionicons name="expand-outline" size={14} color={UI_CONFIG.colors.textLight} />
-                          </View>
-                        </TouchableOpacity>
-                      ))
-                    ) : (
-                      <View style={[styles.thumb, styles.thumbEmpty]} />
-                    )}
-                  </ScrollView>
-                  <View style={styles.tripInfo}>
-                    <Typography variant="body" style={styles.agencyName} numberOfLines={2}>
-                      {item.agencyName}
-                    </Typography>
-                    <Typography variant="caption" style={styles.meta}>
-                      {formatDateTime(item.scheduledAt)}
-                    </Typography>
-                    <Typography variant="caption" style={styles.meta}>
-                      {item.tankerSizeLiters}L tanker
-                    </Typography>
+                {multiPhoto ? (
+                  <View style={styles.tripColumn}>
+                    <View style={styles.tripRow}>
+                      {checkbox}
+                      {thumbScroll}
+                      {deleteBtn}
+                    </View>
+                    {tripInfoBlock}
                   </View>
-                  {!selectionMode ? (
-                    <TouchableOpacity
-                      style={styles.tripDeleteBtn}
-                      onPress={() => confirmDeleteSingle(item)}
-                      activeOpacity={0.7}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      accessibilityRole="button"
-                      accessibilityLabel="Delete trip"
-                    >
-                      <Ionicons name="trash-outline" size={22} color={UI_CONFIG.colors.error} />
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
+                ) : (
+                  <View style={styles.tripRow}>
+                    {checkbox}
+                    {thumbScroll}
+                    {tripInfoBlock}
+                    {deleteBtn}
+                  </View>
+                )}
               </Card>
             );
           }}
@@ -522,6 +553,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
+  tripColumn: {
+    width: '100%',
+  },
   selectCheckbox: {
     justifyContent: 'center',
     marginRight: 10,
@@ -531,9 +565,19 @@ const styles = StyleSheet.create({
     paddingLeft: 4,
     paddingTop: 2,
   },
-  thumbWrap: {
+  /** Single thumbnail: shrink-wrap so text sits beside the image without a dead zone. */
+  thumbWrapSingle: {
     maxWidth: 220,
     marginRight: 14,
+    flexGrow: 0,
+    flexShrink: 0,
+    alignSelf: 'flex-start',
+  },
+  /** Multiple photos: strip uses space between checkbox and delete; text is below. */
+  thumbWrapMulti: {
+    flex: 1,
+    minWidth: 0,
+    marginRight: 8,
   },
   thumbStrip: {
     flexDirection: 'row',
@@ -564,6 +608,11 @@ const styles = StyleSheet.create({
   tripInfo: {
     flex: 1,
     minWidth: 0,
+  },
+  tripInfoBelowPhotos: {
+    flex: 0,
+    width: '100%',
+    marginTop: 10,
   },
   agencyName: {
     fontWeight: '600',

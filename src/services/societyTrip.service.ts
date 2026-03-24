@@ -7,6 +7,8 @@ export interface CreateSocietyTripInput {
   agencyName: string;
   scheduledAt: Date;
   tankerSizeLiters: number;
+  /** Amount in ₹ (required when creating from the app) */
+  tankerAmount: number;
   photoUrls: string[];
 }
 
@@ -16,6 +18,7 @@ type SocietyTripRow = {
   agency_name: string;
   scheduled_at: string;
   tanker_size_liters: number;
+  tanker_amount: number | null;
   photo_urls: unknown;
   created_at: string;
 };
@@ -35,6 +38,10 @@ function mapRow(row: SocietyTripRow): SocietyTrip {
     agencyName: row.agency_name,
     scheduledAt: new Date(row.scheduled_at),
     tankerSizeLiters: row.tanker_size_liters,
+    tankerAmount:
+      row.tanker_amount != null && Number.isFinite(row.tanker_amount)
+        ? row.tanker_amount
+        : null,
     photoUrls: parsePhotoUrls(row.photo_urls),
     createdAt: new Date(row.created_at),
   };
@@ -46,7 +53,7 @@ export class SocietyTripService {
       const { data, error } = await supabase
         .from('society_trips')
         .select(
-          'id, customer_id, agency_name, scheduled_at, tanker_size_liters, photo_urls, created_at',
+          'id, customer_id, agency_name, scheduled_at, tanker_size_liters, tanker_amount, photo_urls, created_at',
         )
         .eq('customer_id', customerId)
         .order('scheduled_at', { ascending: false });
@@ -72,6 +79,7 @@ export class SocietyTripService {
         agency_name: input.agencyName.trim(),
         scheduled_at: input.scheduledAt.toISOString(),
         tanker_size_liters: input.tankerSizeLiters,
+        tanker_amount: Math.round(input.tankerAmount),
         photo_urls: input.photoUrls,
       });
 

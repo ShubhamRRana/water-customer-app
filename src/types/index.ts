@@ -90,6 +90,8 @@ export interface SocietyTrip {
   agencyName: string;
   scheduledAt: Date;
   tankerSizeLiters: number;
+  /** Amount paid for the tanker (₹); null on older rows logged before amount was stored. */
+  tankerAmount: number | null;
   /** Public URLs of tanker photos (at least one when created from the app). */
   photoUrls: string[];
   createdAt: Date;
