@@ -12,8 +12,22 @@ import PastOrdersScreen from '../screens/customer/PastOrdersScreen';
 import AddTripScreen from '../screens/society/AddTripScreen';
 import TripDetailsScreen from '../screens/society/TripDetailsScreen';
 import SubscriptionComingSoonScreen from '../screens/society/SubscriptionComingSoonScreen';
+import SettlePaymentPlaceholderScreen from '../screens/society/SettlePaymentPlaceholderScreen';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import { useAuthStore } from '../store/authStore';
+import type { RootStackParamList } from './rootNavigation';
+
+/** Period context for society trip payment settlement (month view uses month 0–11; year view ignores month). */
+export type SocietyPaymentCompletePeriod = {
+  periodType: 'month' | 'year';
+  year: number;
+  month: number;
+};
+
+export function societyPaymentPeriodKey(p: SocietyPaymentCompletePeriod): string {
+  if (p.periodType === 'year') return `y:${p.year}`;
+  return `m:${p.year}-${p.month}`;
+}
 
 export type CustomerStackParamList = {
   Home: undefined;
@@ -22,7 +36,13 @@ export type CustomerStackParamList = {
   Profile: undefined;
   Booking: undefined;
   AddTrip: undefined;
-  TripDetails: undefined;
+  TripDetails:
+    | {
+        paymentMarkedComplete?: boolean;
+        paymentCompletePeriod?: SocietyPaymentCompletePeriod;
+      }
+    | undefined;
+  SettlePaymentPlaceholder: SocietyPaymentCompletePeriod;
   OrderTracking: { orderId: string };
   SavedAddresses: undefined;
   PastOrders: undefined;
@@ -54,6 +74,7 @@ const CustomerNavigator: React.FC = () => {
         <Stack.Screen name="Booking" component={BookingScreen} />
         <Stack.Screen name="AddTrip" component={AddTripScreen} />
         <Stack.Screen name="TripDetails" component={TripDetailsScreen} />
+        <Stack.Screen name="SettlePaymentPlaceholder" component={SettlePaymentPlaceholderScreen} />
         <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
         <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen} />
         <Stack.Screen name="PastOrders" component={PastOrdersScreen} />
