@@ -15,38 +15,9 @@ import SubscriptionComingSoonScreen from '../screens/society/SubscriptionComingS
 import SettlePaymentPlaceholderScreen from '../screens/society/SettlePaymentPlaceholderScreen';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import { useAuthStore } from '../store/authStore';
-import type { RootStackParamList } from './rootNavigation';
+import type { CustomerStackParamList, RootStackParamList } from './rootNavigation';
 
-/** Period context for society trip payment settlement (month view uses month 0–11; year view ignores month). */
-export type SocietyPaymentCompletePeriod = {
-  periodType: 'month' | 'year';
-  year: number;
-  month: number;
-};
-
-export function societyPaymentPeriodKey(p: SocietyPaymentCompletePeriod): string {
-  if (p.periodType === 'year') return `y:${p.year}`;
-  return `m:${p.year}-${p.month}`;
-}
-
-export type CustomerStackParamList = {
-  Home: undefined;
-  SubscriptionComingSoon: undefined;
-  Orders: undefined;
-  Profile: undefined;
-  Booking: undefined;
-  AddTrip: undefined;
-  TripDetails:
-    | {
-        paymentMarkedComplete?: boolean;
-        paymentCompletePeriod?: SocietyPaymentCompletePeriod;
-      }
-    | undefined;
-  SettlePaymentPlaceholder: SocietyPaymentCompletePeriod;
-  OrderTracking: { orderId: string };
-  SavedAddresses: undefined;
-  PastOrders: undefined;
-};
+export type { CustomerStackParamList } from './rootNavigation';
 
 const Stack = createStackNavigator<CustomerStackParamList>();
 
@@ -57,7 +28,7 @@ const CustomerNavigator: React.FC = () => {
   useEffect(() => {
     if (!showSocietySubscriptionIntro) return;
     rootNavigation.navigate('Customer', { screen: 'SubscriptionComingSoon' });
-  }, [showSocietySubscriptionIntro, rootNavigation]);
+  }, [showSocietySubscriptionIntro]);
 
   return (
     <ErrorBoundary resetKeys={['Customer']}>

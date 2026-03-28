@@ -16,16 +16,13 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
 import Card from '../../components/common/Card';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { Typography, CustomerMenuDrawer, Button } from '../../components/common';
 import { SocietyTrip } from '../../types';
-import {
-  CustomerStackParamList,
-  societyPaymentPeriodKey,
-} from '../../navigation/CustomerNavigator';
+import { societyPaymentPeriodKey, type CustomerStackParamList } from '../../navigation/rootNavigation';
 import { BOOKING_CONFIG, UI_CONFIG } from '../../constants/config';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
@@ -62,7 +59,6 @@ function filterTripsByPeriod(
 
 const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const route = useRoute<RouteProp<CustomerStackParamList, 'TripDetails'>>();
   const { user, logout, customerAccountKind } = useAuthStore();
   const [trips, setTrips] = useState<SocietyTrip[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -137,11 +133,15 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
     setSelectedIds([]);
   }, [periodType, selectedYear, selectedMonth]);
 
-  const loadTrips = useCallback(async () => {
+  const loadTripDetailsData = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const list = await SocietyTripService.listTripsForCustomer(user.id);
+      const [list, keys] = await Promise.all([
+        SocietyTripService.listTripsForCustomer(user.id),
+        SocietyTripService.listCompletedPaymentPeriodKeys(user.id),
+      ]);
       setTrips(list);
+      setCompletedPaymentPeriodKeys(keys);
     } catch (error) {
       errorLogger.medium('Failed to load society trips', error, { userId: user.id });
       throw error;
@@ -152,7 +152,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
     useCallback(() => {
       let cancelled = false;
       setIsLoading(true);
-      loadTrips()
+      loadTripDetailsData()
         .catch(() => {})
         .finally(() => {
           if (!cancelled) setIsLoading(false);
@@ -160,18 +160,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
       return () => {
         cancelled = true;
       };
-    }, [loadTrips]),
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      const period = route.params?.paymentCompletePeriod;
-      if (route.params?.paymentMarkedComplete && period) {
-        const key = societyPaymentPeriodKey(period);
-        setCompletedPaymentPeriodKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
-        navigation.setParams({ paymentMarkedComplete: undefined, paymentCompletePeriod: undefined });
-      }
-    }, [route.params?.paymentMarkedComplete, route.params?.paymentCompletePeriod, navigation]),
+    }, [loadTripDetailsData]),
   );
 
   const paymentCompleteForCurrentPeriod = useMemo(() => {
@@ -195,7 +184,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await loadTrips();
+      await loadTripDetailsData();
     } catch {
       Alert.alert('Error', 'Could not load trip details. Try again.');
     } finally {

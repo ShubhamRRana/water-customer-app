@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect } from 'react';
-import { BackHandler, StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, BackHandler, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp, useRoute } from '@react-navigation/native';
@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
 import { Button, Card, Typography } from '../../components/common';
 import { UI_CONFIG } from '../../constants/config';
+import { useAuthStore } from '../../store/authStore';
+import { SocietyTripService } from '../../services/societyTrip.service';
 
 type Nav = StackNavigationProp<CustomerStackParamList, 'SettlePaymentPlaceholder'>;
 
@@ -17,13 +19,24 @@ interface Props {
 const SettlePaymentPlaceholderScreen: React.FC<Props> = ({ navigation }) => {
   const route = useRoute<RouteProp<CustomerStackParamList, 'SettlePaymentPlaceholder'>>();
   const { periodType, year, month } = route.params;
+  const user = useAuthStore((s) => s.user);
+  const [saving, setSaving] = useState(false);
 
-  const onOk = useCallback(() => {
-    navigation.navigate('TripDetails', {
-      paymentMarkedComplete: true,
-      paymentCompletePeriod: { periodType, year, month },
-    });
-  }, [navigation, periodType, year, month]);
+  const onOk = useCallback(async () => {
+    if (!user?.id) {
+      Alert.alert('Error', 'You must be signed in to continue.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await SocietyTripService.markPaymentPeriodComplete(user.id, { periodType, year, month });
+      navigation.goBack();
+    } catch {
+      Alert.alert('Error', 'Could not save payment status. Try again.');
+    } finally {
+      setSaving(false);
+    }
+  }, [navigation, periodType, year, month, user?.id]);
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -46,7 +59,13 @@ const SettlePaymentPlaceholderScreen: React.FC<Props> = ({ navigation }) => {
           <Typography variant="body" style={styles.message}>
             Payment feature will be available soon.
           </Typography>
-          <Button title="OK" onPress={onOk} variant="primary" style={styles.button} />
+          <Button
+            title="OK"
+            onPress={onOk}
+            variant="primary"
+            style={styles.button}
+            disabled={saving}
+          />
         </Card>
       </View>
     </SafeAreaView>

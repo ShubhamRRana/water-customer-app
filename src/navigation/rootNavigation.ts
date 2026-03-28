@@ -1,5 +1,30 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
-import type { CustomerStackParamList } from './CustomerNavigator';
+
+/** Period context for society trip payment settlement (month view uses month 0–11; year view ignores month). */
+export type SocietyPaymentCompletePeriod = {
+  periodType: 'month' | 'year';
+  year: number;
+  month: number;
+};
+
+export function societyPaymentPeriodKey(p: SocietyPaymentCompletePeriod): string {
+  if (p.periodType === 'year') return `y:${p.year}`;
+  return `m:${p.year}-${p.month}`;
+}
+
+export type CustomerStackParamList = {
+  Home: undefined;
+  SubscriptionComingSoon: undefined;
+  Orders: undefined;
+  Profile: undefined;
+  Booking: undefined;
+  AddTrip: undefined;
+  TripDetails: undefined;
+  SettlePaymentPlaceholder: SocietyPaymentCompletePeriod;
+  OrderTracking: { orderId: string };
+  SavedAddresses: undefined;
+  PastOrders: undefined;
+};
 
 export type RootStackParamList = {
   Auth: undefined;
