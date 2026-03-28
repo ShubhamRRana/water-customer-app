@@ -178,14 +178,51 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
   }, [performDelete, selectedIds]);
 
   const tripsByTankerSize = useMemo(() => {
-    const counts = new Map<number, number>();
+    const bucket = new Map<
+      number,
+      { count: number; amountSum: number; tripsWithAmount: number }
+    >();
     for (const t of trips) {
-      counts.set(t.tankerSizeLiters, (counts.get(t.tankerSizeLiters) ?? 0) + 1);
+      const prev = bucket.get(t.tankerSizeLiters) ?? {
+        count: 0,
+        amountSum: 0,
+        tripsWithAmount: 0,
+      };
+      prev.count += 1;
+      if (t.tankerAmount != null && Number.isFinite(t.tankerAmount)) {
+        prev.amountSum += t.tankerAmount;
+        prev.tripsWithAmount += 1;
+      }
+      bucket.set(t.tankerSizeLiters, prev);
     }
     const defaultSizes = BOOKING_CONFIG.defaultTankerSizes.map((d) => d.size);
-    const allLiters = [...new Set([...defaultSizes, ...counts.keys()])].sort((a, b) => a - b);
-    return allLiters.map((liters) => ({ liters, count: counts.get(liters) ?? 0 }));
+    const allLiters = [...new Set([...defaultSizes, ...bucket.keys()])].sort((a, b) => a - b);
+    return allLiters.map((liters) => {
+      const b = bucket.get(liters);
+      return {
+        liters,
+        count: b?.count ?? 0,
+        amountSum: b?.amountSum ?? 0,
+        tripsWithAmount: b?.tripsWithAmount ?? 0,
+      };
+    });
   }, [trips]);
+
+  const grandTotalAmount = useMemo(
+    () =>
+      trips.reduce((sum, t) => {
+        if (t.tankerAmount != null && Number.isFinite(t.tankerAmount)) {
+          return sum + t.tankerAmount;
+        }
+        return sum;
+      }, 0),
+    [trips],
+  );
+
+  const anyTripHasAmount = useMemo(
+    () => trips.some((t) => t.tankerAmount != null && Number.isFinite(t.tankerAmount)),
+    [trips],
+  );
 
   if (isLoading && !trips.length) {
     return (
@@ -253,16 +290,46 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
           <Typography variant="caption" style={styles.summaryHeading}>
             Trips by tanker size
           </Typography>
-          {tripsByTankerSize.map(({ liters, count }) => (
+          {tripsByTankerSize.map(({ liters, count, amountSum, tripsWithAmount }) => (
             <View key={liters} style={styles.summaryRow}>
-              <Typography variant="body" style={styles.summarySize}>
-                {liters.toLocaleString()}L
-              </Typography>
-              <Typography variant="body" style={styles.summaryCount}>
-                {count} {count === 1 ? 'trip' : 'trips'}
-              </Typography>
+              <View style={styles.summaryColLeft}>
+                <Typography variant="body" style={styles.summaryCellLeft}>
+                  {liters.toLocaleString()}L
+                </Typography>
+              </View>
+              <View style={styles.summaryColCenter}>
+                <Typography variant="body" style={styles.summaryCellCenter}>
+                  {count > 0 && tripsWithAmount > 0
+                    ? PricingUtils.formatPrice(amountSum)
+                    : '—'}
+                </Typography>
+              </View>
+              <View style={styles.summaryColRight}>
+                <Typography variant="body" style={styles.summaryCellRight}>
+                  {count} {count === 1 ? 'trip' : 'trips'}
+                </Typography>
+              </View>
             </View>
           ))}
+          {trips.length > 0 ? (
+            <View style={[styles.summaryRow, styles.summaryTotalRow]}>
+              <View style={styles.summaryColLeft}>
+                <Typography variant="body" style={[styles.summaryCellLeft, styles.summaryTotalStrong]}>
+                  Total
+                </Typography>
+              </View>
+              <View style={styles.summaryColCenter}>
+                <Typography variant="body" style={[styles.summaryCellCenter, styles.summaryTotalStrong]}>
+                  {anyTripHasAmount ? PricingUtils.formatPrice(grandTotalAmount) : '—'}
+                </Typography>
+              </View>
+              <View style={styles.summaryColRight}>
+                <Typography variant="body" style={[styles.summaryCellRight, styles.summaryTotalStrong]}>
+                  {trips.length} {trips.length === 1 ? 'trip' : 'trips'}
+                </Typography>
+              </View>
+            </View>
+          ) : null}
         </Card>
 
         <FlatList
@@ -519,18 +586,47 @@ const styles = StyleSheet.create({
   },
   summaryRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: UI_CONFIG.colors.border,
   },
-  summarySize: {
+  /** Column wrappers: `Text` + flex + textAlign is unreliable when font weight differs row-to-row. */
+  summaryColLeft: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  summaryColCenter: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryColRight: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  summaryCellLeft: {
     color: UI_CONFIG.colors.text,
     fontWeight: '600',
   },
-  summaryCount: {
+  summaryCellCenter: {
+    color: UI_CONFIG.colors.accent,
+    fontWeight: '600',
+  },
+  summaryCellRight: {
     color: UI_CONFIG.colors.textSecondary,
+  },
+  summaryTotalRow: {
+    marginTop: 4,
+    paddingTop: 10,
+  },
+  summaryTotalStrong: {
+    fontWeight: '700',
   },
   listContent: {
     padding: 16,
