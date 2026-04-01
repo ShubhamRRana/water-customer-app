@@ -1,6 +1,6 @@
 # Subscription & Payment Implementation Guide
 
-This document outlines the changes required to convert the WaterTanker **customer** app from a free app to a subscription-based paid app with Paytm payment gateway integration.
+This document outlines the changes required to convert the WaterTanker **customer** app from a free app to a subscription-based paid app with **PhonePe** Payment Gateway (Standard Checkout) integration.
 
 **Scope:** This repository is the **customer-facing** app only. It serves **individual customers** and **society** accounts (same `CustomerNavigator` and role `customer`, with `CustomerAccountKind` of `individual` or `society`). **Admin** dashboards, plan management UIs, subscriber analytics screens, and revenue reports are **out of scope** here—they belong to a separate admin product, backend jobs, or database tooling—not this codebase.
 
@@ -13,7 +13,7 @@ This document outlines the changes required to convert the WaterTanker **custome
 3. [New Screens](#new-screens)
 4. [Service/API Changes](#serviceapi-changes)
 5. [Navigation Changes](#navigation-changes)
-6. [Paytm Integration](#paytm-integration)
+6. [PhonePe Integration](#phonepe-integration)
 7. [Backend Requirements](#backend-requirements)
 8. [Security Considerations](#security-considerations)
 9. [Implementation Checklist](#implementation-checklist)
@@ -100,12 +100,12 @@ CREATE TABLE IF NOT EXISTS payment_transactions (
     amount DECIMAL(10, 2) NOT NULL,
     currency VARCHAR(3) DEFAULT 'INR',
     
-    -- Paytm specific fields
-    payment_gateway VARCHAR(50) DEFAULT 'paytm',
-    gateway_order_id VARCHAR(100), -- Paytm ORDER_ID
-    gateway_transaction_id VARCHAR(100), -- Paytm TXNID
-    gateway_response_code VARCHAR(20), -- Paytm RESPCODE
-    gateway_response_message TEXT, -- Paytm RESPMSG
+    -- Gateway-agnostic fields (PhonePe: merchant order id + PG transaction ids)
+    payment_gateway VARCHAR(50) DEFAULT 'phonepe',
+    gateway_order_id VARCHAR(100), -- Merchant order id (matches PhonePe merchantOrderId)
+    gateway_transaction_id VARCHAR(100), -- PG transaction id
+    gateway_response_code VARCHAR(20),
+    gateway_response_message TEXT,
     
     -- Transaction status
     status VARCHAR(20) NOT NULL DEFAULT 'pending'
@@ -329,21 +329,21 @@ All subscription and payment screens live in the **customer** area of the app. *
 #### 3. `PaymentScreen.tsx`
 **Location:** `src/screens/customer/PaymentScreen.tsx`
 
-**Purpose:** Handle Paytm payment flow
+**Purpose:** Handle PhonePe payment flow
 
 **Features:**
 - Order summary display
-- Paytm SDK integration
-- Payment status handling
+- WebView loads PhonePe **redirect URL** from Create Payment API (returned by `initiate-payment`)
+- Payment status handling via `verify-payment` (Order Status API) and optional redirect to `payment-callback`
 - Success/failure screens
 - Retry option on failure
 
 **Flow:**
 1. Show order summary
-2. Initialize Paytm transaction
-3. Open Paytm payment page
-4. Handle callback
-5. Show result
+2. Call `initiate-payment` (OAuth + Create Payment on server)
+3. Open PhonePe checkout URL in WebView
+4. User returns to `payment-callback` redirect URL and/or taps **Verify** in-app
+5. Subscription activates when Order Status is `COMPLETED`
 
 ---
 
@@ -421,56 +421,19 @@ class SubscriptionService {
 
 ---
 
-#### 2. `paytm.service.ts`
-**Location:** `src/services/paytm.service.ts`
+#### 2. `phonepe.service.ts`
+**Location:** `src/services/phonepe.service.ts`
 
 ```typescript
-// Service structure outline
+// Thin client: invokes Edge Functions only (OAuth + secrets stay on server)
 
-interface PaytmConfig {
-  merchantId: string;
-  merchantKey: string; // NEVER store in client - use backend
-  website: string;
-  industryType: string;
-  channelId: string;
-  callbackUrl: string;
+class PhonePeService {
+  static async initiateTransaction(orderId: string): Promise<unknown>;
+  static async verifyTransaction(orderId: string): Promise<VerifyPaymentResponse>;
 }
 
-interface PaytmOrderParams {
-  orderId: string;
-  amount: number;
-  customerId: string;
-  email: string;
-  phone: string;
-}
-
-interface PaytmTransactionResponse {
-  orderId: string;
-  transactionId: string;
-  status: 'TXN_SUCCESS' | 'TXN_FAILURE' | 'PENDING';
-  responseCode: string;
-  responseMessage: string;
-  paymentMode: string;
-  bankName?: string;
-}
-
-class PaytmService {
-  // Initialize payment
-  async initiateTransaction(params: PaytmOrderParams): Promise<{
-    orderId: string;
-    txnToken: string;
-    amount: number;
-  }>;
-  
-  // Verify transaction status
-  async verifyTransaction(orderId: string): Promise<PaytmTransactionResponse>;
-  
-  // Handle callback
-  async handleCallback(callbackData: any): Promise<PaytmTransactionResponse>;
-  
-  // Refund (if needed)
-  async initiateRefund(orderId: string, refundAmount: number): Promise<RefundResponse>;
-}
+// initiate-payment returns { redirectUrl, clientMeta: { orderId, amount }, ... }
+// verify-payment returns { orderId, orderStatus, applied, reason? }
 ```
 
 ---
@@ -590,230 +553,42 @@ Add subscription menu items (e.g., Plans, My subscription, Payment history) for 
 
 ---
 
-## Paytm Integration
+## PhonePe Integration
 
 ### Prerequisites
 
-1. **Paytm Business Account**
-   - Register at https://business.paytm.com
-   - Complete KYC verification
-   - Get Merchant ID (MID) and Merchant Key
+1. **PhonePe Payment Gateway (Business)** — [Get started](https://business.phonepe.com/pg/register?utm_source=website_dev_docs)
+2. **Developer credentials** (Dashboard → Developer Settings): `client_id`, `client_secret`, `client_version` for OAuth **client_credentials** token.
+3. **Redirect URL** — set Create Payment `merchantUrls.redirectUrl` to your public `payment-callback` Edge Function URL (same value as `CALLBACK_URL` secret).
 
-2. **API Credentials**
-   - Merchant ID (MID)
-   - Merchant Key (for checksum generation)
-   - Website name
-   - Industry type code
+### Standard Checkout v2 (implemented)
 
-### Integration Options
+| Step | API | Notes |
+|------|-----|--------|
+| OAuth (server) | `POST` sandbox `https://api-preprod.phonepe.com/apis/pg-sandbox/v1/oauth/token` · prod `https://api.phonepe.com/apis/identity-manager/v1/oauth/token` | Body: `application/x-www-form-urlencoded` (`client_id`, `client_version`, `client_secret`, `grant_type=client_credentials`). Response: `access_token`, `expires_at`. Use `Authorization: O-Bearer <token>` on PG calls. |
+| Create payment | `POST` …`/checkout/v2/pay` | Amount in **paisa** (₹1 = 100). `merchantOrderId` = our `gateway_order_id`. Returns `redirectUrl` for WebView. |
+| Order status | `GET` …`/checkout/v2/order/{merchantOrderId}/status` | Root `state`: `COMPLETED` = success, `PENDING` = in progress, `FAILED` = terminal failure. |
 
-#### Option 1: Paytm All-in-One SDK (Recommended)
+Official docs: [Integration steps](https://developer.phonepe.com/payment-gateway/website-integration/standard-checkout/api-integration/integration-steps), [Authorization](https://developer.phonepe.com/payment-gateway/website-integration/standard-checkout/api-integration/api-reference/authorization), [Create Payment](https://developer.phonepe.com/payment-gateway/website-integration/standard-checkout/api-integration/api-reference/create-payment), [Order Status](https://developer.phonepe.com/payment-gateway/website-integration/standard-checkout/api-integration/api-reference/order-status).
 
-```bash
-# Install Paytm SDK for React Native
-npm install paytm-allinone-react-native
-# or
-yarn add paytm-allinone-react-native
-```
+Optional **S2S webhook** (username/password + `Authorization: SHA256(username:password)`) can be added later; redirect + Order Status + in-app “Verify” is sufficient for the current app.
 
-**iOS Setup:**
-```bash
-cd ios && pod install
-```
+### Edge implementation
 
-**Android Setup:**
-- Add to `android/build.gradle`:
-```gradle
-allprojects {
-    repositories {
-        maven {
-            url "https://artifactory.paytm.in/libs-release-local"
-        }
-    }
-}
-```
+- Shared module: [`supabase/functions/_shared/phonepe.ts`](supabase/functions/_shared/phonepe.ts) — OAuth cache, `createPayment`, `fetchOrderStatus`, success/pending/failure helpers, `extractTxnMeta` from `paymentDetails`.
+- [`initiate-payment`](supabase/functions/initiate-payment/index.ts) — loads pending `payment_transactions`, converts rupees → paisa, calls Create Payment with `redirectUrl = CALLBACK_URL`, returns `{ redirectUrl, clientMeta: { orderId, amount } }`.
+- [`verify-payment`](supabase/functions/verify-payment/index.ts) — authenticated user; Order Status by `merchantOrderId`; runs [`activation.ts`](supabase/functions/_shared/activation.ts) on success.
+- [`payment-callback`](supabase/functions/payment-callback/index.ts) — **GET** (redirect landing) and **POST**; resolves `merchantOrderId`, confirms via Order Status, returns simple HTML for the browser.
 
-#### Option 2: WebView Integration
+### WebView (client)
 
-If SDK issues arise, use WebView to load Paytm payment page:
-
-```typescript
-import { WebView } from 'react-native-webview';
-
-// Load Paytm payment page in WebView
-<WebView
-  source={{ uri: paytmPaymentUrl }}
-  onNavigationStateChange={handlePaymentCallback}
-/>
-```
-
-### Payment Flow Implementation
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      PAYMENT FLOW                                │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  1. User selects plan                                           │
-│          │                                                       │
-│          ▼                                                       │
-│  2. App creates order in database (status: pending)             │
-│          │                                                       │
-│          ▼                                                       │
-│  3. App calls Backend API to initiate transaction               │
-│          │                                                       │
-│          ▼                                                       │
-│  4. Backend generates checksum using Merchant Key               │
-│     (NEVER expose Merchant Key to client)                       │
-│          │                                                       │
-│          ▼                                                       │
-│  5. Backend calls Paytm Initiate Transaction API                │
-│          │                                                       │
-│          ▼                                                       │
-│  6. Backend returns txnToken to App                             │
-│          │                                                       │
-│          ▼                                                       │
-│  7. App opens Paytm SDK/WebView with txnToken                   │
-│          │                                                       │
-│          ▼                                                       │
-│  8. User completes payment on Paytm                             │
-│          │                                                       │
-│          ▼                                                       │
-│  9. Paytm sends callback to Backend                             │
-│          │                                                       │
-│          ▼                                                       │
-│  10. Backend verifies checksum & transaction status             │
-│          │                                                       │
-│          ▼                                                       │
-│  11. Backend updates subscription & transaction in DB           │
-│          │                                                       │
-│          ▼                                                       │
-│  12. App polls/receives webhook for success/failure             │
-│          │                                                       │
-│          ▼                                                       │
-│  13. App shows success/failure screen                           │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Paytm API Endpoints
-
-| Environment | Base URL |
-|-------------|----------|
-| Staging | https://securegw-stage.paytm.in |
-| Production | https://securegw.paytm.in |
-
-**Key APIs:**
-
-1. **Initiate Transaction**
-   - POST `/theia/api/v1/initiateTransaction`
-   - Returns: `txnToken`
-
-2. **Process Transaction**
-   - POST `/theia/api/v1/processTransaction`
-   - Used for server-to-server payment
-
-3. **Transaction Status**
-   - POST `/v3/order/status`
-   - Verify transaction status
-
-### Checksum Generation (Backend Only)
-
-```javascript
-// Node.js example - MUST be on backend
-const PaytmChecksum = require('paytmchecksum');
-
-async function generateChecksum(params, merchantKey) {
-  return await PaytmChecksum.generateSignature(
-    JSON.stringify(params), 
-    merchantKey
-  );
-}
-
-async function verifyChecksum(params, checksum, merchantKey) {
-  return await PaytmChecksum.verifySignature(
-    JSON.stringify(params),
-    merchantKey,
-    checksum
-  );
-}
-```
+Use `react-native-webview` with `source={{ uri: redirectUrl }}` (no hosted checkout base URL env var). Detect navigation to `payment-callback` or Supabase host to trigger verify when needed.
 
 ---
 
 ## Backend Requirements
 
-Since the app currently uses Supabase directly, you'll need a backend for Paytm integration:
-
-### Option 1: Supabase Edge Functions
-
-```typescript
-// supabase/functions/initiate-payment/index.ts
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import PaytmChecksum from 'paytmchecksum';
-
-serve(async (req) => {
-  const { orderId, amount, customerId } = await req.json();
-  
-  const paytmParams = {
-    body: {
-      requestType: 'Payment',
-      mid: Deno.env.get('PAYTM_MID'),
-      websiteName: Deno.env.get('PAYTM_WEBSITE'),
-      orderId: orderId,
-      callbackUrl: `${Deno.env.get('CALLBACK_URL')}/payment-callback`,
-      txnAmount: {
-        value: amount.toFixed(2),
-        currency: 'INR',
-      },
-      userInfo: {
-        custId: customerId,
-      },
-    },
-  };
-  
-  const checksum = await PaytmChecksum.generateSignature(
-    JSON.stringify(paytmParams.body),
-    Deno.env.get('PAYTM_KEY')
-  );
-  
-  paytmParams.head = { signature: checksum };
-  
-  // Call Paytm API
-  const response = await fetch(
-    `${Deno.env.get('PAYTM_HOST')}/theia/api/v1/initiateTransaction?mid=${paytmParams.body.mid}&orderId=${orderId}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(paytmParams),
-    }
-  );
-  
-  const data = await response.json();
-  
-  return new Response(JSON.stringify(data), {
-    headers: { 'Content-Type': 'application/json' },
-  });
-});
-```
-
-### Option 2: Separate Node.js Backend
-
-If Edge Functions are insufficient, create a simple Express.js backend:
-
-```
-backend/
-├── src/
-│   ├── routes/
-│   │   └── payment.routes.ts
-│   ├── services/
-│   │   └── paytm.service.ts
-│   ├── middleware/
-│   │   └── auth.middleware.ts
-│   └── index.ts
-├── package.json
-└── .env
-```
+Payment processing is implemented with **Supabase Edge Functions** only (no separate Node server required). Secrets live in **Project Settings → Edge Functions → Secrets**.
 
 ---
 
@@ -821,41 +596,15 @@ backend/
 
 ### Critical Security Rules
 
-1. **NEVER store Merchant Key in the app**
-   - Merchant Key must only exist on backend
-   - Use environment variables
+1. **Never put PhonePe `client_secret` in the app** — only Edge Function secrets / server env.
+2. **Always confirm payment server-side** — use Order Status `state === COMPLETED` before activating subscription.
+3. **Use HTTPS** for all PG and Supabase URLs.
+4. **Idempotent order ids** — `gateway_order_id` is unique per checkout; duplicate Create Payment attempts are handled by checking Order Status first where applicable.
+5. **Webhooks (optional)** — if enabled in PhonePe dashboard, verify `Authorization` header per [PhonePe webhook docs](https://developer.phonepe.com/payment-gateway/website-integration/standard-checkout/api-integration/api-reference/webhook).
 
-2. **Always verify transactions server-side**
-   - Never trust client-side payment confirmation
-   - Always call Paytm Status API to verify
+### Environment Variables (Edge Functions)
 
-3. **Validate checksum on callbacks**
-   - Verify Paytm's checksum before processing
-
-4. **Use HTTPS everywhere**
-   - All API calls must be over HTTPS
-
-5. **Implement idempotency**
-   - Prevent duplicate transactions
-   - Use unique order IDs
-
-6. **Secure webhook endpoints**
-   - Validate webhook signatures
-   - Use IP whitelisting if possible
-
-### Environment Variables
-
-```env
-# Backend .env file
-PAYTM_MID=your_merchant_id
-PAYTM_KEY=your_merchant_key
-PAYTM_WEBSITE=DEFAULT
-PAYTM_INDUSTRY_TYPE=Retail
-PAYTM_CHANNEL_ID=WAP
-PAYTM_HOST=https://securegw.paytm.in  # Production
-# PAYTM_HOST=https://securegw-stage.paytm.in  # Staging
-CALLBACK_URL=https://your-backend.com
-```
+See [`.env.example`](.env.example) for the full list. Minimum: `PHONEPE_CLIENT_ID`, `PHONEPE_CLIENT_SECRET`, `PHONEPE_CLIENT_VERSION`, `PHONEPE_ENV` (`sandbox` or `production`), `CALLBACK_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`. Optional: `PHONEPE_MERCHANT_ID` for `X-MERCHANT-ID`, webhook credentials if you add a webhook handler.
 
 ---
 
@@ -864,6 +613,7 @@ CALLBACK_URL=https://your-backend.com
 ### Phase 1: Database Setup
 - [x] Create migration `024_create_subscription_tables.sql`
 - [x] Create migration `025_add_subscription_check_to_bookings.sql`
+- [x] Create migration `028_payment_gateway_default_phonepe.sql` (default `payment_gateway` = `phonepe` for new rows)
 - [x] Run migrations in Supabase (WaterTankerApp — subscription migrations applied April 2026)
 - [x] Verify RLS policies (subscription_plans, subscriptions, payment_transactions; admin policies present for admin tooling)
 - [x] Seed initial subscription plans (Monthly, Half-Yearly, Yearly)
@@ -874,19 +624,17 @@ CALLBACK_URL=https://your-backend.com
 - [x] Implement `/initiate-payment` endpoint (`supabase/functions/initiate-payment`)
 - [x] Implement `/payment-callback` endpoint (`supabase/functions/payment-callback`)
 - [x] Implement `/verify-payment` endpoint (`supabase/functions/verify-payment`)
-- [x] Add Paytm checksum utilities (`supabase/functions/_shared/paytm.ts` via `paytmchecksum`)
-- [x] Configure environment variables (Edge Function secrets in Supabase Dashboard: `PAYTM_MID`, `PAYTM_KEY`, `PAYTM_WEBSITE`, `PAYTM_HOST`, `CALLBACK_URL` — see `.env.example` notes; deployed April 2026 to WaterTankerApp)
+- [x] PhonePe PG helpers (`supabase/functions/_shared/phonepe.ts` — OAuth, Create Payment, Order Status; no `paytmchecksum`)
+- [x] Configure environment variables (Edge Function secrets: `PHONEPE_CLIENT_ID`, `PHONEPE_CLIENT_SECRET`, `PHONEPE_CLIENT_VERSION`, `PHONEPE_ENV`, `CALLBACK_URL`, optional `PHONEPE_MERCHANT_ID` — see `.env.example`)
 
 **Deployed function URLs (replace with your project ref if different):**  
 `https://<project-ref>.supabase.co/functions/v1/initiate-payment` · `payment-callback` · `verify-payment`.
 
-**Check .env.example file for setting up Paytm Keys**  
-
-
+**Check `.env.example` for PhonePe and Supabase Edge secrets.**
 
 ### Phase 3: Services
-- [x] Create `subscription.service.ts` (`SubscriptionService` — plans, subscriptions, payment rows, Paytm verify hook)
-- [x] Create `paytm.service.ts` (`PaytmService` — `initiate-payment` / `verify-payment` Edge Function invokes)
+- [x] Create `subscription.service.ts` (`SubscriptionService` — plans, subscriptions, payment rows, PhonePe verify hook)
+- [x] Create `phonepe.service.ts` (`PhonePeService` — `initiate-payment` / `verify-payment` Edge Function invokes)
 - [x] Update `dataAccess.interface.ts` + `supabaseDataAccess.ts` (`ISubscriptionDataAccess`, `subscriptions` on `dataAccess`)
 - [x] Add `src/types/subscription.types.ts` and export from `src/types/index.ts`
 - [x] Modify `auth.service.ts` — `AuthResult` includes `subscription` and `hasActiveSubscription` for customer sessions
@@ -896,24 +644,23 @@ CALLBACK_URL=https://your-backend.com
 ### Phase 4: Customer Screens (individual + society)
 - [x] Create `SubscriptionPlansScreen.tsx`
 - [x] Create `SubscriptionStatusScreen.tsx`
-- [x] Create `PaymentScreen.tsx` (Paytm checkout via `WebView` + `verify-payment`)
+- [x] Create `PaymentScreen.tsx` (PhonePe checkout URL in `WebView` + `verify-payment`)
 - [x] Create `PaymentHistoryScreen.tsx`
 - [x] Update `CustomerNavigator.tsx` and `rootNavigation.ts` (`SubscriptionPlans`, `SubscriptionStatus`, `Payment`, `PaymentHistory`)
 - [x] Update `CustomerMenuDrawer.tsx` (menu routes + items: plans, subscription, payment history)
 - [x] Add `src/navigation/customerMenuNavigation.ts` (typed navigation for drawer routes)
-- [x] Add `src/constants/paytmCheckout.ts` (optional `EXPO_PUBLIC_PAYTM_CHECKOUT_BASE_URL`; defaults to Paytm staging)
-- [x] Extend `initiate-payment` response with `clientMeta` (`mid`, `orderId`, `amount`) for checkout HTML — **redeploy this Edge Function** after pulling
+- [x] `initiate-payment` returns `redirectUrl` + `clientMeta` (`orderId`, `amount`) — **redeploy Edge Functions** after credential or API changes
 - [x] Dependency: `react-native-webview` (Expo)
 
 ### Phase 5: Integration & Testing
-- [ ] Test payment flow in Paytm staging environment
+- [ ] Test payment flow in PhonePe sandbox (`PHONEPE_ENV=sandbox`)
 - [ ] Test subscription activation
 - [ ] Test subscription expiry
 - [ ] Test renewal flow
 - [ ] Test edge cases (payment failure, network issues)
 
 ### Phase 6: Go Live
-- [ ] Switch to Paytm production credentials
+- [ ] Switch to PhonePe production (`PHONEPE_ENV=production`) and production OAuth/checkout hosts
 - [ ] Enable booking subscription validation trigger
 - [ ] Monitor first few transactions
 - [ ] Set up error alerting
@@ -928,8 +675,9 @@ CALLBACK_URL=https://your-backend.com
 | `migrations/025_add_subscription_check_to_bookings.sql` | Migration |
 | `migrations/026_payment_transactions_user_insert.sql` | Migration |
 | `migrations/027_payment_transactions_user_update_pending.sql` | Migration |
+| `migrations/028_payment_gateway_default_phonepe.sql` | Migration |
 | `src/services/subscription.service.ts` | Service |
-| `src/services/paytm.service.ts` | Service |
+| `src/services/phonepe.service.ts` | Service |
 | `src/screens/customer/SubscriptionPlansScreen.tsx` | Screen |
 | `src/screens/customer/SubscriptionStatusScreen.tsx` | Screen |
 | `src/screens/customer/PaymentScreen.tsx` | Screen |
@@ -938,19 +686,19 @@ CALLBACK_URL=https://your-backend.com
 | `supabase/functions/initiate-payment/index.ts` | Edge Function |
 | `supabase/functions/payment-callback/index.ts` | Edge Function |
 | `supabase/functions/verify-payment/index.ts` | Edge Function |
+| `supabase/functions/_shared/phonepe.ts` | Edge shared (PhonePe OAuth + PG APIs) |
 | `src/navigation/customerMenuNavigation.ts` | Navigation helper |
-| `src/constants/paytmCheckout.ts` | Paytm checkout base URL |
 
 ---
 
 ## Resources
 
-- [Paytm Developer Docs](https://developer.paytm.com/docs/)
-- [Paytm All-in-One SDK](https://developer.paytm.com/docs/all-in-one-sdk/)
-- [Paytm React Native SDK](https://github.com/nickesk/paytm-allinone-react-native)
+- [PhonePe PG — Integration steps](https://developer.phonepe.com/payment-gateway/website-integration/standard-checkout/api-integration/integration-steps)
+- [PhonePe — Create Payment](https://developer.phonepe.com/payment-gateway/website-integration/standard-checkout/api-integration/api-reference/create-payment)
+- [PhonePe — Order Status](https://developer.phonepe.com/payment-gateway/website-integration/standard-checkout/api-integration/api-reference/order-status)
 - [Supabase Edge Functions](https://supabase.com/docs/guides/functions)
 
 ---
 
 *Document created: January 27, 2026*  
-*Last updated: April 1, 2026 — Phase 4 customer subscription screens and navigation complete. Redeploy `initiate-payment` if you need `clientMeta` on-device. Phase 5 (Paytm staging E2E) still pending.*
+*Last updated: April 1, 2026 — Subscription checkout uses PhonePe Standard Checkout v2 (Edge Functions + WebView). Phase 5 (PhonePe sandbox E2E) still pending.*

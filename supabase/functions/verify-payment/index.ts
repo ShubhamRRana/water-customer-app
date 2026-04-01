@@ -1,7 +1,7 @@
 /// <reference path="./deno.d.ts" />
 import { applySuccessfulPayment, recordFailedPayment } from "../_shared/activation.ts";
 import { corsHeaders } from "../_shared/cors.ts";
-import { fetchOrderStatus } from "../_shared/paytm.ts";
+import { fetchOrderStatus } from "../_shared/phonepe.ts";
 import { getUserFromRequest, getServiceClient } from "../_shared/supabase.ts";
 
 Deno.serve(async (req: Request) => {

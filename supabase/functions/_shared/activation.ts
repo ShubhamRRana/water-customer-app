@@ -1,25 +1,24 @@
 import { getServiceClient } from "./supabase.ts";
 import {
   extractTxnMeta,
-  isPaytmTxnPending,
-  isPaytmTxnSuccess,
-} from "./paytm.ts";
+  isPhonePeOrderPending,
+  isPhonePeOrderSuccess,
+} from "./phonepe.ts";
 
 export async function applySuccessfulPayment(
   orderId: string,
   statusPayload: unknown,
 ): Promise<{ ok: boolean; reason?: string }> {
-  if (!isPaytmTxnSuccess(statusPayload)) {
+  if (!isPhonePeOrderSuccess(statusPayload)) {
     return { ok: false, reason: "not_success" };
   }
   const meta = extractTxnMeta(statusPayload);
-  const resolvedOrderId = meta.orderId ?? orderId;
   const admin = getServiceClient();
 
   const { data: tx, error: txErr } = await admin
     .from("payment_transactions")
     .select("id, user_id, subscription_id, amount, status, gateway_order_id")
-    .eq("gateway_order_id", resolvedOrderId)
+    .eq("gateway_order_id", orderId)
     .maybeSingle();
 
   if (txErr || !tx) return { ok: false, reason: "transaction_not_found" };
@@ -84,16 +83,15 @@ export async function recordFailedPayment(
   orderId: string,
   statusPayload: unknown,
 ): Promise<void> {
-  if (isPaytmTxnSuccess(statusPayload)) return;
-  if (isPaytmTxnPending(statusPayload)) return;
+  if (isPhonePeOrderSuccess(statusPayload)) return;
+  if (isPhonePeOrderPending(statusPayload)) return;
   const meta = extractTxnMeta(statusPayload);
-  const resolvedOrderId = meta.orderId ?? orderId;
   const admin = getServiceClient();
 
   const { data: tx } = await admin
     .from("payment_transactions")
     .select("id, status")
-    .eq("gateway_order_id", resolvedOrderId)
+    .eq("gateway_order_id", orderId)
     .maybeSingle();
 
   if (!tx || tx.status === "success") return;

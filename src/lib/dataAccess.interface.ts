@@ -124,7 +124,7 @@ export interface IExpenseDataAccess {
 }
 
 /**
- * Subscription plans, user subscriptions, and gateway payment transactions (Paytm).
+ * Subscription plans, user subscriptions, and gateway payment transactions (PhonePe).
  */
 export interface ISubscriptionDataAccess {
   getSubscriptionPlans(): Promise<SubscriptionPlan[]>;

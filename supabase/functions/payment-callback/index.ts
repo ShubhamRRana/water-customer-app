@@ -1,35 +1,46 @@
 /// <reference path="./deno.d.ts" />
 import { applySuccessfulPayment, recordFailedPayment } from "../_shared/activation.ts";
 import { corsHeaders } from "../_shared/cors.ts";
-import {
-  fetchOrderStatus,
-  verifyFormCallbackChecksum,
-  verifyJsonCallbackSignature,
-} from "../_shared/paytm.ts";
+import { fetchOrderStatus } from "../_shared/phonepe.ts";
 
-function parseFlatFromBody(text: string): Record<string, string> {
-  const flat: Record<string, string> = {};
-  const params = new URLSearchParams(text);
-  for (const [k, v] of params.entries()) {
-    flat[k] = v;
-  }
-  return flat;
+function htmlResponse(title: string, message: string): Response {
+  const body = `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${title}</title></head>
+<body style="font-family:system-ui,sans-serif;padding:24px;background:#0f1115;color:#e8eaed;">
+<p>${message}</p>
+<p style="color:#9aa0a6;font-size:14px;">You can return to the app.</p>
+</body></html>`;
+  return new Response(body, {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
+  });
 }
 
-function extractOrderId(
-  flat: Record<string, string> | undefined,
-  json: unknown,
-): string | null {
-  if (flat?.ORDERID) return flat.ORDERID;
-  if (flat?.orderId) return flat.orderId;
-  if (json && typeof json === "object") {
-    const j = json as Record<string, unknown>;
-    const head = j.head as Record<string, unknown> | undefined;
-    const body = j.body as Record<string, unknown> | undefined;
-    if (body?.orderId) return String(body.orderId);
-    if (j.orderId) return String(j.orderId);
+function extractMerchantOrderIdFromUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    const q = u.searchParams;
+    return (
+      q.get("merchantOrderId") ??
+      q.get("merchant_order_id") ??
+      q.get("orderId") ??
+      null
+    );
+  } catch {
+    return null;
   }
-  return null;
+}
+
+async function processOrder(
+  merchantOrderId: string,
+): Promise<{ orderId: string; applied: boolean; orderStatus: unknown }> {
+  const statusPayload = await fetchOrderStatus(merchantOrderId);
+  const applied = await applySuccessfulPayment(merchantOrderId, statusPayload);
+  await recordFailedPayment(merchantOrderId, statusPayload);
+  return {
+    orderId: merchantOrderId,
+    applied: applied.ok,
+    orderStatus: statusPayload,
+  };
 }
 
 Deno.serve(async (req: Request) => {
@@ -38,6 +49,23 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    if (req.method === "GET") {
+      const merchantOrderId =
+        extractMerchantOrderIdFromUrl(req.url) ??
+        new URL(req.url).searchParams.get("orderId");
+      if (!merchantOrderId) {
+        return htmlResponse(
+          "Payment",
+          "Missing order reference. Return to the app and tap Verify.",
+        );
+      }
+      const result = await processOrder(merchantOrderId);
+      const msg = result.applied
+        ? "Payment confirmed. Return to the app."
+        : "Processing payment. Return to the app and tap Verify if needed.";
+      return htmlResponse("Payment", msg);
+    }
+
     if (req.method !== "POST") {
       return new Response(JSON.stringify({ error: "Method not allowed" }), {
         status: 405,
@@ -46,77 +74,60 @@ Deno.serve(async (req: Request) => {
     }
 
     const ct = req.headers.get("content-type") ?? "";
-    let flat: Record<string, string> | undefined;
-    let json: unknown;
+    let merchantOrderId: string | null = null;
 
     if (ct.includes("application/json")) {
-      json = await req.json();
+      const json = (await req.json()) as Record<string, unknown>;
+      merchantOrderId =
+        (typeof json.merchantOrderId === "string"
+          ? json.merchantOrderId
+          : null) ??
+        (typeof json.orderId === "string" ? json.orderId : null) ??
+        (json.payload &&
+            typeof json.payload === "object" &&
+            json.payload !== null
+          ? String(
+              (json.payload as Record<string, unknown>).merchantOrderId ?? "",
+            ) || null
+          : null);
     } else {
       const text = await req.text();
       if (text.trim().startsWith("{")) {
         try {
-          json = JSON.parse(text);
+          const json = JSON.parse(text) as Record<string, unknown>;
+          merchantOrderId =
+            typeof json.merchantOrderId === "string"
+              ? json.merchantOrderId
+              : typeof json.orderId === "string"
+              ? json.orderId
+              : null;
         } catch {
-          flat = parseFlatFromBody(text);
+          merchantOrderId = extractMerchantOrderIdFromUrl(
+            `https://x/?${text}`,
+          );
         }
       } else {
-        flat = parseFlatFromBody(text);
+        merchantOrderId = extractMerchantOrderIdFromUrl(
+          `https://x/?${text}`,
+        );
       }
     }
 
-    const orderId = extractOrderId(flat, json);
-    if (!orderId) {
-      return new Response(JSON.stringify({ error: "Missing orderId" }), {
+    if (!merchantOrderId) {
+      return new Response(JSON.stringify({ error: "Missing merchantOrderId" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    let checksumOk = true;
-    let hadChecksum = false;
-    if (flat?.CHECKSUMHASH) {
-      hadChecksum = true;
-      const checksum = flat.CHECKSUMHASH;
-      const copy = { ...flat };
-      delete copy.CHECKSUMHASH;
-      checksumOk = await verifyFormCallbackChecksum(copy, checksum);
-    } else if (
-      json && typeof json === "object" &&
-      (json as Record<string, unknown>).body &&
-      (json as Record<string, unknown>).head
-    ) {
-      hadChecksum = true;
-      const j = json as {
-        body: Record<string, unknown>;
-        head: { signature: string };
-      };
-      checksumOk = await verifyJsonCallbackSignature(
-        j.body,
-        j.head.signature,
-      );
-    }
-
-    if (hadChecksum && !checksumOk) {
-      return new Response(
-        JSON.stringify({ error: "Checksum verification failed" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    const statusPayload = await fetchOrderStatus(orderId);
-
-    const applied = await applySuccessfulPayment(orderId, statusPayload);
-    await recordFailedPayment(orderId, statusPayload);
+    const result = await processOrder(merchantOrderId);
 
     return new Response(
       JSON.stringify({
         ok: true,
-        orderId,
-        applied: applied.ok,
-        orderStatus: statusPayload,
+        orderId: result.orderId,
+        applied: result.applied,
+        orderStatus: result.orderStatus,
       }),
       {
         status: 200,

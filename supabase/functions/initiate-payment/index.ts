@@ -1,7 +1,13 @@
 /// <reference path="./deno.d.ts" />
 import { corsHeaders } from "../_shared/cors.ts";
+import {
+  createPayment,
+  fetchOrderStatus,
+  getCallbackUrl,
+  isPhonePeOrderSuccess,
+  rupeesToPaisa,
+} from "../_shared/phonepe.ts";
 import { getUserFromRequest, getServiceClient } from "../_shared/supabase.ts";
-import { getPaytmKeys, initiateTransaction } from "../_shared/paytm.ts";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -37,7 +43,7 @@ Deno.serve(async (req: Request) => {
     const { data: row, error } = await admin
       .from("payment_transactions")
       .select(
-        "id, user_id, amount, status, gateway_order_id, subscription_id",
+        "id, user_id, amount, status, gateway_order_id, subscription_id, metadata",
       )
       .eq("gateway_order_id", orderId)
       .eq("user_id", user.id)
@@ -57,18 +63,77 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const amount = Number(row.amount).toFixed(2);
-    const paytm = await initiateTransaction({
-      orderId,
-      amount,
-      custId: user.id,
-    });
+    const amountStr = Number(row.amount).toFixed(2);
+    const amountPaisa = rupeesToPaisa(Number(row.amount));
+    const callbackUrl = getCallbackUrl();
 
-    const { mid } = getPaytmKeys();
-    const payload =
-      paytm && typeof paytm === "object"
-        ? { ...(paytm as Record<string, unknown>), clientMeta: { mid, orderId, amount } }
-        : { clientMeta: { mid, orderId, amount }, raw: paytm };
+    let created: Awaited<ReturnType<typeof createPayment>>;
+    try {
+      created = await createPayment({
+        merchantOrderId: orderId,
+        amountPaisa,
+        redirectUrl: callbackUrl,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("BAD_REQUEST") || msg.includes("400")) {
+        try {
+          const existing = await fetchOrderStatus(orderId);
+          if (isPhonePeOrderSuccess(existing)) {
+            return new Response(
+              JSON.stringify({
+                error: "Order already completed",
+                orderStatus: existing,
+                clientMeta: { orderId, amount: amountStr },
+              }),
+              {
+                status: 409,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              },
+            );
+          }
+          return new Response(
+            JSON.stringify({
+              error:
+                "Payment session exists; use Verify or wait and try again.",
+              orderStatus: existing,
+              clientMeta: { orderId, amount: amountStr },
+              duplicateSession: true,
+            }),
+            {
+              status: 409,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
+          );
+        } catch {
+          throw e;
+        }
+      }
+      throw e;
+    }
+
+    const meta = {
+      ...(typeof row.metadata === "object" && row.metadata !== null
+        ? (row.metadata as Record<string, unknown>)
+        : {}),
+      phonepeOrderId: created.phonepeOrderId ?? undefined,
+    };
+    await admin
+      .from("payment_transactions")
+      .update({
+        metadata: meta,
+        status: "processing",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", row.id);
+
+    const payload = {
+      redirectUrl: created.redirectUrl,
+      clientMeta: { orderId, amount: amountStr },
+      phonepeOrderId: created.phonepeOrderId,
+      state: created.state,
+      raw: created.raw,
+    };
 
     return new Response(JSON.stringify(payload), {
       status: 200,

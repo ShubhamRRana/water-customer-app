@@ -1,5 +1,5 @@
 /**
- * Subscription billing and Paytm payment types (align with migrations 024/025).
+ * Subscription billing and PhonePe payment types (align with migrations 024/025).
  */
 
 export type SubscriptionStatus =
@@ -96,6 +96,7 @@ export interface CreatePaymentTransactionData {
   currency?: string;
   gatewayOrderId?: string | null;
   status?: PaymentTransactionStatus;
+  paymentGateway?: string;
   metadata?: Record<string, unknown>;
 }
 

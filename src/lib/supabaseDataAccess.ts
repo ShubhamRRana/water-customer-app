@@ -510,7 +510,7 @@ function mapPaymentTransactionFromDb(row: PaymentTransactionRow): PaymentTransac
     subscriptionId: row.subscription_id,
     amount: Number(row.amount),
     currency: row.currency || 'INR',
-    paymentGateway: row.payment_gateway || 'paytm',
+    paymentGateway: row.payment_gateway || 'phonepe',
     gatewayOrderId: row.gateway_order_id,
     gatewayTransactionId: row.gateway_transaction_id,
     gatewayResponseCode: row.gateway_response_code,
@@ -2083,6 +2083,7 @@ class SupabaseSubscriptionDataAccess implements ISubscriptionDataAccess {
         currency: data.currency ?? 'INR',
         gateway_order_id: data.gatewayOrderId ?? null,
         status: data.status ?? 'pending',
+        payment_gateway: data.paymentGateway ?? 'phonepe',
         metadata: data.metadata ?? {},
       };
       const { data: row, error } = await supabase

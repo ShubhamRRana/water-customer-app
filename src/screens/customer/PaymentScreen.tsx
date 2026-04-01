@@ -14,12 +14,11 @@ import type { RouteProp } from '@react-navigation/native';
 import { Typography, LoadingSpinner } from '../../components/common';
 import Button from '../../components/common/Button';
 import {
-  PaytmService,
+  PhonePeService,
   parseInitiatePaymentResponse,
-} from '../../services/paytm.service';
+} from '../../services/phonepe.service';
 import { CustomerStackParamList } from '../../navigation/rootNavigation';
 import { UI_CONFIG, PRICING_CONFIG } from '../../constants/config';
-import { getPaytmProcessTransactionUrl } from '../../constants/paytmCheckout';
 import { errorLogger } from '../../utils/errorLogger';
 import Constants from 'expo-constants';
 
@@ -31,35 +30,10 @@ interface Props {
   route: R;
 }
 
-function escapeHtmlAttr(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-}
-
-function buildCheckoutHtml(params: {
-  actionUrl: string;
-  mid: string;
-  orderId: string;
-  txnToken: string;
-  amount: string;
-}): string {
-  const { actionUrl, mid, orderId, txnToken, amount } = params;
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
-<body style="font-family:system-ui;background:#1a1d24;color:#f0f2f5;padding:16px;">
-<p>Redirecting to Paytm…</p>
-<form id="f" method="post" action="${escapeHtmlAttr(actionUrl)}">
-<input type="hidden" name="mid" value="${escapeHtmlAttr(mid)}"/>
-<input type="hidden" name="orderId" value="${escapeHtmlAttr(orderId)}"/>
-<input type="hidden" name="txnToken" value="${escapeHtmlAttr(txnToken)}"/>
-<input type="hidden" name="amount" value="${escapeHtmlAttr(amount)}"/>
-</form>
-<script>document.getElementById("f").submit();</script>
-</body></html>`;
-}
-
 const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
   const { orderId, planName, amount } = route.params;
   const [phase, setPhase] = useState<'init' | 'ready' | 'done'>('init');
-  const [html, setHtml] = useState<string | null>(null);
+  const [checkoutUri, setCheckoutUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [verifyBusy, setVerifyBusy] = useState(false);
 
@@ -79,7 +53,7 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
     setVerifyBusy(true);
     setError(null);
     try {
-      const res = await PaytmService.verifyTransaction(orderId);
+      const res = await PhonePeService.verifyTransaction(orderId);
       const applied = res.applied === true;
       if (applied) {
         setPhase('done');
@@ -90,7 +64,7 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
         'Could not confirm',
         res.reason
           ? String(res.reason)
-          : 'Complete payment on Paytm, then tap verify again. If money was debited, check Subscription in a few minutes.'
+          : 'Complete payment on PhonePe, then tap verify again. If money was debited, check Subscription in a few minutes.'
       );
     } catch (e) {
       errorLogger.medium('verify-payment failed', e, { orderId });
@@ -104,27 +78,19 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
     setError(null);
     setPhase('init');
     try {
-      const raw = await PaytmService.initiateTransaction(orderId);
+      const raw = await PhonePeService.initiateTransaction(orderId);
       const parsed = parseInitiatePaymentResponse(raw);
-      if (!parsed.initiateOk || !parsed.mid || !parsed.txnToken) {
-        throw new Error('Paytm did not return a valid session. Try again.');
+      if (!parsed.initiateOk || !parsed.redirectUrl) {
+        throw new Error('PhonePe did not return a checkout link. Try again.');
       }
-      const amt = parsed.amount ?? amount.toFixed(2);
-      const page = buildCheckoutHtml({
-        actionUrl: getPaytmProcessTransactionUrl(),
-        mid: parsed.mid,
-        orderId: parsed.orderId ?? orderId,
-        txnToken: parsed.txnToken,
-        amount: amt,
-      });
-      setHtml(page);
+      setCheckoutUri(parsed.redirectUrl);
       setPhase('ready');
     } catch (e) {
       errorLogger.medium('initiate-payment failed', e, { orderId });
       setError(getErrMsg(e));
       setPhase('done');
     }
-  }, [amount, orderId]);
+  }, [orderId]);
 
   React.useEffect(() => {
     void startCheckout();
@@ -144,16 +110,16 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
   if (phase === 'init' && !error) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <Header onBack={() => navigation.goBack()} title="Pay with Paytm" />
+        <Header onBack={() => navigation.goBack()} title="Pay with PhonePe" />
         <LoadingSpinner />
       </SafeAreaView>
     );
   }
 
-  if (error && phase === 'done' && !html) {
+  if (error && phase === 'done' && !checkoutUri) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <Header onBack={() => navigation.goBack()} title="Pay with Paytm" />
+        <Header onBack={() => navigation.goBack()} title="Pay with PhonePe" />
         <View style={styles.center}>
           <Typography variant="body" style={{ color: UI_CONFIG.colors.textSecondary, textAlign: 'center' }}>
             {error}
@@ -166,7 +132,7 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <Header onBack={() => navigation.goBack()} title="Pay with Paytm" />
+      <Header onBack={() => navigation.goBack()} title="Pay with PhonePe" />
       <View style={styles.summary}>
         <Typography variant="h3">{planName}</Typography>
         <Typography variant="h2" style={styles.summaryAmt}>
@@ -177,10 +143,10 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
           Order ID: {orderId}
         </Typography>
       </View>
-      {html && phase === 'ready' ? (
+      {checkoutUri && phase === 'ready' ? (
         <WebView
           originWhitelist={['*']}
-          source={{ html }}
+          source={{ uri: checkoutUri }}
           onNavigationStateChange={onNavChange}
           onShouldStartLoadWithRequest={(req) => {
             if (req.url.includes('payment-callback')) {

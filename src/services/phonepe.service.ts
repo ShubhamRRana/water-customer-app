@@ -1,32 +1,22 @@
 import { supabase } from '../lib/supabaseClient';
 import { getErrorMessage } from '../utils/errors';
 
-/** Parsed fields from `initiate-payment` (includes Paytm body + clientMeta from Edge Function). */
+/** Parsed fields from `initiate-payment` (PhonePe redirect URL + clientMeta from Edge Function). */
 export interface InitiatePaymentParsed {
-  txnToken: string | null;
-  mid: string | null;
+  redirectUrl: string | null;
   orderId: string | null;
   amount: string | null;
   initiateOk: boolean;
   raw: unknown;
 }
 
-function readBody(data: Record<string, unknown>): Record<string, unknown> {
-  const body = data.body;
-  if (body && typeof body === 'object') {
-    return body as Record<string, unknown>;
-  }
-  return data;
-}
-
 /**
- * Interprets `initiate-payment` JSON: txnToken + clientMeta for WebView checkout.
+ * Interprets `initiate-payment` JSON: redirectUrl + clientMeta for WebView checkout.
  */
 export function parseInitiatePaymentResponse(data: unknown): InitiatePaymentParsed {
   if (!data || typeof data !== 'object') {
     return {
-      txnToken: null,
-      mid: null,
+      redirectUrl: null,
       orderId: null,
       amount: null,
       initiateOk: false,
@@ -34,19 +24,16 @@ export function parseInitiatePaymentResponse(data: unknown): InitiatePaymentPars
     };
   }
   const root = data as Record<string, unknown>;
-  const body = readBody(root);
-  const txnToken = typeof body.txnToken === 'string' ? body.txnToken : null;
+  const redirectUrl = typeof root.redirectUrl === 'string' ? root.redirectUrl : null;
   const clientMeta = root.clientMeta as Record<string, unknown> | undefined;
-  const mid = typeof clientMeta?.mid === 'string' ? clientMeta.mid : null;
   const orderId = typeof clientMeta?.orderId === 'string' ? clientMeta.orderId : null;
   const amount = typeof clientMeta?.amount === 'string' ? clientMeta.amount : null;
 
   return {
-    txnToken,
-    mid,
+    redirectUrl,
     orderId,
     amount,
-    initiateOk: Boolean(txnToken),
+    initiateOk: Boolean(redirectUrl),
     raw: data,
   };
 }
@@ -60,9 +47,9 @@ export interface VerifyPaymentResponse {
 }
 
 /**
- * Paytm checkout via Supabase Edge Functions (merchant key never touches the app).
+ * PhonePe checkout via Supabase Edge Functions (client credentials never touch the app).
  */
-export class PaytmService {
+export class PhonePeService {
   static async initiateTransaction(orderId: string): Promise<unknown> {
     const { data, error } = await supabase.functions.invoke('initiate-payment', {
       body: { orderId },

@@ -85,6 +85,7 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
         currency: plan.currency || 'INR',
         gatewayOrderId: orderId,
         status: 'pending',
+        paymentGateway: 'phonepe',
       });
       navigation.navigate('Payment', {
         orderId,
@@ -141,7 +142,7 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={UI_CONFIG.colors.accent} />}
         >
           <Typography variant="body" style={[styles.intro, { color: UI_CONFIG.colors.textSecondary }]}>
-            Choose a plan to keep booking water deliveries. Secure payment via Paytm.
+            Choose a plan to keep booking water deliveries. Secure payment via PhonePe.
           </Typography>
 
           {plans.map((plan) => {

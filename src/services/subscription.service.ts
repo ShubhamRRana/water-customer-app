@@ -9,7 +9,7 @@ import type {
   UpdatePaymentTransactionData,
 } from '../types/subscription.types';
 import { handleAsyncOperationWithRethrow } from '../utils/errorHandler';
-import { PaytmService } from './paytm.service';
+import { PhonePeService } from './phonepe.service';
 
 /**
  * Subscription lifecycle and plan queries for the customer app.
@@ -51,13 +51,13 @@ export class SubscriptionService {
   }
 
   /**
-   * Confirms payment with Paytm via Edge Function (`verify-payment`), which activates the subscription when successful.
+   * Confirms payment with PhonePe via Edge Function (`verify-payment`), which activates the subscription when successful.
    */
   static async activateSubscription(
     _subscriptionId: string,
     gatewayOrderId: string
   ): Promise<void> {
-    await PaytmService.verifyTransaction(gatewayOrderId);
+    await PhonePeService.verifyTransaction(gatewayOrderId);
   }
 
   static async cancelSubscription(subscriptionId: string, reason: string): Promise<void> {
