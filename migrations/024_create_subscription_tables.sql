@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS public.payment_transactions (
     subscription_id UUID REFERENCES public.subscriptions(id) ON DELETE SET NULL,
     amount DECIMAL(10, 2) NOT NULL,
     currency VARCHAR(3) DEFAULT 'INR',
-    payment_gateway VARCHAR(50) DEFAULT 'paytm',
+    payment_gateway VARCHAR(50) DEFAULT 'phonepe',
     gateway_order_id VARCHAR(100),
     gateway_transaction_id VARCHAR(100),
     gateway_response_code VARCHAR(20),
