@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Typography, LoadingSpinner, CustomerMenuDrawer } from '../../components/common';
+import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import { useAuthStore } from '../../store/authStore';
 import { AuthService } from '../../services/auth.service';
 import { User } from '../../types';
@@ -258,9 +259,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     );
   }
 
-  const handleMenuNavigate = (
-    route: 'Home' | 'Orders' | 'Profile' | 'PastOrders' | 'TripDetails',
-  ) => {
+  const handleMenuNavigate = (route: CustomerMenuRoute) => {
     if (route === 'Profile') {
       return;
     }

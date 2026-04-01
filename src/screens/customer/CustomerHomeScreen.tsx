@@ -20,6 +20,7 @@ import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { Typography, CustomerMenuDrawer } from '../../components/common';
+import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import { Booking, BookingStatus } from '../../types';
 import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
 import { UI_CONFIG } from '../../constants/config';
@@ -85,9 +86,7 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
     }
   };
 
-  const handleMenuNavigate = (
-    route: 'Home' | 'Orders' | 'Profile' | 'PastOrders' | 'TripDetails',
-  ) => {
+  const handleMenuNavigate = (route: CustomerMenuRoute) => {
     if (route === 'Home') {
       // Already on Home, just close menu
       return;

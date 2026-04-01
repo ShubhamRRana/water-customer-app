@@ -14,6 +14,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useBookingStore } from '../../store/bookingStore';
 import { useAuthStore } from '../../store/authStore';
 import { Typography, CustomerMenuDrawer } from '../../components/common';
+import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import { UI_CONFIG } from '../../constants/config';
 import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
 import { PricingUtils } from '../../utils/pricing';
@@ -130,9 +131,7 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handleMenuNavigate = (
-    route: 'Home' | 'Orders' | 'Profile' | 'PastOrders' | 'TripDetails',
-  ) => {
+  const handleMenuNavigate = (route: CustomerMenuRoute) => {
     if (route === 'PastOrders') {
       // Already on PastOrders, just close menu
       return;

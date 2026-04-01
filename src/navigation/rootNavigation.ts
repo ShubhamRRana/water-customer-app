@@ -24,6 +24,15 @@ export type CustomerStackParamList = {
   OrderTracking: { orderId: string };
   SavedAddresses: undefined;
   PastOrders: undefined;
+  SubscriptionPlans: undefined;
+  SubscriptionStatus: undefined;
+  Payment: {
+    orderId: string;
+    planName: string;
+    amount: number;
+    subscriptionId: string;
+  };
+  PaymentHistory: undefined;
 };
 
 export type RootStackParamList = {

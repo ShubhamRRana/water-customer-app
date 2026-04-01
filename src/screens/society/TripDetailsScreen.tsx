@@ -21,6 +21,7 @@ import { useAuthStore } from '../../store/authStore';
 import Card from '../../components/common/Card';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { Typography, CustomerMenuDrawer, Button } from '../../components/common';
+import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import { SocietyTrip } from '../../types';
 import { societyPaymentPeriodKey, type CustomerStackParamList } from '../../navigation/rootNavigation';
 import { BOOKING_CONFIG, UI_CONFIG } from '../../constants/config';
@@ -200,9 +201,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
     }
   };
 
-  const handleMenuNavigate = (
-    route: 'Home' | 'Orders' | 'Profile' | 'PastOrders' | 'TripDetails',
-  ) => {
+  const handleMenuNavigate = (route: CustomerMenuRoute) => {
     if (route === 'TripDetails') {
       return;
     }

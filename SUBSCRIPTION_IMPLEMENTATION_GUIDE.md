@@ -894,12 +894,16 @@ CALLBACK_URL=https://your-backend.com
 - [x] RLS: `migrations/026_payment_transactions_user_insert.sql` + `027_payment_transactions_user_update_pending.sql` (authenticated insert/update own pending checkout rows; applied to WaterTankerApp April 2026)
 
 ### Phase 4: Customer Screens (individual + society)
-- [ ] Create `SubscriptionPlansScreen.tsx`
-- [ ] Create `SubscriptionStatusScreen.tsx`
-- [ ] Create `PaymentScreen.tsx`
-- [ ] Create `PaymentHistoryScreen.tsx`
-- [ ] Update `CustomerNavigator.tsx`
-- [ ] Update `CustomerMenuDrawer.tsx`
+- [x] Create `SubscriptionPlansScreen.tsx`
+- [x] Create `SubscriptionStatusScreen.tsx`
+- [x] Create `PaymentScreen.tsx` (Paytm checkout via `WebView` + `verify-payment`)
+- [x] Create `PaymentHistoryScreen.tsx`
+- [x] Update `CustomerNavigator.tsx` and `rootNavigation.ts` (`SubscriptionPlans`, `SubscriptionStatus`, `Payment`, `PaymentHistory`)
+- [x] Update `CustomerMenuDrawer.tsx` (menu routes + items: plans, subscription, payment history)
+- [x] Add `src/navigation/customerMenuNavigation.ts` (typed navigation for drawer routes)
+- [x] Add `src/constants/paytmCheckout.ts` (optional `EXPO_PUBLIC_PAYTM_CHECKOUT_BASE_URL`; defaults to Paytm staging)
+- [x] Extend `initiate-payment` response with `clientMeta` (`mid`, `orderId`, `amount`) for checkout HTML — **redeploy this Edge Function** after pulling
+- [x] Dependency: `react-native-webview` (Expo)
 
 ### Phase 5: Integration & Testing
 - [ ] Test payment flow in Paytm staging environment
@@ -934,6 +938,8 @@ CALLBACK_URL=https://your-backend.com
 | `supabase/functions/initiate-payment/index.ts` | Edge Function |
 | `supabase/functions/payment-callback/index.ts` | Edge Function |
 | `supabase/functions/verify-payment/index.ts` | Edge Function |
+| `src/navigation/customerMenuNavigation.ts` | Navigation helper |
+| `src/constants/paytmCheckout.ts` | Paytm checkout base URL |
 
 ---
 
@@ -947,4 +953,4 @@ CALLBACK_URL=https://your-backend.com
 ---
 
 *Document created: January 27, 2026*  
-*Last updated: April 1, 2026 — Phase 3 services and data access complete; Phase 4 UI pending. Phase 2 Edge Functions deployed; set Paytm secrets in Supabase before live payments.*
+*Last updated: April 1, 2026 — Phase 4 customer subscription screens and navigation complete. Redeploy `initiate-payment` if you need `clientMeta` on-device. Phase 5 (Paytm staging E2E) still pending.*

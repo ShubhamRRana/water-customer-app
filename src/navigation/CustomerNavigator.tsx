@@ -13,6 +13,10 @@ import AddTripScreen from '../screens/society/AddTripScreen';
 import TripDetailsScreen from '../screens/society/TripDetailsScreen';
 import SubscriptionComingSoonScreen from '../screens/society/SubscriptionComingSoonScreen';
 import SettlePaymentPlaceholderScreen from '../screens/society/SettlePaymentPlaceholderScreen';
+import SubscriptionPlansScreen from '../screens/customer/SubscriptionPlansScreen';
+import SubscriptionStatusScreen from '../screens/customer/SubscriptionStatusScreen';
+import PaymentScreen from '../screens/customer/PaymentScreen';
+import PaymentHistoryScreen from '../screens/customer/PaymentHistoryScreen';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import { useAuthStore } from '../store/authStore';
 import type { CustomerStackParamList, RootStackParamList } from './rootNavigation';
@@ -49,6 +53,10 @@ const CustomerNavigator: React.FC = () => {
         <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
         <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen} />
         <Stack.Screen name="PastOrders" component={PastOrdersScreen} />
+        <Stack.Screen name="SubscriptionPlans" component={SubscriptionPlansScreen} />
+        <Stack.Screen name="SubscriptionStatus" component={SubscriptionStatusScreen} />
+        <Stack.Screen name="Payment" component={PaymentScreen} />
+        <Stack.Screen name="PaymentHistory" component={PaymentHistoryScreen} />
       </Stack.Navigator>
     </ErrorBoundary>
   );

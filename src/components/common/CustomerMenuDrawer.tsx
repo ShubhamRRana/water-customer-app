@@ -2,14 +2,26 @@ import React, { useMemo } from 'react';
 import MenuDrawer, { MenuItem } from './MenuDrawer';
 import { CustomerAccountKind } from '../../types';
 
-export type CustomerRoute = 'Home' | 'Orders' | 'Profile' | 'PastOrders' | 'TripDetails';
+/** Routes reachable from the customer menu drawer (stack screens without params). */
+export type CustomerMenuRoute =
+  | 'Home'
+  | 'Orders'
+  | 'Profile'
+  | 'PastOrders'
+  | 'TripDetails'
+  | 'SubscriptionPlans'
+  | 'SubscriptionStatus'
+  | 'PaymentHistory';
+
+/** @deprecated Use CustomerMenuRoute */
+export type CustomerRoute = CustomerMenuRoute;
 
 interface CustomerMenuDrawerProps {
   visible: boolean;
   onClose: () => void;
-  onNavigate: (route: CustomerRoute) => void;
+  onNavigate: (route: CustomerMenuRoute) => void;
   onLogout: () => void;
-  currentRoute?: CustomerRoute;
+  currentRoute?: CustomerMenuRoute;
   /** When `society`, shows Trip details (society-logged tanker trips). */
   customerAccountKind?: CustomerAccountKind | null;
 }
@@ -22,8 +34,8 @@ const CustomerMenuDrawer: React.FC<CustomerMenuDrawerProps> = ({
   currentRoute,
   customerAccountKind,
 }) => {
-  const menuItems: MenuItem<CustomerRoute>[] = useMemo(() => {
-    const base: MenuItem<CustomerRoute>[] = [
+  const menuItems: MenuItem<CustomerMenuRoute>[] = useMemo(() => {
+    const base: MenuItem<CustomerMenuRoute>[] = [
       {
         label: 'Home',
         icon: 'home-outline',
@@ -63,6 +75,35 @@ const CustomerMenuDrawer: React.FC<CustomerMenuDrawerProps> = ({
         },
       });
     }
+    base.push(
+      {
+        label: 'Subscription plans',
+        icon: 'card-outline',
+        route: 'SubscriptionPlans',
+        onPress: () => {
+          onNavigate('SubscriptionPlans');
+          onClose();
+        },
+      },
+      {
+        label: 'My subscription',
+        icon: 'shield-checkmark-outline',
+        route: 'SubscriptionStatus',
+        onPress: () => {
+          onNavigate('SubscriptionStatus');
+          onClose();
+        },
+      },
+      {
+        label: 'Payment history',
+        icon: 'receipt-outline',
+        route: 'PaymentHistory',
+        onPress: () => {
+          onNavigate('PaymentHistory');
+          onClose();
+        },
+      }
+    );
     base.push({
       label: 'Profile',
       icon: 'person-circle-outline',

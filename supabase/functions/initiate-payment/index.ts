@@ -1,7 +1,7 @@
 /// <reference path="./deno.d.ts" />
 import { corsHeaders } from "../_shared/cors.ts";
 import { getUserFromRequest, getServiceClient } from "../_shared/supabase.ts";
-import { initiateTransaction } from "../_shared/paytm.ts";
+import { getPaytmKeys, initiateTransaction } from "../_shared/paytm.ts";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -64,7 +64,13 @@ Deno.serve(async (req: Request) => {
       custId: user.id,
     });
 
-    return new Response(JSON.stringify(paytm), {
+    const { mid } = getPaytmKeys();
+    const payload =
+      paytm && typeof paytm === "object"
+        ? { ...(paytm as Record<string, unknown>), clientMeta: { mid, orderId, amount } }
+        : { clientMeta: { mid, orderId, amount }, raw: paytm };
+
+    return new Response(JSON.stringify(payload), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

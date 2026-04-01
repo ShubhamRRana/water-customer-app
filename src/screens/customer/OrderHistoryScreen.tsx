@@ -17,6 +17,7 @@ import { useBookingStore } from '../../store/bookingStore';
 import Card from '../../components/common/Card';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { Typography, CustomerMenuDrawer } from '../../components/common';
+import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import { Booking, BookingStatus } from '../../types';
 import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
 import { PricingUtils } from '../../utils/pricing';
@@ -193,9 +194,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
     );
   }
 
-  const handleMenuNavigate = (
-    route: 'Home' | 'Orders' | 'Profile' | 'PastOrders' | 'TripDetails',
-  ) => {
+  const handleMenuNavigate = (route: CustomerMenuRoute) => {
     if (route === 'Orders') {
       // Already on Orders, just close menu
       return;
