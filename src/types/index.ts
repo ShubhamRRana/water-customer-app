@@ -125,6 +125,8 @@ export interface Booking {
   updatedAt: Date;
   acceptedAt?: Date;
   deliveredAt?: Date;
+  /** Set when booking is tied to an active subscription (self-serve customer path). */
+  subscriptionId?: string;
 }
 
 /**
@@ -333,3 +335,15 @@ export type UserRoleProperties<T extends UserRole> = Omit<UserByRole<T>, keyof B
  * Helper type for filtering users by role
  */
 export type UsersByRole<T extends UserRole> = UserByRole<T>[];
+
+export type {
+  SubscriptionStatus,
+  PaymentTransactionStatus,
+  SubscriptionPlan,
+  UserSubscription,
+  PaymentTransaction,
+  CreateSubscriptionData,
+  UpdateSubscriptionData,
+  CreatePaymentTransactionData,
+  UpdatePaymentTransactionData,
+} from './subscription.types';

@@ -8,7 +8,20 @@
  * LocalStorageService or Supabase client.
  */
 
-import { User, Booking, Vehicle, BankAccount, Expense } from '../types/index';
+import {
+  User,
+  Booking,
+  Vehicle,
+  BankAccount,
+  Expense,
+  SubscriptionPlan,
+  UserSubscription,
+  PaymentTransaction,
+  CreateSubscriptionData,
+  UpdateSubscriptionData,
+  CreatePaymentTransactionData,
+  UpdatePaymentTransactionData,
+} from '../types/index';
 
 /**
  * Generic subscription callback type
@@ -111,6 +124,22 @@ export interface IExpenseDataAccess {
 }
 
 /**
+ * Subscription plans, user subscriptions, and gateway payment transactions (Paytm).
+ */
+export interface ISubscriptionDataAccess {
+  getSubscriptionPlans(): Promise<SubscriptionPlan[]>;
+  getSubscriptionPlanById(id: string): Promise<SubscriptionPlan | null>;
+  getUserSubscription(userId: string): Promise<UserSubscription | null>;
+  createSubscription(data: CreateSubscriptionData): Promise<UserSubscription>;
+  updateSubscription(id: string, data: UpdateSubscriptionData): Promise<void>;
+  createPaymentTransaction(data: CreatePaymentTransactionData): Promise<PaymentTransaction>;
+  updatePaymentTransaction(id: string, data: UpdatePaymentTransactionData): Promise<void>;
+  getPaymentTransactionsByUser(userId: string): Promise<PaymentTransaction[]>;
+  getPaymentTransactionByOrderId(orderId: string): Promise<PaymentTransaction | null>;
+  hasActiveSubscription(userId: string): Promise<boolean>;
+}
+
+/**
  * Complete data access layer interface
  */
 export interface IDataAccessLayer {
@@ -119,6 +148,7 @@ export interface IDataAccessLayer {
   vehicles: IVehicleDataAccess;
   bankAccounts: IBankAccountDataAccess;
   expenses: IExpenseDataAccess;
+  subscriptions: ISubscriptionDataAccess;
   generateId(): string;
   initialize(): Promise<void>;
 }

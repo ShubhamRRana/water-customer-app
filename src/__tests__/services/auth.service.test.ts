@@ -11,12 +11,15 @@ import { securityLogger } from '../../utils/securityLogger';
 import { SanitizationUtils } from '../../utils/sanitization';
 import { ValidationUtils } from '../../utils/validation';
 import { ERROR_MESSAGES } from '../../constants/config';
+import { dataAccess } from '../../lib/index';
 
 // Clear AsyncStorage and reset mocks before each test
 beforeEach(async () => {
   await AsyncStorage.clear();
   jest.clearAllMocks();
   rateLimiter.resetAll();
+  jest.spyOn(dataAccess.subscriptions, 'hasActiveSubscription').mockResolvedValue(false);
+  jest.spyOn(dataAccess.subscriptions, 'getUserSubscription').mockResolvedValue(null);
 });
 
 // Restore all mocks after each test

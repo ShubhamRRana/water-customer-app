@@ -172,6 +172,8 @@ export const ERROR_MESSAGES = {
     notFound: 'Booking not found.',
     alreadyAccepted: 'Booking has already been accepted by another driver.',
     cannotCancel: 'This booking cannot be cancelled.',
+    subscriptionRequired:
+      'An active subscription is required to create bookings. Please subscribe from the menu.',
   },
   location: {
     permissionDenied: 'Location permission denied.',

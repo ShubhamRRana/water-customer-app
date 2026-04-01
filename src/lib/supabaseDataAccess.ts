@@ -13,12 +13,22 @@ import {
   IVehicleDataAccess,
   IBankAccountDataAccess,
   IExpenseDataAccess,
+  ISubscriptionDataAccess,
   SubscriptionCallback,
   CollectionSubscriptionCallback,
   Unsubscribe,
   PaginationOptions,
   BookingQueryOptions,
 } from './dataAccess.interface';
+import type {
+  SubscriptionPlan,
+  UserSubscription,
+  PaymentTransaction,
+  CreateSubscriptionData,
+  UpdateSubscriptionData,
+  CreatePaymentTransactionData,
+  UpdatePaymentTransactionData,
+} from '../types/subscription.types';
 import { SubscriptionManager } from '../utils/subscriptionManager';
 import {
   User,
@@ -122,6 +132,59 @@ interface BookingRow {
   updated_at: string;
   accepted_at: string | null;
   delivered_at: string | null;
+  subscription_id?: string | null;
+}
+
+interface SubscriptionPlanRow {
+  id: string;
+  name: string;
+  description: string | null;
+  duration_months: number;
+  price: number | string;
+  currency: string;
+  features: unknown;
+  max_bookings_per_month: number | null;
+  is_active: boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface SubscriptionRow {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  status: string;
+  start_date: string | null;
+  end_date: string | null;
+  auto_renew: boolean;
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
+  trial_end_date: string | null;
+  is_trial: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface PaymentTransactionRow {
+  id: string;
+  user_id: string;
+  subscription_id: string | null;
+  amount: number | string;
+  currency: string;
+  payment_gateway: string;
+  gateway_order_id: string | null;
+  gateway_transaction_id: string | null;
+  gateway_response_code: string | null;
+  gateway_response_message: string | null;
+  status: string;
+  payment_method: string | null;
+  bank_name: string | null;
+  metadata: unknown;
+  initiated_at: string;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface VehicleRow {
@@ -356,6 +419,7 @@ function mapBookingFromDb(row: BookingRow): Booking {
     updatedAt: deserialized.updatedAt,
     ...(deserialized.acceptedAt && { acceptedAt: deserialized.acceptedAt }),
     ...(deserialized.deliveredAt && { deliveredAt: deserialized.deliveredAt }),
+    ...(row.subscription_id && { subscriptionId: row.subscription_id }),
   };
 }
 
@@ -390,6 +454,75 @@ function mapBookingToDb(booking: Booking): Partial<BookingRow> {
     updated_at: serializeDate(booking.updatedAt) || new Date().toISOString(),
     accepted_at: serializeDate(booking.acceptedAt),
     delivered_at: serializeDate(booking.deliveredAt),
+    subscription_id: booking.subscriptionId ?? null,
+  };
+}
+
+function parsePlanFeatures(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.filter((x): x is string => typeof x === 'string');
+  }
+  return [];
+}
+
+function mapSubscriptionPlanFromDb(row: SubscriptionPlanRow): SubscriptionPlan {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    durationMonths: row.duration_months,
+    price: Number(row.price),
+    currency: row.currency || 'INR',
+    features: parsePlanFeatures(row.features),
+    maxBookingsPerMonth: row.max_bookings_per_month,
+    isActive: row.is_active,
+    displayOrder: row.display_order,
+    createdAt: deserializeDate(row.created_at) || new Date(),
+    updatedAt: deserializeDate(row.updated_at) || new Date(),
+  };
+}
+
+function mapSubscriptionFromDb(row: SubscriptionRow): UserSubscription {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    planId: row.plan_id,
+    status: row.status as UserSubscription['status'],
+    startDate: row.start_date ? deserializeDate(row.start_date) ?? null : null,
+    endDate: row.end_date ? deserializeDate(row.end_date) ?? null : null,
+    autoRenew: row.auto_renew,
+    cancelledAt: row.cancelled_at ? deserializeDate(row.cancelled_at) ?? null : null,
+    cancellationReason: row.cancellation_reason,
+    trialEndDate: row.trial_end_date ? deserializeDate(row.trial_end_date) ?? null : null,
+    isTrial: row.is_trial,
+    createdAt: deserializeDate(row.created_at) || new Date(),
+    updatedAt: deserializeDate(row.updated_at) || new Date(),
+  };
+}
+
+function mapPaymentTransactionFromDb(row: PaymentTransactionRow): PaymentTransaction {
+  const meta = row.metadata && typeof row.metadata === 'object' && row.metadata !== null
+    ? (row.metadata as Record<string, unknown>)
+    : {};
+  return {
+    id: row.id,
+    userId: row.user_id,
+    subscriptionId: row.subscription_id,
+    amount: Number(row.amount),
+    currency: row.currency || 'INR',
+    paymentGateway: row.payment_gateway || 'paytm',
+    gatewayOrderId: row.gateway_order_id,
+    gatewayTransactionId: row.gateway_transaction_id,
+    gatewayResponseCode: row.gateway_response_code,
+    gatewayResponseMessage: row.gateway_response_message,
+    status: row.status as PaymentTransaction['status'],
+    paymentMethod: row.payment_method,
+    bankName: row.bank_name,
+    metadata: meta,
+    initiatedAt: deserializeDate(row.initiated_at) || new Date(),
+    completedAt: row.completed_at ? deserializeDate(row.completed_at) ?? null : null,
+    createdAt: deserializeDate(row.created_at) || new Date(),
+    updatedAt: deserializeDate(row.updated_at) || new Date(),
   };
 }
 
@@ -1819,6 +1952,236 @@ class SupabaseExpenseDataAccess implements IExpenseDataAccess {
   }
 }
 
+class SupabaseSubscriptionDataAccess implements ISubscriptionDataAccess {
+  async getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+    try {
+      const { data, error } = await supabase
+        .from('subscription_plans')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+      return (data || []).map((row) => mapSubscriptionPlanFromDb(row as SubscriptionPlanRow));
+    } catch (error) {
+      throw new DataAccessError('Failed to list subscription plans', 'getSubscriptionPlans', { error });
+    }
+  }
+
+  async getSubscriptionPlanById(id: string): Promise<SubscriptionPlan | null> {
+    try {
+      const { data, error } = await supabase
+        .from('subscription_plans')
+        .select('*')
+        .eq('id', id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return null;
+        }
+        throw error;
+      }
+      if (!data) {
+        return null;
+      }
+      return mapSubscriptionPlanFromDb(data as SubscriptionPlanRow);
+    } catch (error) {
+      throw new DataAccessError('Failed to get subscription plan', 'getSubscriptionPlanById', { error, id });
+    }
+  }
+
+  async getUserSubscription(userId: string): Promise<UserSubscription | null> {
+    try {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+      if (!data?.length) {
+        return null;
+      }
+      const now = Date.now();
+      const activeValid = data.find(
+        (s) =>
+          s.status === 'active' &&
+          s.end_date &&
+          new Date(s.end_date).getTime() > now
+      );
+      if (activeValid) {
+        return mapSubscriptionFromDb(activeValid as SubscriptionRow);
+      }
+      const pending = data.find((s) => s.status === 'pending');
+      if (pending) {
+        return mapSubscriptionFromDb(pending as SubscriptionRow);
+      }
+      return mapSubscriptionFromDb(data[0] as SubscriptionRow);
+    } catch (error) {
+      throw new DataAccessError('Failed to get user subscription', 'getUserSubscription', { error, userId });
+    }
+  }
+
+  async createSubscription(data: CreateSubscriptionData): Promise<UserSubscription> {
+    try {
+      const insert = {
+        user_id: data.userId,
+        plan_id: data.planId,
+        status: data.status ?? 'pending',
+        auto_renew: data.autoRenew ?? false,
+        is_trial: data.isTrial ?? false,
+        trial_end_date: data.trialEndDate ? serializeDate(data.trialEndDate) : null,
+      };
+      const { data: row, error } = await supabase
+        .from('subscriptions')
+        .insert(insert)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+      return mapSubscriptionFromDb(row as SubscriptionRow);
+    } catch (error) {
+      throw new DataAccessError('Failed to create subscription', 'createSubscription', { error });
+    }
+  }
+
+  async updateSubscription(id: string, data: UpdateSubscriptionData): Promise<void> {
+    try {
+      const updateRow: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (data.status !== undefined) updateRow.status = data.status;
+      if (data.startDate !== undefined) updateRow.start_date = data.startDate ? serializeDate(data.startDate) : null;
+      if (data.endDate !== undefined) updateRow.end_date = data.endDate ? serializeDate(data.endDate) : null;
+      if (data.autoRenew !== undefined) updateRow.auto_renew = data.autoRenew;
+      if (data.cancelledAt !== undefined) updateRow.cancelled_at = data.cancelledAt ? serializeDate(data.cancelledAt) : null;
+      if (data.cancellationReason !== undefined) updateRow.cancellation_reason = data.cancellationReason;
+      if (data.trialEndDate !== undefined) updateRow.trial_end_date = data.trialEndDate ? serializeDate(data.trialEndDate) : null;
+      if (data.isTrial !== undefined) updateRow.is_trial = data.isTrial;
+
+      const { error } = await supabase.from('subscriptions').update(updateRow).eq('id', id);
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
+      throw new DataAccessError('Failed to update subscription', 'updateSubscription', { error, id });
+    }
+  }
+
+  async createPaymentTransaction(data: CreatePaymentTransactionData): Promise<PaymentTransaction> {
+    try {
+      const insert = {
+        user_id: data.userId,
+        subscription_id: data.subscriptionId ?? null,
+        amount: data.amount,
+        currency: data.currency ?? 'INR',
+        gateway_order_id: data.gatewayOrderId ?? null,
+        status: data.status ?? 'pending',
+        metadata: data.metadata ?? {},
+      };
+      const { data: row, error } = await supabase
+        .from('payment_transactions')
+        .insert(insert)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+      return mapPaymentTransactionFromDb(row as PaymentTransactionRow);
+    } catch (error) {
+      throw new DataAccessError('Failed to create payment transaction', 'createPaymentTransaction', { error });
+    }
+  }
+
+  async updatePaymentTransaction(id: string, data: UpdatePaymentTransactionData): Promise<void> {
+    try {
+      const updateRow: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (data.subscriptionId !== undefined) updateRow.subscription_id = data.subscriptionId;
+      if (data.amount !== undefined) updateRow.amount = data.amount;
+      if (data.currency !== undefined) updateRow.currency = data.currency;
+      if (data.gatewayOrderId !== undefined) updateRow.gateway_order_id = data.gatewayOrderId;
+      if (data.gatewayTransactionId !== undefined) updateRow.gateway_transaction_id = data.gatewayTransactionId;
+      if (data.gatewayResponseCode !== undefined) updateRow.gateway_response_code = data.gatewayResponseCode;
+      if (data.gatewayResponseMessage !== undefined) updateRow.gateway_response_message = data.gatewayResponseMessage;
+      if (data.status !== undefined) updateRow.status = data.status;
+      if (data.paymentMethod !== undefined) updateRow.payment_method = data.paymentMethod;
+      if (data.bankName !== undefined) updateRow.bank_name = data.bankName;
+      if (data.metadata !== undefined) updateRow.metadata = data.metadata;
+      if (data.initiatedAt !== undefined) updateRow.initiated_at = serializeDate(data.initiatedAt);
+      if (data.completedAt !== undefined) updateRow.completed_at = data.completedAt ? serializeDate(data.completedAt) : null;
+
+      const { error } = await supabase.from('payment_transactions').update(updateRow).eq('id', id);
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
+      throw new DataAccessError('Failed to update payment transaction', 'updatePaymentTransaction', { error, id });
+    }
+  }
+
+  async getPaymentTransactionsByUser(userId: string): Promise<PaymentTransaction[]> {
+    try {
+      const { data, error } = await supabase
+        .from('payment_transactions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+      return (data || []).map((row) => mapPaymentTransactionFromDb(row as PaymentTransactionRow));
+    } catch (error) {
+      throw new DataAccessError('Failed to list payment transactions', 'getPaymentTransactionsByUser', { error, userId });
+    }
+  }
+
+  async getPaymentTransactionByOrderId(orderId: string): Promise<PaymentTransaction | null> {
+    try {
+      const { data, error } = await supabase
+        .from('payment_transactions')
+        .select('*')
+        .eq('gateway_order_id', orderId)
+        .maybeSingle();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return null;
+        }
+        throw error;
+      }
+      if (!data) {
+        return null;
+      }
+      return mapPaymentTransactionFromDb(data as PaymentTransactionRow);
+    } catch (error) {
+      throw new DataAccessError('Failed to get payment transaction by order id', 'getPaymentTransactionByOrderId', { error, orderId });
+    }
+  }
+
+  async hasActiveSubscription(userId: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase.rpc('has_active_subscription', {
+        p_user_id: userId,
+      });
+
+      if (error) {
+        throw error;
+      }
+      return Boolean(data);
+    } catch (error) {
+      throw new DataAccessError('Failed to check subscription', 'hasActiveSubscription', { error, userId });
+    }
+  }
+}
+
 /**
  * Complete Supabase Data Access Layer
  */
@@ -1828,6 +2191,7 @@ export class SupabaseDataAccess implements IDataAccessLayer {
   vehicles: IVehicleDataAccess;
   bankAccounts: IBankAccountDataAccess;
   expenses: IExpenseDataAccess;
+  subscriptions: ISubscriptionDataAccess;
 
   constructor() {
     this.users = new SupabaseUserDataAccess();
@@ -1835,6 +2199,7 @@ export class SupabaseDataAccess implements IDataAccessLayer {
     this.vehicles = new SupabaseVehicleDataAccess();
     this.bankAccounts = new SupabaseBankAccountDataAccess();
     this.expenses = new SupabaseExpenseDataAccess();
+    this.subscriptions = new SupabaseSubscriptionDataAccess();
   }
 
   generateId(): string {

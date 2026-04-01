@@ -5,7 +5,15 @@
  * Uses SupabaseDataAccess as the default implementation.
  */
 
-export { IDataAccessLayer, IUserDataAccess, IBookingDataAccess, IVehicleDataAccess, IBankAccountDataAccess, IExpenseDataAccess } from './dataAccess.interface';
+export {
+  IDataAccessLayer,
+  IUserDataAccess,
+  IBookingDataAccess,
+  IVehicleDataAccess,
+  IBankAccountDataAccess,
+  IExpenseDataAccess,
+  ISubscriptionDataAccess,
+} from './dataAccess.interface';
 export { SupabaseDataAccess } from './supabaseDataAccess';
 
 // Use SupabaseDataAccess as the default data access layer

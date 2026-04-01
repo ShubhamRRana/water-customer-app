@@ -8,6 +8,27 @@ import { LocalStorageService } from '../../services/localStorage';
 import { BookingService } from '../../services/booking.service';
 import { Booking } from '../../types';
 
+jest.mock('../../services/subscription.service', () => ({
+  SubscriptionService: {
+    hasActiveSubscription: jest.fn().mockResolvedValue(true),
+    getUserSubscription: jest.fn().mockResolvedValue({
+      id: 'sub-test',
+      userId: 'customer-1',
+      planId: 'plan-1',
+      status: 'active',
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 86400000 * 365),
+      autoRenew: false,
+      cancelledAt: null,
+      cancellationReason: null,
+      trialEndDate: null,
+      isTrial: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }),
+  },
+}));
+
 // Clear AsyncStorage before each test
 beforeEach(async () => {
   await AsyncStorage.clear();

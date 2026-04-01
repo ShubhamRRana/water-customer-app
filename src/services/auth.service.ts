@@ -1,5 +1,11 @@
 import { supabase } from '../lib/supabaseClient';
-import { User as AppUser, UserRole, DriverUser, AdminUser } from '../types/index';
+import {
+  User as AppUser,
+  UserRole,
+  DriverUser,
+  AdminUser,
+  UserSubscription,
+} from '../types/index';
 import { ERROR_MESSAGES } from '../constants/config';
 import { securityLogger, SecurityEventType, SecuritySeverity } from '../utils/securityLogger';
 import { rateLimiter } from '../utils/rateLimiter';
@@ -26,6 +32,22 @@ export interface AuthResult {
   requiresRoleSelection?: boolean;
   /** Whether user must confirm email before logging in (no session until confirmed) */
   needsEmailConfirmation?: boolean;
+  /** Present when signed-in user is a customer (individual or society). */
+  subscription?: UserSubscription | null;
+  hasActiveSubscription?: boolean;
+}
+
+async function customerSubscriptionSummary(userId: string): Promise<{
+  subscription: UserSubscription | null;
+  hasActiveSubscription: boolean;
+}> {
+  try {
+    const hasActiveSubscription = await dataAccess.subscriptions.hasActiveSubscription(userId);
+    const subscription = await dataAccess.subscriptions.getUserSubscription(userId);
+    return { subscription, hasActiveSubscription };
+  } catch {
+    return { subscription: null, hasActiveSubscription: false };
+  }
 }
 
 /**
@@ -612,6 +634,15 @@ export class AuthService {
       // Log successful registration
       securityLogger.logRegistrationAttempt(sanitizedEmail, role, true, undefined, newUser.id);
 
+      if (newUser.role === 'customer') {
+        const subFields = await customerSubscriptionSummary(newUser.id);
+        return {
+          success: true,
+          user: newUser,
+          ...subFields,
+        };
+      }
+
       return {
         success: true,
         user: newUser
@@ -775,9 +806,12 @@ export class AuthService {
         rateLimiter.record('login', sanitizedEmail);
         securityLogger.logAuthAttempt(sanitizedEmail, true, undefined, appUser.id);
 
+        const extra =
+          appUser.role === 'customer' ? await customerSubscriptionSummary(appUser.id) : {};
         return {
           success: true,
-          user: appUser
+          user: appUser,
+          ...extra,
         };
       }
 
@@ -799,9 +833,12 @@ export class AuthService {
         rateLimiter.record('login', sanitizedEmail);
         securityLogger.logAuthAttempt(sanitizedEmail, true, undefined, appUser.id);
 
+        const extra =
+          appUser.role === 'customer' ? await customerSubscriptionSummary(appUser.id) : {};
         return {
           success: true,
-          user: appUser
+          user: appUser,
+          ...extra,
         };
       } else {
         // Multiple valid roles - require role selection
@@ -898,10 +935,13 @@ export class AuthService {
           error: 'Failed to fetch user data'
         };
       }
-      
+
+      const extra =
+        appUser.role === 'customer' ? await customerSubscriptionSummary(appUser.id) : {};
       return {
         success: true,
-        user: appUser
+        user: appUser,
+        ...extra,
       };
     } catch (error) {
       return {

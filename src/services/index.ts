@@ -9,3 +9,6 @@ export type { DriverLocation, LocationUpdate } from './locationTracking.service'
 export { UserService } from './user.service';
 export { VehicleService } from './vehicle.service';
 export { StorageService } from './storage.service';
+export { SubscriptionService } from './subscription.service';
+export { PaytmService } from './paytm.service';
+export type { VerifyPaymentResponse } from './paytm.service';

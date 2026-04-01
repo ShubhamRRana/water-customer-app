@@ -1,7 +1,9 @@
+import { ERROR_MESSAGES } from '../constants/config';
 import { dataAccess } from '../lib/index';
 import { Booking, BookingStatus } from '../types/index';
 import { handleAsyncOperationWithRethrow, handleError } from '../utils/errorHandler';
 import type { PaginationOptions, BookingQueryOptions } from '../lib/dataAccess.interface';
+import { SubscriptionService } from './subscription.service';
 
 /**
  * Booking Service
@@ -31,11 +33,34 @@ export class BookingService {
     return handleAsyncOperationWithRethrow(
       async () => {
         const id = dataAccess.generateId();
+
+        let subscriptionId: string | undefined;
+        if (!bookingData.agencyId) {
+          const allowed = await SubscriptionService.hasActiveSubscription(
+            bookingData.customerId
+          );
+          if (!allowed) {
+            const err = new Error(ERROR_MESSAGES.booking.subscriptionRequired);
+            (err as Error & { code: string }).code = 'SUBSCRIPTION_REQUIRED';
+            throw err;
+          }
+          const sub = await SubscriptionService.getUserSubscription(bookingData.customerId);
+          if (
+            sub &&
+            sub.status === 'active' &&
+            sub.endDate &&
+            sub.endDate.getTime() > Date.now()
+          ) {
+            subscriptionId = sub.id;
+          }
+        }
+
         const newBooking: Booking = {
           ...bookingData,
           id,
           createdAt: new Date(),
           updatedAt: new Date(),
+          ...(subscriptionId && { subscriptionId }),
         };
 
         await dataAccess.bookings.saveBooking(newBooking);

@@ -1,6 +1,8 @@
 # Subscription & Payment Implementation Guide
 
-This document outlines all the changes required to convert the WaterTanker App from a free app to a subscription-based paid app with Paytm payment gateway integration.
+This document outlines the changes required to convert the WaterTanker **customer** app from a free app to a subscription-based paid app with Paytm payment gateway integration.
+
+**Scope:** This repository is the **customer-facing** app only. It serves **individual customers** and **society** accounts (same `CustomerNavigator` and role `customer`, with `CustomerAccountKind` of `individual` or `society`). **Admin** dashboards, plan management UIs, subscriber analytics screens, and revenue reports are **out of scope** here—they belong to a separate admin product, backend jobs, or database tooling—not this codebase.
 
 ---
 
@@ -31,16 +33,16 @@ This document outlines all the changes required to convert the WaterTanker App f
 ### Business Logic
 
 - New users get a trial period (optional, e.g., 7 days)
-- Users must have an active subscription to create bookings
-- Admins can view subscriber analytics
+- Users must have an active subscription to create bookings (applies to both individual and society customer logins)
 - Auto-renewal option for convenience
 - Grace period for expired subscriptions (optional)
+- Subscriber analytics, plan CRUD, and cross-user reporting are handled outside this app (e.g., admin console or Supabase with appropriate roles)
 
 ---
 
 ## Database Changes
 
-### New Migration: `012_create_subscription_tables.sql`
+### New Migration: `024_create_subscription_tables.sql`
 
 ```sql
 -- =============================================
@@ -145,10 +147,11 @@ CREATE POLICY "Anyone can read active subscription plans"
     ON subscription_plans FOR SELECT
     USING (is_active = true);
 
--- Subscription Plans: Only admins can manage plans
-CREATE POLICY "Admins can manage subscription plans"
-    ON subscription_plans FOR ALL
-    USING (has_role(auth.uid(), 'admin'));
+-- Subscription Plans: Inserts/updates/deletes for plans are NOT done from this customer app.
+-- Use service role, migrations, or a separate admin backend. Example policy if you use an admin role in the DB:
+-- CREATE POLICY "Admins can manage subscription plans"
+--     ON subscription_plans FOR ALL
+--     USING (has_role(auth.uid(), 'admin'));
 
 -- Subscriptions: Users can read their own subscriptions
 CREATE POLICY "Users can read own subscriptions"
@@ -165,10 +168,10 @@ CREATE POLICY "Users can update own subscriptions"
     ON subscriptions FOR UPDATE
     USING (auth.uid() = user_id);
 
--- Subscriptions: Admins can view all subscriptions
-CREATE POLICY "Admins can view all subscriptions"
-    ON subscriptions FOR SELECT
-    USING (has_role(auth.uid(), 'admin'));
+-- (Optional) Subscriptions: cross-user access only for non-customer tooling — not used by this app:
+-- CREATE POLICY "Admins can view all subscriptions"
+--     ON subscriptions FOR SELECT
+--     USING (has_role(auth.uid(), 'admin'));
 
 -- Payment Transactions: Users can read their own transactions
 CREATE POLICY "Users can read own transactions"
@@ -180,10 +183,10 @@ CREATE POLICY "Service can manage transactions"
     ON payment_transactions FOR ALL
     USING (auth.role() = 'service_role');
 
--- Admins can view all transactions
-CREATE POLICY "Admins can view all transactions"
-    ON payment_transactions FOR SELECT
-    USING (has_role(auth.uid(), 'admin'));
+-- (Optional) Cross-user transaction visibility for admin tooling only — not this app:
+-- CREATE POLICY "Admins can view all transactions"
+--     ON payment_transactions FOR SELECT
+--     USING (has_role(auth.uid(), 'admin'));
 
 -- =============================================
 -- SEED DEFAULT SUBSCRIPTION PLANS
@@ -247,7 +250,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 Add subscription check to bookings:
 
 ```sql
--- Migration: 013_add_subscription_check_to_bookings.sql
+-- Migration: 025_add_subscription_check_to_bookings.sql
 
 -- Add column to track if booking was made under subscription
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS subscription_id UUID REFERENCES subscriptions(id);
@@ -256,7 +259,7 @@ ALTER TABLE bookings ADD COLUMN IF NOT EXISTS subscription_id UUID REFERENCES su
 CREATE OR REPLACE FUNCTION validate_booking_subscription()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Skip validation for admin-created bookings
+    -- Skip validation when booking is created via backend/agency path (not self-serve customer insert)
     IF NEW.agency_id IS NOT NULL THEN
         RETURN NEW;
     END IF;
@@ -281,7 +284,7 @@ $$ LANGUAGE plpgsql;
 
 ## New Screens
 
-### Customer Screens
+All subscription and payment screens live in the **customer** area of the app. **Society** users use the same stack (`CustomerNavigator`); gate copy or entry points with `customerAccountKind === 'society'` vs `individual` only where the product requires different messaging—not separate admin routes.
 
 #### 1. `SubscriptionPlansScreen.tsx`
 **Location:** `src/screens/customer/SubscriptionPlansScreen.tsx`
@@ -357,47 +360,9 @@ $$ LANGUAGE plpgsql;
 
 ---
 
-### Admin Screens
+### Not in this app (admin)
 
-#### 5. `SubscriptionPlanManagementScreen.tsx`
-**Location:** `src/screens/admin/SubscriptionPlanManagementScreen.tsx`
-
-**Purpose:** Manage subscription plans
-
-**Features:**
-- List all plans
-- Create new plan
-- Edit existing plans
-- Activate/deactivate plans
-- Set pricing and features
-
----
-
-#### 6. `SubscriberListScreen.tsx`
-**Location:** `src/screens/admin/SubscriberListScreen.tsx`
-
-**Purpose:** View all subscribers
-
-**Features:**
-- List of all subscribers
-- Filter by plan type, status
-- Search by name/email
-- View subscription details
-- Export subscriber list
-
----
-
-#### 7. `SubscriptionRevenueScreen.tsx`
-**Location:** `src/screens/admin/SubscriptionRevenueScreen.tsx`
-
-**Purpose:** Revenue analytics from subscriptions
-
-**Features:**
-- Total revenue charts
-- Revenue by plan type
-- Monthly/yearly trends
-- Subscriber growth metrics
-- Churn rate analysis
+Plan management, subscriber lists, revenue dashboards, and exports are **not** implemented in this repository. If needed, implement them in a separate admin application or operational tools that use the service role or dedicated admin API—not the customer app.
 
 ---
 
@@ -447,10 +412,6 @@ class SubscriptionService {
   async activateSubscription(subscriptionId: string, transactionId: string): Promise<void>;
   async cancelSubscription(subscriptionId: string, reason: string): Promise<void>;
   async renewSubscription(subscriptionId: string): Promise<Subscription>;
-  
-  // Admin methods
-  async getAllSubscriptions(filters?: SubscriptionFilters): Promise<Subscription[]>;
-  async getSubscriptionStats(): Promise<SubscriptionStats>;
   
   // Utility methods
   async checkExpiredSubscriptions(): Promise<void>; // Cron job
@@ -523,7 +484,7 @@ class PaytmService {
 async loginWithRole(email: string, password: string, role: string) {
   // ... existing login logic ...
   
-  // Check subscription status for customers
+  // Check subscription status for customers (individual and society both use role 'customer')
   if (role === 'customer') {
     const subscription = await subscriptionService.getUserSubscription(user.id);
     return {
@@ -567,14 +528,12 @@ Add to `supabaseDataAccess.ts`:
 // Subscription Plans
 async getSubscriptionPlans(): Promise<SubscriptionPlan[]>;
 async getSubscriptionPlanById(id: string): Promise<SubscriptionPlan>;
-async createSubscriptionPlan(plan: CreatePlanData): Promise<SubscriptionPlan>;
-async updateSubscriptionPlan(id: string, data: UpdatePlanData): Promise<void>;
+// Plan create/update: not from this app — use backend/migrations or admin tooling
 
 // Subscriptions
 async getUserSubscription(userId: string): Promise<Subscription | null>;
 async createSubscription(data: CreateSubscriptionData): Promise<Subscription>;
 async updateSubscription(id: string, data: UpdateSubscriptionData): Promise<void>;
-async getSubscriptionsByAdmin(adminId: string): Promise<Subscription[]>;
 
 // Payment Transactions
 async createPaymentTransaction(data: CreateTransactionData): Promise<PaymentTransaction>;
@@ -589,6 +548,8 @@ async getPaymentTransactionByOrderId(orderId: string): Promise<PaymentTransactio
 
 ### Update `CustomerNavigator.tsx`
 
+Register subscription screens for **all** customer sessions (individual and society). There is no separate society navigator in this project—society flows use the same stack with different screens where needed.
+
 ```typescript
 // Add new screens to navigator
 const CustomerStack = createStackNavigator();
@@ -599,7 +560,7 @@ function CustomerNavigator() {
       {/* Existing screens */}
       <CustomerStack.Screen name="Home" component={CustomerHomeScreen} />
       <CustomerStack.Screen name="Booking" component={BookingScreen} />
-      {/* ... other existing screens ... */}
+      {/* ... other existing screens (including society trip screens when applicable) ... */}
       
       {/* New subscription screens */}
       <CustomerStack.Screen 
@@ -623,27 +584,9 @@ function CustomerNavigator() {
 }
 ```
 
-### Update `AdminNavigator.tsx`
+### Update `CustomerMenuDrawer.tsx`
 
-```typescript
-// Add new screens to admin navigator
-<AdminStack.Screen 
-  name="SubscriptionPlans" 
-  component={SubscriptionPlanManagementScreen} 
-/>
-<AdminStack.Screen 
-  name="Subscribers" 
-  component={SubscriberListScreen} 
-/>
-<AdminStack.Screen 
-  name="SubscriptionRevenue" 
-  component={SubscriptionRevenueScreen} 
-/>
-```
-
-### Update Menu Drawers
-
-Add subscription menu items to `CustomerMenuDrawer.tsx` and `AdminMenuDrawer.tsx`.
+Add subscription menu items (e.g., Plans, My subscription, Payment history) for customer users. **Do not** add subscription management entries to an admin navigator—this app does not ship one.
 
 ---
 
@@ -919,50 +862,53 @@ CALLBACK_URL=https://your-backend.com
 ## Implementation Checklist
 
 ### Phase 1: Database Setup
-- [ ] Create migration `012_create_subscription_tables.sql`
-- [ ] Create migration `013_add_subscription_check_to_bookings.sql`
-- [ ] Run migrations in Supabase
-- [ ] Verify RLS policies
-- [ ] Seed initial subscription plans
+- [x] Create migration `024_create_subscription_tables.sql`
+- [x] Create migration `025_add_subscription_check_to_bookings.sql`
+- [x] Run migrations in Supabase (WaterTankerApp — subscription migrations applied April 2026)
+- [x] Verify RLS policies (subscription_plans, subscriptions, payment_transactions; admin policies present for admin tooling)
+- [x] Seed initial subscription plans (Monthly, Half-Yearly, Yearly)
+- [x] Align `validate_booking_subscription` with agency-path bypass (`agency_id` set; trigger remains disabled until go-live)
 
 ### Phase 2: Backend Setup
-- [ ] Create Supabase Edge Functions (or separate backend)
-- [ ] Implement `/initiate-payment` endpoint
-- [ ] Implement `/payment-callback` endpoint
-- [ ] Implement `/verify-payment` endpoint
-- [ ] Add Paytm checksum utilities
-- [ ] Configure environment variables
+- [x] Create Supabase Edge Functions (or separate backend)
+- [x] Implement `/initiate-payment` endpoint (`supabase/functions/initiate-payment`)
+- [x] Implement `/payment-callback` endpoint (`supabase/functions/payment-callback`)
+- [x] Implement `/verify-payment` endpoint (`supabase/functions/verify-payment`)
+- [x] Add Paytm checksum utilities (`supabase/functions/_shared/paytm.ts` via `paytmchecksum`)
+- [x] Configure environment variables (Edge Function secrets in Supabase Dashboard: `PAYTM_MID`, `PAYTM_KEY`, `PAYTM_WEBSITE`, `PAYTM_HOST`, `CALLBACK_URL` — see `.env.example` notes; deployed April 2026 to WaterTankerApp)
+
+**Deployed function URLs (replace with your project ref if different):**  
+`https://<project-ref>.supabase.co/functions/v1/initiate-payment` · `payment-callback` · `verify-payment`.
+
+**Check .env.example file for setting up Paytm Keys**  
+
+
 
 ### Phase 3: Services
-- [ ] Create `subscription.service.ts`
-- [ ] Create `paytm.service.ts`
-- [ ] Update `supabaseDataAccess.ts` with new methods
-- [ ] Modify `auth.service.ts` for subscription check
-- [ ] Modify `booking.service.ts` for subscription validation
+- [x] Create `subscription.service.ts` (`SubscriptionService` — plans, subscriptions, payment rows, Paytm verify hook)
+- [x] Create `paytm.service.ts` (`PaytmService` — `initiate-payment` / `verify-payment` Edge Function invokes)
+- [x] Update `dataAccess.interface.ts` + `supabaseDataAccess.ts` (`ISubscriptionDataAccess`, `subscriptions` on `dataAccess`)
+- [x] Add `src/types/subscription.types.ts` and export from `src/types/index.ts`
+- [x] Modify `auth.service.ts` — `AuthResult` includes `subscription` and `hasActiveSubscription` for customer sessions
+- [x] Modify `booking.service.ts` — self-serve bookings (`agencyId` unset) require active subscription; sets `subscriptionId` when present
+- [x] RLS: `migrations/026_payment_transactions_user_insert.sql` + `027_payment_transactions_user_update_pending.sql` (authenticated insert/update own pending checkout rows; applied to WaterTankerApp April 2026)
 
-### Phase 4: Customer Screens
+### Phase 4: Customer Screens (individual + society)
 - [ ] Create `SubscriptionPlansScreen.tsx`
 - [ ] Create `SubscriptionStatusScreen.tsx`
 - [ ] Create `PaymentScreen.tsx`
 - [ ] Create `PaymentHistoryScreen.tsx`
 - [ ] Update `CustomerNavigator.tsx`
-- [ ] Update customer menu drawer
+- [ ] Update `CustomerMenuDrawer.tsx`
 
-### Phase 5: Admin Screens
-- [ ] Create `SubscriptionPlanManagementScreen.tsx`
-- [ ] Create `SubscriberListScreen.tsx`
-- [ ] Create `SubscriptionRevenueScreen.tsx`
-- [ ] Update `AdminNavigator.tsx`
-- [ ] Update admin menu drawer
-
-### Phase 6: Integration & Testing
+### Phase 5: Integration & Testing
 - [ ] Test payment flow in Paytm staging environment
 - [ ] Test subscription activation
 - [ ] Test subscription expiry
 - [ ] Test renewal flow
 - [ ] Test edge cases (payment failure, network issues)
 
-### Phase 7: Go Live
+### Phase 6: Go Live
 - [ ] Switch to Paytm production credentials
 - [ ] Enable booking subscription validation trigger
 - [ ] Monitor first few transactions
@@ -974,17 +920,16 @@ CALLBACK_URL=https://your-backend.com
 
 | File Path | Type |
 |-----------|------|
-| `migrations/012_create_subscription_tables.sql` | Migration |
-| `migrations/013_add_subscription_check_to_bookings.sql` | Migration |
+| `migrations/024_create_subscription_tables.sql` | Migration |
+| `migrations/025_add_subscription_check_to_bookings.sql` | Migration |
+| `migrations/026_payment_transactions_user_insert.sql` | Migration |
+| `migrations/027_payment_transactions_user_update_pending.sql` | Migration |
 | `src/services/subscription.service.ts` | Service |
 | `src/services/paytm.service.ts` | Service |
 | `src/screens/customer/SubscriptionPlansScreen.tsx` | Screen |
 | `src/screens/customer/SubscriptionStatusScreen.tsx` | Screen |
 | `src/screens/customer/PaymentScreen.tsx` | Screen |
 | `src/screens/customer/PaymentHistoryScreen.tsx` | Screen |
-| `src/screens/admin/SubscriptionPlanManagementScreen.tsx` | Screen |
-| `src/screens/admin/SubscriberListScreen.tsx` | Screen |
-| `src/screens/admin/SubscriptionRevenueScreen.tsx` | Screen |
 | `src/types/subscription.types.ts` | Types |
 | `supabase/functions/initiate-payment/index.ts` | Edge Function |
 | `supabase/functions/payment-callback/index.ts` | Edge Function |
@@ -1001,5 +946,5 @@ CALLBACK_URL=https://your-backend.com
 
 ---
 
-*Document created: January 27, 2026*
-*Last updated: January 27, 2026*
+*Document created: January 27, 2026*  
+*Last updated: April 1, 2026 — Phase 3 services and data access complete; Phase 4 UI pending. Phase 2 Edge Functions deployed; set Paytm secrets in Supabase before live payments.*
