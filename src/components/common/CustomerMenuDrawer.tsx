@@ -75,17 +75,9 @@ const CustomerMenuDrawer: React.FC<CustomerMenuDrawerProps> = ({
         },
       });
     }
-    base.push(
-      {
-        label: 'Subscription plans',
-        icon: 'card-outline',
-        route: 'SubscriptionPlans',
-        onPress: () => {
-          onNavigate('SubscriptionPlans');
-          onClose();
-        },
-      },
-      {
+    // Society: My Subscription screen links to plans + payment history — avoid duplicate drawer rows.
+    if (customerAccountKind === 'society') {
+      base.push({
         label: 'My subscription',
         icon: 'shield-checkmark-outline',
         route: 'SubscriptionStatus',
@@ -93,17 +85,38 @@ const CustomerMenuDrawer: React.FC<CustomerMenuDrawerProps> = ({
           onNavigate('SubscriptionStatus');
           onClose();
         },
-      },
-      {
-        label: 'Payment history',
-        icon: 'receipt-outline',
-        route: 'PaymentHistory',
-        onPress: () => {
-          onNavigate('PaymentHistory');
-          onClose();
+      });
+    } else {
+      base.push(
+        {
+          label: 'Subscription plans',
+          icon: 'card-outline',
+          route: 'SubscriptionPlans',
+          onPress: () => {
+            onNavigate('SubscriptionPlans');
+            onClose();
+          },
         },
-      }
-    );
+        {
+          label: 'My subscription',
+          icon: 'shield-checkmark-outline',
+          route: 'SubscriptionStatus',
+          onPress: () => {
+            onNavigate('SubscriptionStatus');
+            onClose();
+          },
+        },
+        {
+          label: 'Payment history',
+          icon: 'receipt-outline',
+          route: 'PaymentHistory',
+          onPress: () => {
+            onNavigate('PaymentHistory');
+            onClose();
+          },
+        }
+      );
+    }
     base.push({
       label: 'Profile',
       icon: 'person-circle-outline',

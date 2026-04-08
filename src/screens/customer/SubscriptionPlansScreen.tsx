@@ -166,7 +166,7 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
                   </Typography>
                 ) : null}
                 <Typography variant="h2" style={styles.price}>
-                  {`${PRICING_CONFIG.currencySymbol}${plan.price.toFixed(0)} / ${plan.durationMonths} mo`}
+                  {`${PRICING_CONFIG.currencySymbol}${plan.price.toFixed(0)}`}
                 </Typography>
                 <View style={styles.features}>
                   {plan.features.map((f) => (

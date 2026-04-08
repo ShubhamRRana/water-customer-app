@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
-  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,7 +42,6 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
   const [sub, setSub] = useState<UserSubscription | null>(null);
   const [plan, setPlan] = useState<SubscriptionPlan | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
-  const [toggleBusy, setToggleBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!user?.id) return;
@@ -75,20 +73,6 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
   const onRefresh = () => {
     setRefreshing(true);
     void load();
-  };
-
-  const handleAutoRenew = async (value: boolean) => {
-    if (!sub?.id) return;
-    setToggleBusy(true);
-    try {
-      await SubscriptionService.updateSubscription(sub.id, { autoRenew: value });
-      setSub((prev) => (prev ? { ...prev, autoRenew: value } : prev));
-    } catch (e) {
-      errorLogger.medium('update auto_renew failed', e, { subscriptionId: sub.id });
-      Alert.alert('Error', 'Could not update auto-renewal.');
-    } finally {
-      setToggleBusy(false);
-    }
   };
 
   const handleCancel = () => {
@@ -169,26 +153,6 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
             ) : null}
           </Card>
 
-          {sub && (sub.status === 'active' || sub.status === 'pending') ? (
-            <Card padding="large" style={styles.card}>
-              <View style={styles.switchRow}>
-                <View style={{ flex: 1 }}>
-                  <Typography variant="h4">Auto-renewal</Typography>
-                  <Typography variant="caption" style={{ color: UI_CONFIG.colors.textSecondary }}>
-                    We will remind you before renewal options are available.
-                  </Typography>
-                </View>
-                <Switch
-                  value={sub.autoRenew}
-                  onValueChange={(v) => void handleAutoRenew(v)}
-                  disabled={toggleBusy || sub.status !== 'active'}
-                  trackColor={{ false: UI_CONFIG.colors.secondary, true: UI_CONFIG.colors.accentMuted }}
-                  thumbColor={UI_CONFIG.colors.textLight}
-                />
-              </View>
-            </Card>
-          ) : null}
-
           <Button title="Plans & upgrade" onPress={() => navigation.navigate('SubscriptionPlans')} style={styles.btn} />
           <Button
             title="Payment history"
@@ -240,7 +204,6 @@ const styles = StyleSheet.create({
   planName: { marginTop: 8, color: UI_CONFIG.colors.textSecondary },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
   rowText: { flex: 1 },
-  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   btn: { marginBottom: UI_CONFIG.spacing.sm },
 });
 
