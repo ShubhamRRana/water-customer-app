@@ -104,6 +104,20 @@ describe('SanitizationUtils', () => {
     });
   });
 
+  describe('sanitizeNameWhileEditing', () => {
+    it('should preserve a trailing space while typing', () => {
+      expect(SanitizationUtils.sanitizeNameWhileEditing('John ')).toBe('John ');
+    });
+
+    it('should strip invalid characters without trimming', () => {
+      expect(SanitizationUtils.sanitizeNameWhileEditing("Mary1 O'Brien")).toBe("Mary O'Brien");
+    });
+
+    it('should collapse multiple spaces', () => {
+      expect(SanitizationUtils.sanitizeNameWhileEditing('John    Doe')).toBe('John Doe');
+    });
+  });
+
   describe('sanitizeBusinessName', () => {
     it('should return empty string for non-string input', () => {
       expect(SanitizationUtils.sanitizeBusinessName(null as any)).toBe('');

@@ -59,6 +59,21 @@ export class SanitizationUtils {
   }
 
   /**
+   * Sanitize name during live TextInput. Does not trim, so a trailing space while
+   * typing (e.g. between first and last name) is preserved. Use {@link sanitizeName}
+   * on submit/save for final normalization.
+   */
+  static sanitizeNameWhileEditing(name: string): string {
+    if (!name || typeof name !== 'string') {
+      return '';
+    }
+
+    return name
+      .replace(/[^a-zA-Z\s\-'.]/g, '')
+      .replace(/\s+/g, ' ');
+  }
+
+  /**
    * Sanitize a business name - keep alphanumeric and common business characters
    */
   static sanitizeBusinessName(businessName: string): string {

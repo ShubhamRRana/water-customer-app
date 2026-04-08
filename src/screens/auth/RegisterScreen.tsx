@@ -49,11 +49,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
   // Real-time validation handlers
   const handleNameChange = (text: string) => {
-    // Allow spaces during typing - only remove invalid characters, preserve spaces
-    const sanitized = text
-      .replace(/[^a-zA-Z\s\-'.]/g, '') // Keep only letters, spaces, hyphens, apostrophes, and periods
-      .replace(/\s+/g, ' '); // Normalize multiple spaces to single space
-    
+    const sanitized = SanitizationUtils.sanitizeNameWhileEditing(text);
     setName(sanitized);
     
     if (sanitized.trim()) {

@@ -9,8 +9,9 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
+  Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -21,7 +22,7 @@ import { useAuthStore } from '../../store/authStore';
 import { AuthService } from '../../services/auth.service';
 import { User } from '../../types';
 import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
-import { UI_CONFIG } from '../../constants/config';
+import { APP_CONFIG, UI_CONFIG } from '../../constants/config';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
 import { formatDateOnly } from '../../utils/dateUtils';
 
@@ -32,6 +33,7 @@ interface ProfileScreenProps {
 }
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const { user, updateUser, logout, isLoading, customerAccountKind } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -150,13 +152,13 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
     const errors: { name?: string; email?: string; phone?: string } = {};
     if (!nameValidation.isValid) {
-      errors.name = nameValidation.error;
+      errors.name = nameValidation.error ?? 'Invalid name';
     }
     if (!emailValidation.isValid) {
-      errors.email = emailValidation.error;
+      errors.email = emailValidation.error ?? 'Invalid email';
     }
     if (!phoneValidation.isValid) {
-      errors.phone = phoneValidation.error;
+      errors.phone = phoneValidation.error ?? 'Invalid phone number';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -227,6 +229,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     );
   };
 
+  const handleContactUs = () => {
+    Linking.openURL(APP_CONFIG.contactPageUrl).catch(() => {
+      Alert.alert('Unable to open link', 'Please try again in a moment.');
+    });
+  };
+
   const formatDate = (date: Date | string) => {
     return formatDateOnly(date, 'en-US');
   };
@@ -266,6 +274,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     navigation.navigate(route);
   };
 
+  const showContactCta =
+    customerAccountKind === 'individual' || customerAccountKind === 'society';
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <KeyboardAvoidingView 
@@ -273,7 +284,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView 
-          style={styles.container} 
+          style={styles.scrollView} 
           contentContainerStyle={styles.contentContainer} 
           showsVerticalScrollIndicator={false} 
           keyboardShouldPersistTaps="handled"
@@ -356,36 +367,40 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               },
             ]}
           >
-            <TouchableOpacity
-              style={[styles.actionButton, isEditing && styles.actionButtonActive]}
-              onPress={isEditing ? handleCancelEdit : handleEditProfile}
-              activeOpacity={0.8}
-              disabled={isDeleting}
-            >
-              <Ionicons 
-                name={isEditing ? "close-circle" : "create-outline"} 
-                size={22} 
-                color={isEditing ? UI_CONFIG.colors.error : UI_CONFIG.colors.accent} 
-              />
-              <Typography variant="body" style={[
-                styles.actionButtonText,
-                isEditing && styles.actionButtonTextActive
-              ]}>
-                {isEditing ? "Cancel" : "Edit Profile"}
-              </Typography>
-            </TouchableOpacity>
+            {!isEditing && (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleEditProfile}
+                activeOpacity={0.8}
+                disabled={isDeleting}
+              >
+                <Ionicons
+                  name="create-outline"
+                  size={22}
+                  color={UI_CONFIG.colors.accent}
+                />
+                <Typography variant="body" style={styles.actionButtonText}>
+                  Edit Profile
+                </Typography>
+              </TouchableOpacity>
+            )}
 
-            <TouchableOpacity
-              style={[styles.actionButton, styles.deleteAccountButton]}
-              onPress={handleDeleteAccountPress}
-              activeOpacity={0.8}
-              disabled={isDeleting}
-            >
-              <Ionicons name="trash-outline" size={22} color={UI_CONFIG.colors.error} />
-              <Typography variant="body" style={styles.deleteAccountButtonText}>
-                {isDeleting ? 'Deleting...' : 'Delete Account'}
-              </Typography>
-            </TouchableOpacity>
+            {showContactCta && (
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  !isEditing && styles.contactUsButton,
+                ]}
+                onPress={handleContactUs}
+                activeOpacity={0.8}
+                disabled={isDeleting}
+              >
+                <Ionicons name="chatbubbles-outline" size={22} color={UI_CONFIG.colors.accent} />
+                <Typography variant="body" style={styles.actionButtonText}>
+                  Contact Us
+                </Typography>
+              </TouchableOpacity>
+            )}
           </Animated.View>
 
           {/* Edit Profile Form */}
@@ -418,7 +433,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                     style={[styles.textInput, formErrors.name && { borderColor: UI_CONFIG.colors.error }]}
                     value={editForm.name}
                     onChangeText={(text) => {
-                      const sanitized = SanitizationUtils.sanitizeName(text);
+                      const sanitized = SanitizationUtils.sanitizeNameWhileEditing(text);
                       setEditForm(prev => ({ ...prev, name: sanitized }));
                       if (formErrors.name) {
                         setFormErrors(prev => {
@@ -521,6 +536,18 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                     </Typography>
                   </LinearGradient>
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.actionButtonActive, styles.cancelEditFooterButton]}
+                  onPress={handleCancelEdit}
+                  activeOpacity={0.8}
+                  disabled={isDeleting}
+                >
+                  <Ionicons name="close-circle" size={22} color={UI_CONFIG.colors.error} />
+                  <Typography variant="body" style={styles.actionButtonTextActive}>
+                    Cancel
+                  </Typography>
+                </TouchableOpacity>
               </View>
             </Animated.View>
           )}
@@ -528,6 +555,27 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           {/* Bottom Spacing */}
           <View style={styles.bottomSpacing} />
         </ScrollView>
+
+        {showContactCta && (
+          <View
+            style={[
+              styles.deleteAccountFooter,
+              { paddingBottom: Math.max(insets.bottom, 16) },
+            ]}
+          >
+            <TouchableOpacity
+              style={[styles.actionButton, styles.deleteAccountButton]}
+              onPress={handleDeleteAccountPress}
+              activeOpacity={0.8}
+              disabled={isDeleting}
+            >
+              <Ionicons name="trash-outline" size={22} color={UI_CONFIG.colors.error} />
+              <Typography variant="body" style={styles.deleteAccountButtonText}>
+                {isDeleting ? 'Deleting...' : 'Delete Account'}
+              </Typography>
+            </TouchableOpacity>
+          </View>
+        )}
       </KeyboardAvoidingView>
       
       <CustomerMenuDrawer
@@ -547,7 +595,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: UI_CONFIG.colors.background,
   },
-  container: {
+  scrollView: {
     flex: 1,
     backgroundColor: UI_CONFIG.colors.background,
   },
@@ -680,8 +728,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 24,
   },
-  deleteAccountButton: {
+  contactUsButton: {
     marginTop: 12,
+  },
+  deleteAccountFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: UI_CONFIG.colors.border,
+    backgroundColor: UI_CONFIG.colors.background,
+  },
+  deleteAccountButton: {
     borderColor: UI_CONFIG.colors.error,
     backgroundColor: `${UI_CONFIG.colors.error}10`,
   },
@@ -797,6 +854,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: UI_CONFIG.colors.textLight,
+  },
+  cancelEditFooterButton: {
+    marginTop: 12,
   },
   bottomSpacing: {
     height: 40,

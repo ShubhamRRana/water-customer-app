@@ -4,6 +4,7 @@ export const APP_CONFIG = {
   name: 'Water Tanker Booking',
   version: '1.0.0',
   description: 'Book water tankers for your home or business',
+  contactPageUrl: 'https://tankerhub.in/contact',
 };
 
 // API Configuration
