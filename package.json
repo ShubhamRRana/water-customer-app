@@ -10,7 +10,11 @@
     "web": "expo start --web",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "secrets:check": "node scripts/verify-no-client-secrets.mjs",
+    "lint": "expo lint",
+    "test:release": "jest src/__tests__/services/booking.service.test.ts src/__tests__/services/societyTrip.service.test.ts --passWithNoTests",
+    "prebuild:check": "npm run secrets:check && npm run lint && npm run test:release"
   },
   "dependencies": {
     "@expo-google-fonts/merriweather": "^0.4.2",
@@ -53,9 +57,12 @@
     "@types/jest": "^29.5.12",
     "@types/react": "~19.1.0",
     "babel-preset-expo": "~54.0.10",
+    "eslint": "^9.39.4",
+    "eslint-config-expo": "~10.0.0",
     "jest": "^29.7.0",
     "jest-expo": "~54.0.16",
     "react-test-renderer": "19.1.0",
+    "ts-jest": "^29.2.5",
     "typescript": "~5.9.2"
   },
   "private": true

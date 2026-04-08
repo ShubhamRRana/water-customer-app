@@ -135,7 +135,9 @@ class ErrorBoundary extends Component<Props, State> {
               </Typography>
 
               <Typography variant="body" style={styles.message}>
-                We're sorry, but something unexpected happened. Don't worry, your data is safe.
+                {
+                  "We're sorry, but something unexpected happened. Don't worry, your data is safe."
+                }
               </Typography>
 
               {__DEV__ && this.state.error && (

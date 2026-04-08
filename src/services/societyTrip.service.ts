@@ -1,6 +1,8 @@
+import { ERROR_MESSAGES } from '../constants/config';
 import { supabase } from '../lib/supabaseClient';
 import { SocietyTrip } from '../types';
 import { handleError } from '../utils/errorHandler';
+import { SubscriptionService } from './subscription.service';
 import {
   societyPaymentPeriodKey,
   type SocietyPaymentCompletePeriod,
@@ -78,6 +80,13 @@ export class SocietyTripService {
 
   static async createTrip(input: CreateSocietyTripInput): Promise<void> {
     try {
+      const allowed = await SubscriptionService.hasActiveSubscription(input.customerId);
+      if (!allowed) {
+        const err = new Error(ERROR_MESSAGES.societyTrip.subscriptionRequired);
+        (err as Error & { code: string }).code = 'SUBSCRIPTION_REQUIRED';
+        throw err;
+      }
+
       const { error } = await supabase.from('society_trips').insert({
         customer_id: input.customerId,
         agency_name: input.agencyName.trim(),

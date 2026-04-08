@@ -243,7 +243,9 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         </Card>
 
         <View style={styles.footer}>
-          <Typography variant="body" style={styles.footerText}>Don't have an account? </Typography>
+          <Typography variant="body" style={styles.footerText}>
+            {"Don't have an account? "}
+          </Typography>
           <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Register')}>
             <Typography variant="body" style={styles.linkText}>Sign Up</Typography>
           </TouchableOpacity>

@@ -16,13 +16,15 @@ const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.
 
 if (!supabaseUrl || !supabaseAnonKey) {
   const errorMessage = 'Missing Supabase configuration. Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in your .env file, app.config.js, or EAS build secrets.';
-  console.error('CRITICAL ERROR:', errorMessage);
-  console.error('Environment check:', {
-    hasExpoConfig: !!Constants.expoConfig,
-    hasExtra: !!Constants.expoConfig?.extra,
-    expoSupabaseUrl: Constants.expoConfig?.extra?.supabaseUrl,
-    envSupabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
-  });
+  if (__DEV__) {
+    console.error('CRITICAL ERROR:', errorMessage);
+    console.error('Environment check:', {
+      hasExpoConfig: !!Constants.expoConfig,
+      hasExtra: !!Constants.expoConfig?.extra,
+      expoSupabaseUrl: Constants.expoConfig?.extra?.supabaseUrl,
+      envSupabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
+    });
+  }
   throw new Error(errorMessage);
 }
 

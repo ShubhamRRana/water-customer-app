@@ -176,6 +176,10 @@ export const ERROR_MESSAGES = {
     subscriptionRequired:
       'An active subscription is required to create bookings. Please subscribe from the menu.',
   },
+  societyTrip: {
+    subscriptionRequired:
+      'An active subscription is required to log trips. Please subscribe from the menu.',
+  },
   location: {
     permissionDenied: 'Location permission denied.',
     serviceDisabled: 'Location services are disabled.',

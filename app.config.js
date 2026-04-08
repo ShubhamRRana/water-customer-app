@@ -1,13 +1,9 @@
-// app.config.js
+// app.config.js — single source of Expo config
 
-// Load .env file if dotenv is available (may not be available during EAS build config)
-// EAS CLI uses require() to load this config, so we use a try-catch with require
 try {
-  // Use require for compatibility with EAS CLI's CommonJS loader
   require('dotenv/config');
 } catch (e) {
-  // dotenv not available, environment variables should be set via system/env
-  // This is expected during EAS build configuration - env vars should be set in EAS secrets
+  // EAS build: env from secrets
 }
 
 export default {
@@ -15,18 +11,39 @@ export default {
     name: 'water-tanker-app',
     slug: 'water-tanker-app',
     version: '1.0.0',
-    // ... other config from app.json ...
-    
-    // Make environment variables available
+    orientation: 'portrait',
+    icon: './assets/icon.png',
+    userInterfaceStyle: 'light',
+    newArchEnabled: false,
+    splash: {
+      image: './assets/splash-icon.png',
+      resizeMode: 'contain',
+      backgroundColor: '#ffffff',
+    },
+    ios: {
+      supportsTablet: true,
+    },
+    android: {
+      package: 'com.watertanker.app',
+      adaptiveIcon: {
+        foregroundImage: './assets/adaptive-icon.png',
+        backgroundColor: '#ffffff',
+      },
+      edgeToEdgeEnabled: true,
+      predictiveBackGestureEnabled: false,
+      softwareKeyboardLayoutMode: 'resize',
+    },
+    web: {
+      favicon: './assets/favicon.png',
+    },
+    fonts: ['assets/fonts/PlayfairDisplay-Regular.ttf'],
+    plugins: ['expo-font'],
     extra: {
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
       eas: {
-        "projectId": "d87af120-6b69-4668-908e-002561c55444"
-      }
-    },
-    android: {
-      package: "com.watertanker.app"
+        projectId: 'd87af120-6b69-4668-908e-002561c55444',
+      },
     },
   },
 };

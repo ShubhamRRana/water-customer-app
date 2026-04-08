@@ -1127,7 +1127,7 @@ export class AuthService {
       const { error: fnError } = await supabase.functions.invoke('delete-auth-user-on-account-deletion', {
         body: { user_id: customerId },
       });
-      if (fnError) {
+      if (fnError && __DEV__) {
         console.warn('Auth user cleanup failed (DB already deleted):', fnError);
       }
       await AuthService.logout();
@@ -1160,7 +1160,7 @@ export class AuthService {
       const { error: fnError } = await supabase.functions.invoke('delete-auth-user-on-account-deletion', {
         body: { user_id: adminId },
       });
-      if (fnError) {
+      if (fnError && __DEV__) {
         console.warn('Auth user cleanup failed (DB already deleted):', fnError);
       }
       await AuthService.logout();

@@ -28,14 +28,20 @@ export class BookingService {
   /**
    * Create a new booking in local storage
    * Note: bookingData.customerId, agencyId, driverId should be id values
+   *
+   * Subscription is enforced for all customer bookings (including when an agency is selected).
+   * Pass `skipSubscriptionCheck: true` only from trusted server-side paths — never from the mobile app.
    */
-  static async createBooking(bookingData: Omit<Booking, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  static async createBooking(
+    bookingData: Omit<Booking, 'id' | 'createdAt' | 'updatedAt'>,
+    options?: { skipSubscriptionCheck?: boolean }
+  ): Promise<string> {
     return handleAsyncOperationWithRethrow(
       async () => {
         const id = dataAccess.generateId();
 
         let subscriptionId: string | undefined;
-        if (!bookingData.agencyId) {
+        if (!options?.skipSubscriptionCheck) {
           const allowed = await SubscriptionService.hasActiveSubscription(
             bookingData.customerId
           );
