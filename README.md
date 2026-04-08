@@ -1,6 +1,10 @@
 # Water Tanker Booking App
 
-A comprehensive mobile application for on-demand water tanker delivery services. Built with React Native (Expo) and TypeScript, featuring a Supabase backend with real-time capabilities. The app supports multi-role authentication for customers, drivers, and administrators, each with role-specific features and interfaces.
+A **customer-facing** mobile app for on-demand water tanker delivery, built with **React Native (Expo)** and **TypeScript**, backed by **Supabase** (PostgreSQL, Auth, Realtime). Driver and admin tools live in **separate applications** that share the same Supabase project; see [Customer App Split](./docs/CUSTOMER_APP_SPLIT.md).
+
+This client only mounts **Auth** and **Customer** flows (`App.tsx`). Users restored as non-customer (e.g. staff) are sent back to sign-in.
+
+Customers can sign in as **individual** or **society** accounts (same customer role; account kind differs). **Active subscriptions** are required to create bookings and society trips; plan purchase and renewals use **PhonePe** via Supabase Edge Functions (see [Subscription & Payment Implementation Guide](./SUBSCRIPTION_IMPLEMENTATION_GUIDE.md)).
 
 ## Table of Contents
 
@@ -10,6 +14,8 @@ A comprehensive mobile application for on-demand water tanker delivery services.
 - [UML Diagrams](#uml-diagrams)
 - [Prerequisites](#prerequisites)
 - [Setup](#setup)
+- [Additional documentation](#additional-documentation)
+- [NPM scripts](#npm-scripts)
 - [Project Structure](#project-structure)
 - [Testing](#testing)
 - [Supabase Configuration](#supabase-configuration)
@@ -19,39 +25,29 @@ A comprehensive mobile application for on-demand water tanker delivery services.
 ## Features
 
 ### Customer Features
-- **Booking Management**: Create, view, and track water tanker bookings
+- **Booking Management**: Create, view, and track water tanker bookings (requires an active subscription; enforced in app and database)
 - **Address Management**: Save and manage multiple delivery addresses
 - **Real-time Tracking**: Track booking status updates in real-time
 - **Order History**: View past and current orders
 - **Price Calculation**: Automatic distance-based pricing with Indian numbering format
 - **Scheduled Deliveries**: Schedule deliveries for future dates
+- **Subscriptions**: Browse plans, subscribe or renew via PhonePe checkout, and view subscription status
+- **Society login & trips**: Society-specific login flow; record and manage society trips (subscription rules apply; see migrations and services)
 - **Delete Account**: Permanently delete account from the Profile screen (with confirmation); removes all customer data and bookings, then logs out
 
-### Driver Features
-- **Order Management**: Accept/reject available bookings
-- **Status Updates**: Update booking status (in_transit, delivered)
-- **Earnings Tracking**: View earnings, completed orders, and statistics
-- **Payment Collection**: Collect and record payments from customers
-- **Order Filtering**: Filter orders by status (pending, accepted, in_transit, delivered)
+### Platform note
 
-### Admin Features
-- **Dashboard**: View comprehensive statistics and reports
-- **Booking Management**: View and manage all bookings across the platform
-- **Driver Management**: Add, edit, and manage driver accounts
-- **Vehicle Management**: Manage vehicle fleet with insurance and capacity details
-- **Bank Account Management**: Manage bank accounts for payments
-- **Expense Management**: Track and manage business expenses (diesel and maintenance) with receipt image uploads
-- **Reports & Analytics**: Generate reports on bookings, revenue, and driver performance
+The same Supabase database supports drivers, admins, and agencies; **this repository does not include driver or admin app screens**. Operational workflows for staff are documented at the backend/RLS level below and in other clients.
 
 ## Tech Stack
 
 ### Frontend
-- **React Native** (Expo SDK ~54.0.27)
+- **React** 19.x and **React Native** 0.81.x (Expo SDK ~54.0.32)
 - **TypeScript** (~5.9.2)
-- **React Navigation** v6 (Stack & Bottom Tabs)
-- **Zustand** (State Management)
-- **React Native Maps** (Location Services)
-- **Expo Location** (GPS & Location Tracking)
+- **React Navigation** v6 (stack navigators for auth and customer)
+- **Zustand** (state management)
+- **Expo Location** (GPS and location helpers)
+- **react-native-webview** (e.g. payment / hosted flows where used)
 
 ### Backend
 - **Supabase** (PostgreSQL Database)
@@ -64,7 +60,7 @@ A comprehensive mobile application for on-demand water tanker delivery services.
 - **Jest Expo** (Expo-specific Testing)
 
 ### Development Tools
-- **Expo CLI** (Development & Build Tools)
+- **Expo / EAS CLI** (local dev with `npx expo`; production builds with EAS — see `eas.json`)
 - **TypeScript** (Type Safety)
 - **ESLint** (Code Quality)
 
@@ -214,34 +210,29 @@ classDiagram
     CustomerUser "1" --> "*" Address : savedAddresses
 ```
 
-### 2. Component Diagram - System Architecture
+### 2. Component Diagram - System Architecture (this app)
 
 ```mermaid
 graph TB
     subgraph "Presentation Layer"
         A[App.tsx] --> B[AuthNavigator]
         A --> C[CustomerNavigator]
-        A --> D[DriverNavigator]
-        A --> E[AdminNavigator]
         
-        B --> F[LoginScreen]
-        B --> G[RegisterScreen]
-        B --> H[RoleEntryScreen]
+        B --> F[RoleSelectionScreen]
+        B --> G[LoginScreen]
+        B --> H[SocietyLoginScreen]
+        B --> HS[RegisterScreen]
         
         C --> I[CustomerHomeScreen]
         C --> J[BookingScreen]
-        C --> K[OrderTrackingScreen]
-        C --> L[OrderHistoryScreen]
-        
-        D --> M[OrdersScreen]
-        D --> N[DriverEarningsScreen]
-        D --> O[CollectPaymentScreen]
-        
-        E --> P[AllBookingsScreen]
-        E --> Q[DriverManagementScreen]
-        E --> R[VehicleManagementScreen]
-        E --> S[ReportsScreen]
-        E --> TA[ExpenseScreen]
+        C --> K[OrderHistoryScreen]
+        C --> L[OrderTrackingScreen]
+        C --> M[ProfileScreen]
+        C --> N[SubscriptionPlansScreen]
+        C --> NS[SubscriptionStatusScreen]
+        C --> P[PaymentScreen]
+        C --> AT[AddTripScreen]
+        C --> TD[TripDetailsScreen]
     end
     
     subgraph "State Management Layer"
@@ -254,27 +245,23 @@ graph TB
     subgraph "Service Layer"
         X[AuthService]
         Y[BookingService]
+        SY[SocietyTripService]
+        SU[SubscriptionService]
+        PP[PhonePeService]
         Z[UserService]
         AA[PaymentService]
         AB[LocationService]
         AC[VehicleService]
-        AD[BankAccountService]
-        AE[ExpenseService]
     end
     
     subgraph "Data Access Layer"
         AF[IDataAccessLayer]
         AG[SupabaseDataAccess]
-        AH[IUserDataAccess]
-        AI[IBookingDataAccess]
-        AJ[IVehicleDataAccess]
-        AK[IBankAccountDataAccess]
-        AL[IExpenseDataAccess]
     end
     
     subgraph "Infrastructure Layer"
         AM[Supabase Client]
-        AN[SubscriptionManager]
+        AN[lib/subscriptionManager]
         AO[ErrorHandler]
         AP[Validation Utils]
         AQ[Pricing Utils]
@@ -282,29 +269,26 @@ graph TB
     
     I --> T
     J --> U
-    M --> U
-    P --> U
-    TA --> AE
+    J --> W
     
     T --> X
     U --> Y
+    U --> SU
     V --> Z
     W --> AC
+    AT --> SY
     
+    SU --> PP
     X --> AF
     Y --> AF
+    SY --> AF
+    SU --> AF
     Z --> AF
     AC --> AF
-    AD --> AF
-    AE --> AF
+    AA --> AF
+    AB --> AF
     
     AF --> AG
-    AG --> AH
-    AG --> AI
-    AG --> AJ
-    AG --> AK
-    AG --> AL
-    
     AG --> AM
     AG --> AN
     X --> AO
@@ -312,7 +296,9 @@ graph TB
     Y --> AQ
 ```
 
-### 3. Sequence Diagram - Booking Flow
+### 3. Sequence Diagram - Booking Flow (platform)
+
+End-to-end booking involves drivers and realtime updates on the **shared backend**. This app implements the **customer** side (`BookingScreen`, `BookingService`); staff use other clients.
 
 ```mermaid
 sequenceDiagram
@@ -420,22 +406,17 @@ graph LR
     subgraph "Navigation"
         E[AuthNavigator]
         F[CustomerNavigator]
-        G[DriverNavigator]
-        H[AdminNavigator]
     end
     
     subgraph "Screens"
         I[Auth Screens]
         J[Customer Screens]
-        K[Driver Screens]
-        L[Admin Screens]
+        K[Society Screens]
     end
     
     subgraph "Components"
         M[Common Components]
         N[Customer Components]
-        O[Driver Components]
-        P[Admin Components]
     end
     
     subgraph "Utils"
@@ -447,27 +428,20 @@ graph LR
     
     I --> E
     J --> F
-    K --> G
-    L --> H
+    K --> F
     
     E --> A
     F --> A
-    G --> A
-    H --> A
     
     I --> C
     J --> C
     K --> C
-    L --> C
     
     J --> D
     K --> D
-    L --> D
     
     M --> A
     N --> A
-    O --> A
-    P --> A
     
     D --> B
     C --> D
@@ -482,7 +456,8 @@ graph LR
 Before you begin, ensure you have the following installed:
 
 - **Node.js** 18+ and npm
-- **Expo CLI** (`npm install -g expo-cli`)
+- **Expo** (use `npx expo` — a global `expo-cli` install is not required)
+- **EAS CLI** (optional, for cloud builds: `npm install -g eas-cli` or `npx eas-cli`)
 - **Git** for version control
 - **Supabase Account** with a project created
 - **Google Maps API Key** (optional, for enhanced location features)
@@ -504,36 +479,45 @@ npm install
 
 ### 3. Environment Configuration
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the project root. **Start from [`.env.example`](./.env.example)** and replace placeholders only locally (never commit real secrets).
+
+Minimum for the app:
 
 ```env
-# Supabase Configuration
-EXPO_PUBLIC_SUPABASE_URL=your_supabase_project_url
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-
-# Service Role Key (for scripts only - NEVER ship to client)
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-
-# Google Maps API Key (optional)
-EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+EXPO_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 ```
+
+Also configure (see `.env.example` for comments and optional keys):
+
+- `EXPO_PUBLIC_AUTH_SUCCESS_URL` — redirect after email verification (must be listed in Supabase Auth URL configuration)
+- `EXPO_PUBLIC_PASSWORD_RESET_REDIRECT_URL` — where password-reset links should land
+- `SUPABASE_SERVICE_ROLE_KEY` — **server-side and migration scripts only**; must not appear in client bundles (`npm run secrets:check` helps guard this)
+
+PhonePe subscription checkout uses **Supabase Edge Function secrets** (not `EXPO_PUBLIC_*`). Configure those in the Supabase Dashboard and follow [SUBSCRIPTION_IMPLEMENTATION_GUIDE.md](./SUBSCRIPTION_IMPLEMENTATION_GUIDE.md).
+
+Optional: `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` for enhanced map features.
 
 ### 4. Supabase Database Setup
 
-Ensure your Supabase project has the following tables configured:
+Apply SQL migrations from [`migrations/`](./migrations/) to your Supabase project (or ensure equivalent schema). Core tables include:
 
-- `users` - Base user table
-- `user_roles` - Multi-role support table
-- `customers` - Customer-specific data
-- `drivers` - Driver-specific data
-- `admins` - Admin-specific data
-- `bookings` - Booking/order table
-- `vehicles` - Vehicle management table
-- `bank_accounts` - Bank account information
-- `tanker_sizes` - Tanker size configurations
-- `pricing` - Pricing configuration
+- `users` — Base user table
+- `user_roles` — Multi-role support
+- `customers` — Customer-specific data
+- `drivers` — Driver-specific data
+- `admins` — Admin-specific data
+- `bookings` — Booking/order table
+- `vehicles` — Vehicle management
+- `bank_accounts` — Bank account information
+- `tanker_sizes` — Tanker size configurations
+- `pricing` — Pricing configuration
+- `subscription_plans`, `subscriptions`, `payment_transactions` — Subscription and PhonePe-related payment records ([`024_create_subscription_tables.sql`](./migrations/024_create_subscription_tables.sql) and follow-ups)
+- `society_trips` (and related society migrations) — Society trip flows
 
-**Important**: Row Level Security (RLS) is enabled on all tables with comprehensive policies. Configure realtime publications for:
+Apply every file in [`migrations/`](./migrations/) in **lexicographic (filename) order** (some numeric prefixes have more than one file, e.g. two `026_*` migrations—run both). Later files such as [`027_payment_transactions_user_insert.sql`](./migrations/027_payment_transactions_user_insert.sql) through [`029_payment_gateway_backfill_paytm_to_phonepe.sql`](./migrations/029_payment_gateway_backfill_paytm_to_phonepe.sql) adjust payment metadata and RLS for PhonePe.
+
+**Important**: Row Level Security (RLS) is enabled on all tables with comprehensive policies. Booking and society trip creation is tied to active subscriptions (see migration `026_enforce_subscription_bookings_and_society_trips.sql` and [PRODUCTION_READINESS.md](./docs/PRODUCTION_READINESS.md)). Configure realtime publications for:
 - `bookings`
 - `notifications`
 - `users`
@@ -548,6 +532,8 @@ Ensure your Supabase project has the following tables configured:
 - `pricing`
 - `driver_applications`
 - `driver_locations`
+- `subscription_plans`, `subscriptions`, `payment_transactions` (if using subscriptions)
+- `society_trips` (if using society features)
 
 ### 5. Start the Development Server
 
@@ -565,75 +551,82 @@ Then choose your platform:
 - Press `i` for iOS
 - Press `w` for Web
 
+Tunnel mode (e.g. testing on a physical device off LAN): `npm run start:tunnel`
+
+## Additional documentation
+
+| Document | Purpose |
+|----------|---------|
+| [docs/CUSTOMER_APP_SPLIT.md](./docs/CUSTOMER_APP_SPLIT.md) | How this customer-only repo relates to staff apps and the shared backend |
+| [SUBSCRIPTION_IMPLEMENTATION_GUIDE.md](./SUBSCRIPTION_IMPLEMENTATION_GUIDE.md) | Subscription model, PhonePe / Edge Functions, DB migrations for plans and payments |
+| [docs/SUBSCRIPTION_GATING_REVIEW.md](./docs/SUBSCRIPTION_GATING_REVIEW.md) | Engineering notes on subscription gating for bookings and society trips |
+| [UI_REDESIGN_SPEC.md](./UI_REDESIGN_SPEC.md) | UI redesign notes and specifications |
+| [docs/CUSTOMER_PROFILE.md](./docs/CUSTOMER_PROFILE.md) | Inventory of customer flows, files, and schema touchpoints |
+| [docs/PRODUCTION_READINESS.md](./docs/PRODUCTION_READINESS.md) | Release checks, Supabase advisors, Play Console, subscription enforcement |
+
+Database changes are versioned under [`migrations/`](./migrations/); apply them to your Supabase project in order when bootstrapping a new environment.
+
+## NPM scripts
+
+| Script | Purpose |
+|--------|---------|
+| `npm start` | Start Expo dev server |
+| `npm run android` / `ios` / `web` | Start and open a platform |
+| `npm run start:tunnel` | Expo with tunnel for remote devices |
+| `npm run lint` | ESLint (`expo lint`) |
+| `npm test` | Full Jest suite |
+| `npm run test:release` | Focused tests (booking + society trip services; used in CI-style checks) |
+| `npm run secrets:check` | Fails if forbidden patterns (e.g. service role, PhonePe client secret) appear under `src/` |
+| `npm run prebuild:check` | `secrets:check` + `lint` + `test:release` — recommended before release builds |
+
 ## Project Structure
 
 ```
 water-customer-app/
+├── app.config.js           # Expo config (reads EXPO_PUBLIC_* from env)
+├── index.ts                # Expo entry (registers App)
+├── eas.json                # EAS Build profiles (use Dashboard secrets for production keys)
+├── migrations/             # Supabase SQL migrations (apply in lexicographic order)
+├── supabase/functions/     # Edge Functions (PhonePe: initiate-payment, payment-callback, verify-payment; delete-auth-user-on-account-deletion)
+├── docs/                   # Operational and product notes (see Additional documentation)
+├── scripts/                # Utilities (e.g. verify-no-client-secrets.mjs, seed-test-data.ts)
 ├── src/
-│   ├── components/          # Reusable UI components
-│   │   ├── admin/          # Admin-specific components
-│   │   ├── customer/       # Customer-specific components
-│   │   ├── driver/         # Driver-specific components
-│   │   ├── auth/           # Authentication components
-│   │   └── common/         # Shared components
-│   │
-│   ├── screens/            # Screen components
-│   │   ├── admin/         # Admin screens
-│   │   ├── customer/      # Customer screens
-│   │   ├── driver/        # Driver screens
-│   │   └── auth/           # Authentication screens
-│   │
-│   ├── navigation/        # Navigation configuration
+│   ├── components/
+│   │   ├── customer/
+│   │   └── common/
+│   ├── screens/
+│   │   ├── customer/       # Booking, orders, profile, subscriptions, payments
+│   │   ├── society/        # Trips, placeholders, subscription intro
+│   │   └── auth/           # Role selection, login, society login, register
+│   ├── navigation/
 │   │   ├── AuthNavigator.tsx
 │   │   ├── CustomerNavigator.tsx
-│   │   ├── DriverNavigator.tsx
-│   │   └── AdminNavigator.tsx
-│   │
-│   ├── services/          # Business logic layer
+│   │   ├── customerMenuNavigation.ts
+│   │   └── rootNavigation.ts
+│   ├── services/
 │   │   ├── auth.service.ts
 │   │   ├── booking.service.ts
+│   │   ├── subscription.service.ts
+│   │   ├── societyTrip.service.ts
+│   │   ├── phonepe.service.ts
 │   │   ├── user.service.ts
 │   │   ├── payment.service.ts
 │   │   ├── location.service.ts
+│   │   ├── locationTracking.service.ts
 │   │   ├── vehicle.service.ts
-│   │   ├── bankAccount.service.ts
-│   │   └── expense.service.ts
-│   │
-│   ├── store/             # Zustand state management
-│   │   ├── authStore.ts
-│   │   ├── bookingStore.ts
-│   │   ├── userStore.ts
-│   │   └── vehicleStore.ts
-│   │
-│   ├── lib/               # Data access layer
+│   │   ├── storage.service.ts
+│   │   └── localStorage.ts
+│   ├── store/              # e.g. authStore, bookingStore, userStore, vehicleStore
+│   ├── lib/
 │   │   ├── dataAccess.interface.ts
 │   │   ├── supabaseDataAccess.ts
 │   │   ├── supabaseClient.ts
-│   │   └── subscriptionManager.ts
-│   │
-│   ├── utils/             # Utility functions
-│   │   ├── validation.ts
-│   │   ├── pricing.ts
-│   │   ├── errorHandler.ts
-│   │   ├── analytics.ts
-│   │   └── ...
-│   │
-│   ├── types/             # TypeScript type definitions
-│   │   └── index.ts
-│   │
-│   └── constants/         # App constants
-│       └── config.ts
-│
-├── scripts/               # Utility scripts
-│   ├── seed-test-data.ts
-│   ├── performance-test.ts
-│   └── ...
-│
-├── assets/               # Static assets
-│   ├── fonts/
-│   └── images/
-│
-├── App.tsx               # Root component
+│   │   └── subscriptionManager.ts   # Realtime channel helpers
+│   ├── utils/              # validation, pricing, subscription eligibility (subscriptionManager.ts), errors, etc.
+│   ├── types/              # index.ts, subscription.types.ts
+│   └── constants/
+├── assets/
+├── App.tsx
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -652,7 +645,12 @@ npm run test:watch
 
 # Generate coverage report
 npm run test:coverage
+
+# Subscription-related service tests only (same as prebuild:check subset)
+npm run test:release
 ```
+
+Before release builds, run `npm run prebuild:check` (secrets + lint + `test:release`). See [docs/PRODUCTION_READINESS.md](./docs/PRODUCTION_READINESS.md) for the full checklist.
 
 ### Test Structure
 
@@ -672,6 +670,8 @@ The project maintains comprehensive test coverage for:
 
 ## Supabase Configuration
 
+The following describes the **shared database** used by this app and other clients (e.g. staff apps). RLS policies for drivers and admins matter for those clients; this mobile app primarily exercises **customer** and **society** flows.
+
 ### Required Tables
 
 1. **users**: Base user information
@@ -684,6 +684,8 @@ The project maintains comprehensive test coverage for:
 8. **bank_accounts**: Bank account details
 9. **tanker_sizes**: Available tanker sizes
 10. **pricing**: Distance-based pricing configuration
+11. **subscription_plans**, **subscriptions**, **payment_transactions**: Subscription catalog, user subscriptions, and payment rows (PhonePe)
+12. **society_trips** (and related columns/policies from migrations): Society trip records where applicable
 
 ### Row Level Security (RLS)
 
@@ -772,12 +774,16 @@ All policies use a secure `has_role()` helper function that checks user roles fr
 
 **Customer Delete Account (migration 013):** The migration `013_allow_customer_delete_own_account.sql` adds DELETE policies so that authenticated users can remove their own data for the Delete Account flow: `bookings` (by `customer_id`), `customers` (by `user_id`), `user_roles` (by `user_id`), and `users` (by `id`). Apply this migration if customers use the Profile → Delete Account feature.
 
+**Subscription enforcement:** Migration `026_enforce_subscription_bookings_and_society_trips.sql` adds database-level checks so new `bookings` and `society_trips` require an active subscription for the customer. The app mirrors this in `BookingService` and `SocietyTripService`.
+
 ### Realtime Subscriptions
 
 Enable realtime for:
 - `bookings` table (for status updates)
 - `notifications` table (for push notifications)
 - `users` table (for profile updates)
+
+Add `subscriptions` / `payment_transactions` to your publication if the client subscribes to those channels for live payment or status updates (optional; depends on implementation).
 
 ## Troubleshooting
 
@@ -816,8 +822,8 @@ Enable realtime for:
 **Problem**: Build fails or app crashes on startup
 
 **Solutions**:
-- Clear Expo cache: `expo start -c`
-- Delete `node_modules` and reinstall: `rm -rf node_modules && npm install`
+- Clear Expo cache: `npx expo start -c`
+- Delete `node_modules` and reinstall (Unix): `rm -rf node_modules && npm install` — on Windows, remove the folder manually or use `Remove-Item -Recurse -Force node_modules` then `npm install`
 - Check for TypeScript errors: `npx tsc --noEmit`
 - Verify all environment variables are set correctly
 
@@ -825,10 +831,10 @@ Enable realtime for:
 
 ### Version 2.0 (Planned Features)
 
-- [ ] **Online Payment Integration**
-  - Payment gateway integration (Razorpay/Stripe)
-  - Payment history and receipts
-  - Refund management
+- [x] **Subscription checkout (PhonePe)** — Implemented for plan purchase/renewal via Supabase Edge Functions; see `SUBSCRIPTION_IMPLEMENTATION_GUIDE.md`
+- [ ] **Broader payment UX**
+  - Full payment history and receipts in-app
+  - Refund management and additional gateways (e.g. Razorpay/Stripe) if product requires
 
 - [ ] **Push Notifications**
   - Real-time order updates
