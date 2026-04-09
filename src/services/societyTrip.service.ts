@@ -138,18 +138,23 @@ export class SocietyTripService {
   }
 
   /** Keys match `societyPaymentPeriodKey` (e.g. `m:2026-2`, `y:2026`). */
-  static async listCompletedPaymentPeriodKeys(customerId: string): Promise<string[]> {
+  static async listCompletedPaymentPeriods(
+    customerId: string,
+  ): Promise<{ periodKey: string; completedAt: Date }[]> {
     try {
       const { data, error } = await supabase
         .from('society_payment_periods_completed')
-        .select('period_key')
+        .select('period_key, completed_at')
         .eq('customer_id', customerId);
 
       if (error) {
         throw new Error(error.message || 'Failed to load payment periods');
       }
-      const rows = (data ?? []) as { period_key: string }[];
-      return rows.map((r) => r.period_key);
+      const rows = (data ?? []) as { period_key: string; completed_at: string }[];
+      return rows.map((r) => ({
+        periodKey: r.period_key,
+        completedAt: new Date(r.completed_at),
+      }));
     } catch (error) {
       handleError(error, {
         context: { operation: 'listSocietyPaymentPeriodsCompleted', customerId },

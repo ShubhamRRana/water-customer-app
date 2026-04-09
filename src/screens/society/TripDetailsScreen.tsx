@@ -67,7 +67,9 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
   const [menuVisible, setMenuVisible] = useState(false);
   const [photoPreviewUri, setPhotoPreviewUri] = useState<string | null>(null);
   const [tankerBreakdownVisible, setTankerBreakdownVisible] = useState(false);
-  const [completedPaymentPeriodKeys, setCompletedPaymentPeriodKeys] = useState<string[]>([]);
+  const [completedPaymentPeriods, setCompletedPaymentPeriods] = useState<
+    { periodKey: string; completedAt: Date }[]
+  >([]);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [deleting, setDeleting] = useState(false);
@@ -137,12 +139,12 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
   const loadTripDetailsData = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const [list, keys] = await Promise.all([
+      const [list, periods] = await Promise.all([
         SocietyTripService.listTripsForCustomer(user.id),
-        SocietyTripService.listCompletedPaymentPeriodKeys(user.id),
+        SocietyTripService.listCompletedPaymentPeriods(user.id),
       ]);
       setTrips(list);
-      setCompletedPaymentPeriodKeys(keys);
+      setCompletedPaymentPeriods(periods);
     } catch (error) {
       errorLogger.medium('Failed to load society trips', error, { userId: user.id });
       throw error;
@@ -163,15 +165,6 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
       };
     }, [loadTripDetailsData]),
   );
-
-  const paymentCompleteForCurrentPeriod = useMemo(() => {
-    const key = societyPaymentPeriodKey({
-      periodType,
-      year: selectedYear,
-      month: selectedMonth,
-    });
-    return completedPaymentPeriodKeys.includes(key);
-  }, [completedPaymentPeriodKeys, periodType, selectedYear, selectedMonth]);
 
   const openSettlePayment = useCallback(() => {
     setTankerBreakdownVisible(false);
@@ -289,6 +282,17 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
     () => filterTripsByPeriod(trips, periodType, selectedYear, selectedMonth),
     [trips, periodType, selectedYear, selectedMonth],
   );
+
+  const paymentCompleteForCurrentPeriod = useMemo(() => {
+    const key = societyPaymentPeriodKey({
+      periodType,
+      year: selectedYear,
+      month: selectedMonth,
+    });
+    const row = completedPaymentPeriods.find((p) => p.periodKey === key);
+    if (!row) return false;
+    return !filteredTrips.some((t) => t.createdAt > row.completedAt);
+  }, [completedPaymentPeriods, periodType, selectedYear, selectedMonth, filteredTrips]);
 
   const tripsByTankerSize = useMemo(() => {
     const bucket = new Map<
