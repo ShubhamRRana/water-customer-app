@@ -82,11 +82,16 @@ export class SocietyTripService {
 
   static async createTrip(input: CreateSocietyTripInput): Promise<void> {
     try {
-      const allowed = await SubscriptionService.hasActiveSubscription(input.customerId);
-      if (!allowed) {
-        const err = new Error(ERROR_MESSAGES.societyTrip.subscriptionRequired);
-        (err as Error & { code: string }).code = 'SUBSCRIPTION_REQUIRED';
-        throw err;
+      // Subscription gating is temporarily disabled until PhonePe integration is completed.
+      // Subscription gating will be enabled again after PhonePe Integration is completed.
+      const subscriptionGatingDisabled = true;
+      if (!subscriptionGatingDisabled) {
+        const allowed = await SubscriptionService.hasActiveSubscription(input.customerId);
+        if (!allowed) {
+          const err = new Error(ERROR_MESSAGES.societyTrip.subscriptionRequired);
+          (err as Error & { code: string }).code = 'SUBSCRIPTION_REQUIRED';
+          throw err;
+        }
       }
 
       const { error } = await supabase.from('society_trips').insert({

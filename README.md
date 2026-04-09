@@ -517,7 +517,7 @@ Apply SQL migrations from [`migrations/`](./migrations/) to your Supabase projec
 
 Apply every file in [`migrations/`](./migrations/) in **lexicographic (filename) order** (some numeric prefixes have more than one file, e.g. two `026_*` migrations—run both). Later files such as [`027_payment_transactions_user_insert.sql`](./migrations/027_payment_transactions_user_insert.sql) through [`029_payment_gateway_backfill_paytm_to_phonepe.sql`](./migrations/029_payment_gateway_backfill_paytm_to_phonepe.sql) adjust payment metadata and RLS for PhonePe.
 
-**Important**: Row Level Security (RLS) is enabled on all tables with comprehensive policies. Booking and society trip creation is tied to active subscriptions (see migration `026_enforce_subscription_bookings_and_society_trips.sql` and [PRODUCTION_READINESS.md](./docs/PRODUCTION_READINESS.md)). Configure realtime publications for:
+**Important**: Row Level Security (RLS) is enabled on all tables with comprehensive policies. Subscription gating for booking and society trip creation is **temporarily disabled** until PhonePe integration is completed (it will be enabled again after PhonePe Integration is completed). Configure realtime publications for:
 - `bookings`
 - `notifications`
 - `users`
@@ -832,6 +832,7 @@ Add `subscriptions` / `payment_transactions` to your publication if the client s
 ### Version 2.0 (Planned Features)
 
 - [x] **Subscription checkout (PhonePe)** — Implemented for plan purchase/renewal via Supabase Edge Functions; see `SUBSCRIPTION_IMPLEMENTATION_GUIDE.md`
+- [ ] **Re-enable subscription gating (future enhancement)** — Re-enable subscription gating for bookings and society trips after PhonePe integration is completed
 - [ ] **Broader payment UX**
   - Full payment history and receipts in-app
   - Refund management and additional gateways (e.g. Razorpay/Stripe) if product requires

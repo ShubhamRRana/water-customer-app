@@ -38,23 +38,22 @@ describe('SocietyTripService.createTrip', () => {
     (SubscriptionService.hasActiveSubscription as jest.Mock).mockResolvedValue(true);
   });
 
-  it('throws SUBSCRIPTION_REQUIRED when user has no active subscription', async () => {
-    (SubscriptionService.hasActiveSubscription as jest.Mock).mockResolvedValueOnce(false);
-
-    await expect(SocietyTripService.createTrip(baseInput)).rejects.toThrow(
-      ERROR_MESSAGES.societyTrip.subscriptionRequired
-    );
-
-    expect(mockFrom).not.toHaveBeenCalled();
-  });
-
   it('inserts when subscription is active', async () => {
     const insert = jest.fn().mockResolvedValue({ error: null });
     mockFrom.mockReturnValue({ insert });
 
     await SocietyTripService.createTrip(baseInput);
 
-    expect(SubscriptionService.hasActiveSubscription).toHaveBeenCalledWith(baseInput.customerId);
+    expect(mockFrom).toHaveBeenCalledWith('society_trips');
+    expect(insert).toHaveBeenCalled();
+  });
+
+  it('inserts even when subscription is inactive (gating temporarily disabled)', async () => {
+    (SubscriptionService.hasActiveSubscription as jest.Mock).mockResolvedValueOnce(false);
+    const insert = jest.fn().mockResolvedValue({ error: null });
+    mockFrom.mockReturnValue({ insert });
+
+    await expect(SocietyTripService.createTrip(baseInput)).resolves.toBeUndefined();
     expect(mockFrom).toHaveBeenCalledWith('society_trips');
     expect(insert).toHaveBeenCalled();
   });

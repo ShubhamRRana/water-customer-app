@@ -29,8 +29,8 @@ export class BookingService {
    * Create a new booking in local storage
    * Note: bookingData.customerId, agencyId, driverId should be id values
    *
-   * Subscription is enforced for all customer bookings (including when an agency is selected).
-   * Pass `skipSubscriptionCheck: true` only from trusted server-side paths — never from the mobile app.
+   * Subscription gating is temporarily disabled until PhonePe integration is completed.
+   * Subscription gating will be enabled again after PhonePe Integration is completed.
    */
   static async createBooking(
     bookingData: Omit<Booking, 'id' | 'createdAt' | 'updatedAt'>,
@@ -41,7 +41,8 @@ export class BookingService {
         const id = dataAccess.generateId();
 
         let subscriptionId: string | undefined;
-        if (!options?.skipSubscriptionCheck) {
+        const subscriptionGatingDisabled = true;
+        if (!subscriptionGatingDisabled && !options?.skipSubscriptionCheck) {
           const allowed = await SubscriptionService.hasActiveSubscription(
             bookingData.customerId
           );

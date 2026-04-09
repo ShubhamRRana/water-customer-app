@@ -92,29 +92,14 @@ describe('BookingService', () => {
       await expect(BookingService.createBooking(mockBookingData)).rejects.toThrow('Storage error');
     });
 
-    it('should require subscription even when agencyId is set', async () => {
+    it('allows booking even when subscription is inactive (gating temporarily disabled)', async () => {
       jest.spyOn(SubscriptionService, 'hasActiveSubscription').mockResolvedValueOnce(false);
 
-      await expect(
-        BookingService.createBooking({
-          ...mockBookingData,
-          agencyId: 'agency-1',
-          agencyName: 'Test Agency',
-        }),
-      ).rejects.toThrow(ERROR_MESSAGES.booking.subscriptionRequired);
-    });
-
-    it('allows skipSubscriptionCheck for trusted server paths only', async () => {
-      jest.spyOn(SubscriptionService, 'hasActiveSubscription').mockResolvedValue(false);
-
-      const bookingId = await BookingService.createBooking(
-        {
-          ...mockBookingData,
-          agencyId: 'agency-1',
-          agencyName: 'Agency',
-        },
-        { skipSubscriptionCheck: true },
-      );
+      const bookingId = await BookingService.createBooking({
+        ...mockBookingData,
+        agencyId: 'agency-1',
+        agencyName: 'Test Agency',
+      });
 
       expect(bookingId).toBeTruthy();
     });

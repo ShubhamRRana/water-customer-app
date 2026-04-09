@@ -366,10 +366,11 @@ const AddTripScreen: React.FC = () => {
       const photoUrls = await Promise.all(
         photoUris.map(uri => StorageService.uploadSocietyTripPhoto(uri, user.id).then(r => r.url)),
       );
+      const agencyAdminId = selectedAgency?.id;
       await SocietyTripService.createTrip({
         customerId: user.id,
         agencyName: name,
-        agencyAdminId: selectedAgency?.id ?? undefined,
+        ...(agencyAdminId ? { agencyAdminId } : {}),
         scheduledAt: scheduled,
         tankerSizeLiters: liters,
         tankerAmount: amountParsed.amount,

@@ -7,6 +7,8 @@
 
 import { supabase } from '../lib/supabaseClient';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as FileSystem from 'expo-file-system';
 import { handleAsyncOperationWithRethrow, handleError } from '../utils/errorHandler';
 
 export interface UploadResult {
@@ -15,6 +17,34 @@ export interface UploadResult {
 }
 
 export class StorageService {
+  private static async compressImageForUpload(imageUri: string): Promise<string> {
+    // Expo ImagePicker's `quality` doesn't reliably reduce physical file size on all devices.
+    // Society trip photos can be huge (12MP+), so we downscale and compress to keep uploads under bucket limits.
+    try {
+      const info = await FileSystem.getInfoAsync(imageUri, { size: true });
+      const sizeBytes = (info as FileSystem.FileInfo & { size?: number }).size ?? 0;
+
+      // If we can't read size, still run a safe compress path.
+      // If already small, avoid recompress to preserve quality.
+      const shouldCompress = !sizeBytes || sizeBytes > 2.5 * 1024 * 1024;
+      if (!shouldCompress) return imageUri;
+
+      const result = await ImageManipulator.manipulateAsync(
+        imageUri,
+        [{ resize: { width: 1600 } }],
+        {
+          compress: 0.7,
+          format: ImageManipulator.SaveFormat.JPEG,
+        },
+      );
+
+      return result.uri;
+    } catch {
+      // If compression fails (permissions/device edge cases), fall back to original URI.
+      return imageUri;
+    }
+  }
+
   /**
    * Request permissions for image picker
    */
@@ -310,7 +340,8 @@ export class StorageService {
         : `trip-${customerId}-${uniqueSuffix}.jpg`;
       const filePath = `society-trips/${customerId}/${fileName}`;
 
-      const arrayBuffer = await fetch(imageUri).then((res) => res.arrayBuffer());
+      const uploadUri = await this.compressImageForUpload(imageUri);
+      const arrayBuffer = await fetch(uploadUri).then((res) => res.arrayBuffer());
 
       const { error } = await supabase.storage
         .from('bank-qr-codes')
