@@ -369,6 +369,7 @@ const AddTripScreen: React.FC = () => {
       await SocietyTripService.createTrip({
         customerId: user.id,
         agencyName: name,
+        agencyAdminId: selectedAgency?.id ?? undefined,
         scheduledAt: scheduled,
         tankerSizeLiters: liters,
         tankerAmount: amountParsed.amount,

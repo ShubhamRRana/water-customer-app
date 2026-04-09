@@ -11,6 +11,8 @@ import {
 export interface CreateSocietyTripInput {
   customerId: string;
   agencyName: string;
+  /** Admin/agency user id selected in the UI (enables admin-scoped Trip Details). */
+  agencyAdminId?: string;
   scheduledAt: Date;
   tankerSizeLiters: number;
   /** Amount in ₹ (required when creating from the app) */
@@ -90,6 +92,7 @@ export class SocietyTripService {
       const { error } = await supabase.from('society_trips').insert({
         customer_id: input.customerId,
         agency_name: input.agencyName.trim(),
+        ...(input.agencyAdminId ? { agency_admin_id: input.agencyAdminId } : {}),
         scheduled_at: input.scheduledAt.toISOString(),
         tanker_size_liters: input.tankerSizeLiters,
         tanker_amount: Math.round(input.tankerAmount),
