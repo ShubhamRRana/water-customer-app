@@ -1,4 +1,4 @@
-import { ERROR_MESSAGES } from '../constants/config';
+import { ERROR_MESSAGES, FEATURE_FLAGS } from '../constants/config';
 import { supabase } from '../lib/supabaseClient';
 import { SocietyTrip } from '../types';
 import { handleError } from '../utils/errorHandler';
@@ -82,10 +82,7 @@ export class SocietyTripService {
 
   static async createTrip(input: CreateSocietyTripInput): Promise<void> {
     try {
-      // Subscription gating is temporarily disabled until PhonePe integration is completed.
-      // Subscription gating will be enabled again after PhonePe Integration is completed.
-      const subscriptionGatingDisabled = true;
-      if (!subscriptionGatingDisabled) {
+      if (FEATURE_FLAGS.enableSubscriptionGating) {
         const allowed = await SubscriptionService.hasActiveSubscription(input.customerId);
         if (!allowed) {
           const err = new Error(ERROR_MESSAGES.societyTrip.subscriptionRequired);

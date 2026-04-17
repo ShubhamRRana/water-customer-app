@@ -110,10 +110,31 @@ async function fetchUserWithRole(userId: string, role?: UserRole, retryCount: nu
         .eq('user_id', userId)
         .single();
       
-      // If customer data not found and this is the first attempt, retry once
-      if (customerError && retryCount === 0) {
-        await new Promise<void>(resolve => setTimeout(() => resolve(), 100)); // Small delay
-        return fetchUserWithRole(userId, role, 1);
+      // If customer profile row is missing (common when older trigger didn't create it),
+      // create it now (user is authenticated at login) and retry once.
+      if (customerError) {
+        const isNoRows = (customerError as any)?.code === 'PGRST116';
+        if (isNoRows && retryCount === 0) {
+          const { error: createCustomerError } = await supabase
+            .from('customers')
+            .upsert(
+              {
+                user_id: userId,
+                saved_addresses: [],
+              },
+              { onConflict: 'user_id' }
+            );
+          if (!createCustomerError) {
+            await new Promise<void>(resolve => setTimeout(() => resolve(), 50));
+            return fetchUserWithRole(userId, role, 1);
+          }
+        }
+
+        // If customer data not found and this is the first attempt, retry once (race condition)
+        if (retryCount === 0) {
+          await new Promise<void>(resolve => setTimeout(() => resolve(), 100)); // Small delay
+          return fetchUserWithRole(userId, role, 1);
+        }
       }
       
       customerData = data;
@@ -258,6 +279,8 @@ async function getUserRoles(userId: string): Promise<UserRole[]> {
  * ```
  */
 export class AuthService {
+  private static registerInFlight: Map<string, Promise<AuthResult>> = new Map();
+
   /**
    * Register a new user and save to local storage.
    * 
@@ -295,11 +318,17 @@ export class AuthService {
     role: UserRole,
     additionalData?: Partial<AppUser>
   ): Promise<AuthResult> {
-    try {
-      // Sanitize inputs
-      const sanitizedEmail = SanitizationUtils.sanitizeEmail(email);
-      const sanitizedName = SanitizationUtils.sanitizeName(name);
-      const sanitizedPhone = additionalData?.phone ? SanitizationUtils.sanitizePhone(additionalData.phone) : undefined;
+    // Sanitize inputs early so we can dedupe concurrent requests
+    const sanitizedEmail = SanitizationUtils.sanitizeEmail(email);
+    const sanitizedName = SanitizationUtils.sanitizeName(name);
+    const sanitizedPhone = additionalData?.phone ? SanitizationUtils.sanitizePhone(additionalData.phone) : undefined;
+
+    const inflightKey = `${sanitizedEmail.toLowerCase()}|${role}`;
+    const existing = AuthService.registerInFlight.get(inflightKey);
+    if (existing) return await existing;
+
+    const work = (async (): Promise<AuthResult> => {
+      try {
 
       // Validate email format
       const emailValidation = ValidationUtils.validateEmail(sanitizedEmail, true);
@@ -528,11 +557,17 @@ export class AuthService {
 
           // Skip to role-specific data creation (will be handled below)
         } else if (authError || !authData.user) {
-          const errorMessage = authError ? (authError as any).message : 'Registration failed';
-          securityLogger.logRegistrationAttempt(sanitizedEmail, role, false, errorMessage);
+          const rawMessage = authError ? (authError as any).message : 'Registration failed';
+          const normalized = String(rawMessage || '').toLowerCase();
+          const errorMessage =
+            normalized.includes('email rate limit exceeded') ||
+            (normalized.includes('rate limit') && normalized.includes('email'))
+              ? 'Email rate limit exceeded. Please wait 1–2 minutes and try again.'
+              : rawMessage;
+          securityLogger.logRegistrationAttempt(sanitizedEmail, role, false, errorMessage || 'Registration failed');
           return {
             success: false,
-            error: errorMessage
+            error: errorMessage || 'Registration failed'
           };
         } else {
           // New user successfully created in Supabase Auth.
@@ -647,9 +682,9 @@ export class AuthService {
         success: true,
         user: newUser
       };
-    } catch (error) {
+      } catch (error) {
       securityLogger.logRegistrationAttempt(
-        SanitizationUtils.sanitizeEmail(email),
+        sanitizedEmail,
         role,
         false,
         getErrorMessage(error, 'Registration failed')
@@ -658,7 +693,13 @@ export class AuthService {
         success: false,
         error: getErrorMessage(error, 'Registration failed')
       };
-    }
+      } finally {
+        AuthService.registerInFlight.delete(inflightKey);
+      }
+    })();
+
+    AuthService.registerInFlight.set(inflightKey, work);
+    return await work;
   }
 
   /**

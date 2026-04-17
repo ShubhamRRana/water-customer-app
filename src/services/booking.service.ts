@@ -1,4 +1,4 @@
-import { ERROR_MESSAGES } from '../constants/config';
+import { ERROR_MESSAGES, FEATURE_FLAGS } from '../constants/config';
 import { dataAccess } from '../lib/index';
 import { Booking, BookingStatus } from '../types/index';
 import { handleAsyncOperationWithRethrow, handleError } from '../utils/errorHandler';
@@ -41,8 +41,7 @@ export class BookingService {
         const id = dataAccess.generateId();
 
         let subscriptionId: string | undefined;
-        const subscriptionGatingDisabled = true;
-        if (!subscriptionGatingDisabled && !options?.skipSubscriptionCheck) {
+        if (FEATURE_FLAGS.enableSubscriptionGating && !options?.skipSubscriptionCheck) {
           const allowed = await SubscriptionService.hasActiveSubscription(
             bookingData.customerId
           );

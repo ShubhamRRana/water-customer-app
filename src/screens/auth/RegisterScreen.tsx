@@ -177,6 +177,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleRegister = async () => {
+    if (isLoading) return;
     const sanitizedEmail = SanitizationUtils.sanitizeEmail(email);
     const sanitizedName = SanitizationUtils.sanitizeName(name);
     const sanitizedPhone = SanitizationUtils.sanitizePhone(phone);

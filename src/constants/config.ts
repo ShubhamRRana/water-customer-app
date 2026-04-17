@@ -273,6 +273,7 @@ export const FEATURE_FLAGS = {
   enableDriverSelfRegistration: false, // Disabled in MVP
   enableRatingsAndReviews: false, // Disabled in MVP
   enableImmediateBookings: false, // Disabled in MVP
+  enableSubscriptionGating: false, // Temporarily disabled until subscription model go-live
 };
 
 // Development Configuration
