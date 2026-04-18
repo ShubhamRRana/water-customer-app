@@ -5,6 +5,7 @@ import {
   DriverUser,
   AdminUser,
   UserSubscription,
+  CustomerAccountKind,
 } from '../types/index';
 import { ERROR_MESSAGES } from '../constants/config';
 import { securityLogger, SecurityEventType, SecuritySeverity } from '../utils/securityLogger';
@@ -15,6 +16,70 @@ import { dataAccess } from '../lib/index';
 import { deserializeDate } from '../utils/dateSerialization';
 import { handleError } from '../utils/errorHandler';
 import { getErrorMessage } from '../utils/errors';
+
+/** Optional fields passed only from app registration flows */
+type RegisterAdditionalData = Partial<AppUser> & { customerAccountKind?: CustomerAccountKind };
+
+function normalizeCustomerAccountKind(value: unknown): CustomerAccountKind {
+  return value === 'society' ? 'society' : 'individual';
+}
+
+/**
+ * Reads customers.account_kind, syncs from auth user_metadata.customer_account_kind when needed
+ * (e.g. email confirmation flow before DB was updated).
+ */
+async function resolveAndSyncCustomerAccountKind(userId: string): Promise<CustomerAccountKind> {
+  const { data: row } = await supabase
+    .from('customers')
+    .select('account_kind')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  const dbKind = normalizeCustomerAccountKind(row?.account_kind);
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  const sessionUser = sessionData?.session?.user;
+  const metaRaw =
+    sessionUser?.id === userId ? sessionUser.user_metadata?.customer_account_kind : undefined;
+  const metaKind = metaRaw !== undefined && metaRaw !== null
+    ? normalizeCustomerAccountKind(metaRaw)
+    : null;
+
+  if (metaKind !== null && metaKind !== dbKind) {
+    const { error } = await supabase
+      .from('customers')
+      .update({ account_kind: metaKind })
+      .eq('user_id', userId);
+    if (!error) {
+      return metaKind;
+    }
+  }
+
+  return dbKind;
+}
+
+/** When login used the wrong screen (individual vs society), block and sign out. */
+async function rejectWrongCustomerAccountKind(
+  userId: string,
+  appUser: AppUser,
+  expectedCustomerAccountKind: CustomerAccountKind | undefined,
+  sanitizedEmail: string
+): Promise<AuthResult | null> {
+  if (appUser.role !== 'customer' || expectedCustomerAccountKind === undefined) {
+    return null;
+  }
+  const resolved = await resolveAndSyncCustomerAccountKind(userId);
+  if (resolved !== expectedCustomerAccountKind) {
+    securityLogger.logAuthAttempt(sanitizedEmail, false, 'Customer account kind mismatch');
+    rateLimiter.record('login', sanitizedEmail);
+    await supabase.auth.signOut();
+    return {
+      success: false,
+      error: ERROR_MESSAGES.auth.roleMismatch,
+    };
+  }
+  return null;
+}
 
 /**
  * Result of authentication operations
@@ -121,6 +186,7 @@ async function fetchUserWithRole(userId: string, role?: UserRole, retryCount: nu
               {
                 user_id: userId,
                 saved_addresses: [],
+                account_kind: 'individual',
               },
               { onConflict: 'user_id' }
             );
@@ -316,12 +382,16 @@ export class AuthService {
     password: string,
     name: string,
     role: UserRole,
-    additionalData?: Partial<AppUser>
+    additionalData?: RegisterAdditionalData
   ): Promise<AuthResult> {
     // Sanitize inputs early so we can dedupe concurrent requests
     const sanitizedEmail = SanitizationUtils.sanitizeEmail(email);
     const sanitizedName = SanitizationUtils.sanitizeName(name);
     const sanitizedPhone = additionalData?.phone ? SanitizationUtils.sanitizePhone(additionalData.phone) : undefined;
+    const registrationCustomerKind =
+      role === 'customer'
+        ? normalizeCustomerAccountKind((additionalData as RegisterAdditionalData)?.customerAccountKind)
+        : 'individual';
 
     const inflightKey = `${sanitizedEmail.toLowerCase()}|${role}`;
     const existing = AuthService.registerInFlight.get(inflightKey);
@@ -470,6 +540,9 @@ export class AuthService {
               name: sanitizedName,
               role: role,
               phone: sanitizedPhone,
+              ...(role === 'customer'
+                ? { customer_account_kind: registrationCustomerKind }
+                : {}),
             },
             emailRedirectTo: authSuccessUrl,
           }
@@ -615,6 +688,7 @@ export class AuthService {
             .insert({
               user_id: userId,
               saved_addresses: [],
+              account_kind: registrationCustomerKind,
             });
 
           if (customerError) {
@@ -622,6 +696,18 @@ export class AuthService {
             return {
               success: false,
               error: customerError.message || 'Failed to create customer profile'
+            };
+          }
+        } else {
+          const { error: akError } = await supabase
+            .from('customers')
+            .update({ account_kind: registrationCustomerKind })
+            .eq('user_id', userId);
+          if (akError) {
+            securityLogger.logRegistrationAttempt(sanitizedEmail, role, false, akError.message);
+            return {
+              success: false,
+              error: akError.message || 'Failed to update customer account type'
             };
           }
         }
@@ -733,7 +819,19 @@ export class AuthService {
    * }
    * ```
    */
-  static async login(email: string, password: string, preferredRole?: UserRole): Promise<AuthResult> {
+  /**
+   * Resolved account kind for a customer session (DB + optional sync from auth metadata).
+   */
+  static async getCustomerAccountKind(userId: string): Promise<CustomerAccountKind> {
+    return resolveAndSyncCustomerAccountKind(userId);
+  }
+
+  static async login(
+    email: string,
+    password: string,
+    preferredRole?: UserRole,
+    expectedCustomerAccountKind?: CustomerAccountKind
+  ): Promise<AuthResult> {
     try {
       // Sanitize email input
       const sanitizedEmail = SanitizationUtils.sanitizeEmail(email);
@@ -843,6 +941,16 @@ export class AuthService {
           };
         }
 
+        const kindReject = await rejectWrongCustomerAccountKind(
+          userId,
+          appUser,
+          expectedCustomerAccountKind,
+          sanitizedEmail
+        );
+        if (kindReject) {
+          return kindReject;
+        }
+
         // Record successful login
         rateLimiter.record('login', sanitizedEmail);
         securityLogger.logAuthAttempt(sanitizedEmail, true, undefined, appUser.id);
@@ -868,6 +976,16 @@ export class AuthService {
             success: false,
             error: 'Failed to fetch user data'
           };
+        }
+
+        const kindRejectSingle = await rejectWrongCustomerAccountKind(
+          userId,
+          appUser,
+          expectedCustomerAccountKind,
+          sanitizedEmail
+        );
+        if (kindRejectSingle) {
+          return kindRejectSingle;
         }
 
         // Record successful login

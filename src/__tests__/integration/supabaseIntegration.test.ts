@@ -157,8 +157,15 @@ jest.mock('../../lib/supabaseClient', () => {
             error: null,
           });
         } else if (table === 'customers' && column === 'user_id') {
+          const customerRow = mockCustomers.find(c => c.user_id === value) || null;
           queryBuilder.single = jest.fn().mockResolvedValue({
-            data: mockCustomers.find(c => c.user_id === value) || null,
+            data: customerRow,
+            error: null,
+          });
+          queryBuilder.maybeSingle = jest.fn().mockResolvedValue({
+            data: customerRow
+              ? { account_kind: customerRow.account_kind ?? 'individual' }
+              : null,
             error: null,
           });
         } else if (table === 'drivers' && column === 'user_id') {

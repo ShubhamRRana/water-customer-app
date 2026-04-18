@@ -13,7 +13,7 @@
     "test:coverage": "jest --coverage",
     "secrets:check": "node scripts/verify-no-client-secrets.mjs",
     "lint": "expo lint",
-    "test:release": "jest src/__tests__/services/booking.service.test.ts src/__tests__/services/societyTrip.service.test.ts --passWithNoTests",
+    "test:release": "jest src/__tests__/services/booking.service.test.ts src/__tests__/services/societyTrip.service.test.ts src/__tests__/services/customerAccountKind.test.ts --passWithNoTests",
     "prebuild:check": "npm run secrets:check && npm run lint && npm run test:release"
   },
   "dependencies": {

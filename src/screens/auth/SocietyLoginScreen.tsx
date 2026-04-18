@@ -260,7 +260,10 @@ const SocietyLoginScreen: React.FC<Props> = ({ navigation }) => {
             <Typography variant="body" style={styles.footerText}>
               New to TankerHub?{' '}
             </Typography>
-            <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Register')}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('Register', { accountKind: 'society' })}
+            >
               <Typography variant="body" style={styles.linkText}>
                 Create an account
               </Typography>

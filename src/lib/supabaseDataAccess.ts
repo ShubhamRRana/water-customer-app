@@ -77,6 +77,8 @@ interface UserRoleRow {
 interface CustomerRow {
   user_id: string;
   saved_addresses: unknown; // JSONB
+  /** individual | society — enforced at login; default individual */
+  account_kind?: string;
   created_at: string;
   updated_at: string;
 }

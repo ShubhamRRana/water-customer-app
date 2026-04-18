@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User, UserRole, AdminUser, CustomerAccountKind } from '../types/index';
+import { User, UserRole, AdminUser, CustomerAccountKind, isCustomerUser } from '../types/index';
 import { AuthService } from '../services/auth.service';
 import { supabase } from '../lib/supabaseClient';
 import { handleError } from '../utils/errorHandler';
@@ -73,6 +73,7 @@ interface AuthState {
     name: string,
     role: UserRole,
     phone: string,
+    customerAccountKind?: CustomerAccountKind,
     businessName?: string
   ) => Promise<{ needsEmailConfirmation?: boolean } | void>;
   logout: () => Promise<void>;
@@ -193,7 +194,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           }
           throw userError;
         }
-        const kind = userData ? await readStoredCustomerAccountKind() : null;
+        let kind: CustomerAccountKind | null = null;
+        if (userData && isCustomerUser(userData)) {
+          try {
+            kind = await AuthService.getCustomerAccountKind(userData.id);
+            await writeStoredCustomerAccountKind(kind);
+          } catch {
+            kind = await readStoredCustomerAccountKind();
+          }
+        }
         set({
           user: userData,
           isAuthenticated: !!userData,
@@ -304,16 +313,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Set pending role BEFORE auth to prevent listener from overriding with wrong role
     set({ isLoading: true, pendingLoginRole: role });
     try {
-      const result = await AuthService.login(email, password, role);
+      const result = await AuthService.login(email, password, role, accountKind);
       if (result.success && result.user) {
-        const kind = accountKind ?? 'individual';
-        await writeStoredCustomerAccountKind(kind);
+        let kind: CustomerAccountKind = accountKind ?? 'individual';
+        if (isCustomerUser(result.user)) {
+          kind = await AuthService.getCustomerAccountKind(result.user.id);
+          await writeStoredCustomerAccountKind(kind);
+        }
         set({
           user: result.user,
           isAuthenticated: true,
           isLoading: false,
           pendingLoginRole: null,
-          customerAccountKind: kind,
+          customerAccountKind: isCustomerUser(result.user) ? kind : null,
           showSocietySubscriptionIntro: kind === 'society',
         });
       } else {
@@ -349,20 +361,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     name: string,
     role: UserRole,
     phone: string,
+    customerAccountKind?: CustomerAccountKind,
     businessName?: string
   ) => {
     set({ isLoading: true });
     try {
-      const additionalData: Partial<User> = { phone };
+      const additionalData: Partial<User> & { customerAccountKind?: CustomerAccountKind } = {
+        phone,
+        ...(role === 'customer'
+          ? { customerAccountKind: customerAccountKind ?? 'individual' }
+          : {}),
+      };
       if (role === 'admin' && businessName) {
         (additionalData as Partial<AdminUser>).businessName = businessName;
       }
       const result = await AuthService.register(email, password, name, role, additionalData);
       if (result.success && result.user) {
+        let resolvedKind: CustomerAccountKind | null = null;
+        if (isCustomerUser(result.user)) {
+          resolvedKind = await AuthService.getCustomerAccountKind(result.user.id);
+          await writeStoredCustomerAccountKind(resolvedKind);
+        }
         set({
           user: result.user,
           isAuthenticated: true,
           isLoading: false,
+          customerAccountKind: resolvedKind,
+          showSocietySubscriptionIntro: resolvedKind === 'society',
         });
         return;
       }
@@ -453,9 +478,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         try {
           const userData = await AuthService.getCurrentUserData(userId);
           if (userData) {
-            const kind = await readStoredCustomerAccountKind();
+            let kind: CustomerAccountKind | null = null;
+            if (isCustomerUser(userData)) {
+              try {
+                kind = await AuthService.getCustomerAccountKind(userId);
+                await writeStoredCustomerAccountKind(kind);
+              } catch {
+                kind = await readStoredCustomerAccountKind();
+              }
+            }
             const showIntro =
-              kind === 'individual'
+              kind === null || kind === 'individual'
                 ? false
                 : authEvent === 'SIGNED_IN'
                   ? true

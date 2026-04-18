@@ -15,7 +15,7 @@ import { useAuthStore } from '../../store/authStore';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
 import { SUCCESS_MESSAGES } from '../../constants/config';
 import { handleError } from '../../utils/errorHandler';
-import { AuthStackParamList } from '../../types/index';
+import { AuthStackParamList, CustomerAccountKind } from '../../types/index';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { Typography, Button, Card } from '../../components/common';
@@ -29,7 +29,9 @@ interface Props {
   route: RegisterScreenRouteProp;
 }
 
-const RegisterScreen: React.FC<Props> = ({ navigation }) => {
+const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
+  const registrationAccountKind: CustomerAccountKind =
+    route.params?.accountKind === 'society' ? 'society' : 'individual';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -203,12 +205,27 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     setErrors({});
 
     try {
-      const regResult = await register(sanitizedEmail, password, sanitizedName, 'customer', sanitizedPhone);
+      const regResult = await register(
+        sanitizedEmail,
+        password,
+        sanitizedName,
+        'customer',
+        sanitizedPhone,
+        registrationAccountKind
+      );
       if (regResult?.needsEmailConfirmation) {
         Alert.alert(
           'Confirm your email',
           SUCCESS_MESSAGES.auth.registerNeedsEmailConfirmation,
-          [{ text: 'OK', onPress: () => navigation.navigate('Login', { accountType: 'individual' }) }]
+          [
+            {
+              text: 'OK',
+              onPress: () =>
+                registrationAccountKind === 'society'
+                  ? navigation.navigate('SocietyLogin')
+                  : navigation.navigate('Login', { accountType: 'individual' }),
+            },
+          ]
         );
       } else {
         Alert.alert('Success', SUCCESS_MESSAGES.auth.registerSuccess);

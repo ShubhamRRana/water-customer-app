@@ -206,7 +206,7 @@ export interface AuthStackParamList {
   RoleSelection: undefined;
   Login: { accountType?: 'individual' };
   SocietyLogin: undefined;
-  Register: undefined;
+  Register: { accountKind?: CustomerAccountKind };
   [key: string]: object | undefined;
 }
 
