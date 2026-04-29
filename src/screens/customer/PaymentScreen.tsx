@@ -11,14 +11,14 @@ import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RouteProp } from '@react-navigation/native';
-import { Typography, LoadingSpinner } from '../../components/common';
+import { Typography, ScreenLoading, ScreenError } from '../../components/common';
 import Button from '../../components/common/Button';
 import {
   PhonePeService,
   parseInitiatePaymentResponse,
 } from '../../services/phonepe.service';
 import { CustomerStackParamList } from '../../navigation/rootNavigation';
-import { UI_CONFIG, PRICING_CONFIG } from '../../constants/config';
+import { UI_CONFIG, PRICING_CONFIG, LOADING_MESSAGES } from '../../constants/config';
 import { errorLogger } from '../../utils/errorLogger';
 import Constants from 'expo-constants';
 
@@ -111,7 +111,7 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
         <Header onBack={() => navigation.goBack()} title="Pay with PhonePe" />
-        <LoadingSpinner />
+        <ScreenLoading message={LOADING_MESSAGES.payment.processing} />
       </SafeAreaView>
     );
   }
@@ -120,12 +120,7 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
         <Header onBack={() => navigation.goBack()} title="Pay with PhonePe" />
-        <View style={styles.center}>
-          <Typography variant="body" style={{ color: UI_CONFIG.colors.textSecondary, textAlign: 'center' }}>
-            {error}
-          </Typography>
-          <Button title="Try again" onPress={() => void startCheckout()} style={{ marginTop: 16 }} />
-        </View>
+        <ScreenError message={error} onRetry={() => void startCheckout()} />
       </SafeAreaView>
     );
   }
@@ -205,7 +200,6 @@ const styles = StyleSheet.create({
   },
   backBtn: { padding: UI_CONFIG.spacing.xs },
   headerTitle: { flex: 1, textAlign: 'center' },
-  center: { flex: 1, justifyContent: 'center', padding: 24, alignItems: 'center' },
   summary: {
     padding: UI_CONFIG.spacing.md,
     borderBottomWidth: 1,

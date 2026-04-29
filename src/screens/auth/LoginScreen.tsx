@@ -1,15 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
@@ -19,6 +14,7 @@ import { getErrorMessage } from '../../utils/errors';
 import { AuthStackParamList } from '../../types/index';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Typography, Button, Card } from '../../components/common';
+import { AuthScreenLayout } from '../../components/layouts';
 import { UI_CONFIG } from '../../constants/config';
 
 type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
@@ -32,14 +28,14 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  
+
   const { loginWithCredentialsAndRole, isLoading } = useAuthStore();
 
   // Real-time validation handlers
   const handleEmailChange = (text: string) => {
     const sanitized = SanitizationUtils.sanitizeEmail(text);
     setEmail(sanitized);
-    
+
     if (sanitized) {
       const validation = ValidationUtils.validateEmail(sanitized);
       const errMsg = validation.error;
@@ -63,7 +59,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   const handlePasswordChange = (text: string) => {
     setPassword(text);
-    
+
     if (text) {
       const validation = ValidationUtils.validatePassword(text);
       const errMsg = validation.error;
@@ -88,7 +84,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const handleLogin = async () => {
     // Sanitize inputs
     const sanitizedEmail = SanitizationUtils.sanitizeEmail(email);
-    
+
     // Validate inputs
     const emailValidation = ValidationUtils.validateEmail(sanitizedEmail);
     const passwordValidation = ValidationUtils.validatePassword(password);
@@ -108,7 +104,9 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       await loginWithCredentialsAndRole(sanitizedEmail, password, 'customer', 'individual');
     } catch (error) {
       const errorMessage = getErrorMessage(error, 'Login failed');
-      const isRoleMismatch = errorMessage.includes('not found with selected role') || errorMessage.includes('User not found with selected role');
+      const isRoleMismatch =
+        errorMessage.includes('not found with selected role') ||
+        errorMessage.includes('User not found with selected role');
 
       handleError(error, {
         context: { operation: 'login', email: sanitizedEmail, preferredRole: 'customer' },
@@ -118,217 +116,91 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const watermarkPositions = useMemo(() => {
-    const screenWidth = Dimensions.get('window').width;
-    const screenHeight = Dimensions.get('window').height;
-    const iconSize = 50;
-    const minSpacing = 70;
-    const positions: Array<{ top: number; left: number }> = [];
-    const watermarkCount = 24;
-    const maxAttempts = 100;
-
-    const hasOverlap = (newTop: number, newLeft: number, existing: Array<{ top: number; left: number }>) => {
-      for (const pos of existing) {
-        const distance = Math.sqrt(Math.pow(newTop - pos.top, 2) + Math.pow(newLeft - pos.left, 2));
-        if (distance < minSpacing) return true;
-      }
-      return false;
-    };
-
-    for (let i = 0; i < watermarkCount; i++) {
-      let attempts = 0;
-      let top: number;
-      let left: number;
-      do {
-        top = Math.random() * (screenHeight - iconSize - 40) + 20;
-        left = Math.random() * (screenWidth - iconSize - 40) + 20;
-        attempts++;
-        if (attempts > maxAttempts) {
-          const cols = Math.floor(screenWidth / minSpacing);
-          const rows = Math.floor(screenHeight / minSpacing);
-          const gridIndex = i % (cols * rows);
-          const col = gridIndex % cols;
-          const row = Math.floor(gridIndex / cols);
-          top = row * minSpacing + 20;
-          left = col * minSpacing + 20;
-          break;
-        }
-      } while (hasOverlap(top, left, positions));
-      positions.push({ top, left });
-    }
-    return positions;
-  }, []);
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        {watermarkPositions.map((position, index) => (
-          <View
-            key={index}
-            style={[
-              styles.watermarkContainer,
-              {
-                top: position.top,
-                left: position.left,
-              },
-            ]}
-          >
-            <Ionicons name="person-outline" size={50} color={UI_CONFIG.colors.textSecondary} />
-          </View>
-        ))}
-        <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-          <TouchableOpacity
-            style={styles.backRow}
-            onPress={() => navigation.navigate('RoleSelection')}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <Ionicons name="chevron-back" size={24} color={UI_CONFIG.colors.accent} />
-            <Typography variant="body" style={styles.backLabel}>
-              Account type
+    <AuthScreenLayout
+      watermarkIcon="person-outline"
+      title="Individual sign in"
+      subtitle="Order water tankers for personal use"
+      backLabel="Account type"
+      onBack={() => navigation.navigate('RoleSelection')}
+      bottomNotice="Reset password is not available yet. Please keep your password safe."
+    >
+      <Card padding="large" style={styles.formCard}>
+        <View style={styles.form}>
+          <View style={styles.inputContainer}>
+            <Typography variant="body" style={styles.label}>
+              Email address
             </Typography>
-          </TouchableOpacity>
-
-          <View style={styles.header}>
-            <Typography variant="h1" style={styles.title}>
-              Individual sign in
-            </Typography>
-            <Typography variant="body" style={styles.subtitle}>
-              Order water tankers for personal use
-            </Typography>
-          </View>
-
-          <Card padding="large" style={styles.formCard}>
-            <View style={styles.form}>
-              <View style={styles.inputContainer}>
-                <Typography variant="body" style={styles.label}>
-                  Email address
-                </Typography>
-                <TextInput
-                  style={[styles.input, errors.email && styles.inputError]}
-                  value={email}
-                  onChangeText={handleEmailChange}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {errors.email ? (
-                  <Typography variant="caption" style={styles.errorText}>
-                    {errors.email}
-                  </Typography>
-                ) : null}
-              </View>
-
-              <View style={styles.inputContainer}>
-                <Typography variant="body" style={styles.label}>
-                  Password
-                </Typography>
-                <View style={styles.passwordInputContainer}>
-                  <TextInput
-                    style={[styles.input, styles.passwordInput, errors.password && styles.inputError]}
-                    value={password}
-                    onChangeText={handlePasswordChange}
-                    secureTextEntry={!showPassword}
-                  />
-                  <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowPassword(!showPassword)}>
-                    <Ionicons
-                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                      size={24}
-                      color={UI_CONFIG.colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                </View>
-                {errors.password ? (
-                  <Typography variant="caption" style={styles.errorText}>
-                    {errors.password}
-                  </Typography>
-                ) : null}
-              </View>
-
-              <Button
-                title={isLoading ? 'Signing in…' : 'Sign in to personal account'}
-                onPress={handleLogin}
-                variant="primary"
-                disabled={isLoading}
-                loading={isLoading}
-                style={styles.submitButton}
-              />
-            </View>
-          </Card>
-
-          <View style={styles.footer}>
-            <Typography variant="body" style={styles.footerText}>
-              New to TankerHub?{' '}
-            </Typography>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('Register', { accountKind: 'individual' })}
-            >
-              <Typography variant="body" style={styles.linkText}>
-                Create an account
+            <TextInput
+              style={[styles.input, errors.email && styles.inputError]}
+              value={email}
+              onChangeText={handleEmailChange}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {errors.email ? (
+              <Typography variant="caption" style={styles.errorText}>
+                {errors.email}
               </Typography>
-            </TouchableOpacity>
+            ) : null}
           </View>
-        </ScrollView>
 
-        <View style={styles.bottomNoticeWrapper} pointerEvents="none">
-          <Typography variant="caption" style={styles.bottomNoticeText}>
-            Reset password is not available yet. Please keep your password safe.
-          </Typography>
+          <View style={styles.inputContainer}>
+            <Typography variant="body" style={styles.label}>
+              Password
+            </Typography>
+            <View style={styles.passwordInputContainer}>
+              <TextInput
+                style={[styles.input, styles.passwordInput, errors.password && styles.inputError]}
+                value={password}
+                onChangeText={handlePasswordChange}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowPassword(!showPassword)}>
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={24}
+                  color={UI_CONFIG.colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
+            {errors.password ? (
+              <Typography variant="caption" style={styles.errorText}>
+                {errors.password}
+              </Typography>
+            ) : null}
+          </View>
+
+          <Button
+            title={isLoading ? 'Signing in…' : 'Sign in to personal account'}
+            onPress={handleLogin}
+            variant="primary"
+            disabled={isLoading}
+            loading={isLoading}
+            style={styles.submitButton}
+          />
         </View>
-    </KeyboardAvoidingView>
-    </SafeAreaView>
+      </Card>
+
+      <View style={styles.footer}>
+        <Typography variant="body" style={styles.footerText}>
+          New to TankerHub?{' '}
+        </Typography>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('Register', { accountKind: 'individual' })}
+        >
+          <Typography variant="body" style={styles.linkText}>
+            Create an account
+          </Typography>
+        </TouchableOpacity>
+      </View>
+    </AuthScreenLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
-    position: 'relative',
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-    paddingBottom: 96,
-    zIndex: 1,
-  },
-  backRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    marginBottom: 16,
-  },
-  backLabel: {
-    color: UI_CONFIG.colors.accent,
-    fontWeight: '600',
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    fontFamily: 'PlayfairDisplay-Regular',
-    color: UI_CONFIG.colors.text,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 8,
-  },
   formCard: {
     marginBottom: 24,
   },
@@ -394,28 +266,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
-  watermarkContainer: {
-    position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
-    opacity: 0.06,
-    zIndex: 0,
-    pointerEvents: 'none',
-  },
-  bottomNoticeWrapper: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 16,
-    zIndex: 2,
-    alignItems: 'center',
-  },
-  bottomNoticeText: {
-    textAlign: 'center',
-    color: UI_CONFIG.colors.textSecondary,
-    lineHeight: 18,
-  },
 });
 
 export default LoginScreen;
-

@@ -19,9 +19,11 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
 import Card from '../../components/common/Card';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { Typography, CustomerMenuDrawer, Button } from '../../components/common';
+import { Typography, CustomerMenuDrawer, Button, ScreenLoading, ScreenEmpty } from '../../components/common';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
+import AppScreenHeader, {
+  AppScreenHeaderTrailingSpacer,
+} from '../../components/layouts/AppScreenHeader';
 import { SocietyTrip } from '../../types';
 import { societyPaymentPeriodKey, type CustomerStackParamList } from '../../navigation/rootNavigation';
 import { BOOKING_CONFIG, UI_CONFIG } from '../../constants/config';
@@ -29,6 +31,7 @@ import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
 import { PricingUtils } from '../../utils/pricing';
 import { SocietyTripService } from '../../services/societyTrip.service';
+import { useRefreshControl } from '../../hooks/useRefreshControl';
 
 type TripDetailsNavigationProp = StackNavigationProp<CustomerStackParamList, 'TripDetails'>;
 
@@ -63,7 +66,6 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
   const { user, logout, customerAccountKind } = useAuthStore();
   const [trips, setTrips] = useState<SocietyTrip[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [photoPreviewUri, setPhotoPreviewUri] = useState<string | null>(null);
   const [tankerBreakdownVisible, setTankerBreakdownVisible] = useState(false);
@@ -175,16 +177,14 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
     });
   }, [navigation, periodType, selectedYear, selectedMonth]);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    try {
+  const { refreshing, onRefresh } = useRefreshControl(
+    useCallback(async () => {
       await loadTripDetailsData();
-    } catch {
-      Alert.alert('Error', 'Could not load trip details. Try again.');
-    } finally {
-      setRefreshing(false);
-    }
-  };
+    }, [loadTripDetailsData]),
+    {
+      onError: () => Alert.alert('Error', 'Could not load trip details. Try again.'),
+    },
+  );
 
   const handleLogout = async () => {
     try {
@@ -344,12 +344,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
   if (isLoading && !trips.length) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <LoadingSpinner />
-          <Typography variant="body" style={styles.loadingText}>
-            Loading trip details…
-          </Typography>
-        </View>
+        <ScreenLoading message="Loading trip details…" />
       </SafeAreaView>
     );
   }
@@ -357,51 +352,43 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={() => setMenuVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="menu" size={24} color={UI_CONFIG.colors.text} />
-          </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
-            <Typography variant="h2" style={styles.title}>
-              {selectionMode ? 'Select trips' : 'Trip details'}
-            </Typography>
-            <Typography variant="body" style={styles.subtitle}>
-              {selectionMode
-                ? `${selectedIds.length} selected`
-                : `${filteredTrips.length} ${filteredTrips.length === 1 ? 'trip' : 'trips'} logged`}
-            </Typography>
-          </View>
-          {filteredTrips.length > 0 ? (
-            selectionMode ? (
-              <TouchableOpacity
-                style={styles.headerAction}
-                onPress={exitSelectionMode}
-                activeOpacity={0.7}
-                disabled={deleting}
-              >
-                <Typography variant="body" style={styles.headerActionText}>
-                  Cancel
-                </Typography>
-              </TouchableOpacity>
+        <AppScreenHeader
+          left={{ type: 'menu', onPress: () => setMenuVisible(true) }}
+          title={selectionMode ? 'Select trips' : 'Trip details'}
+          subtitle={
+            selectionMode
+              ? `${selectedIds.length} selected`
+              : `${filteredTrips.length} ${filteredTrips.length === 1 ? 'trip' : 'trips'} logged`
+          }
+          right={
+            filteredTrips.length > 0 ? (
+              selectionMode ? (
+                <TouchableOpacity
+                  style={styles.headerAction}
+                  onPress={exitSelectionMode}
+                  activeOpacity={0.7}
+                  disabled={deleting}
+                >
+                  <Typography variant="body" style={styles.headerActionText}>
+                    Cancel
+                  </Typography>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.headerAction}
+                  onPress={() => setSelectionMode(true)}
+                  activeOpacity={0.7}
+                >
+                  <Typography variant="body" style={styles.headerActionText}>
+                    Select
+                  </Typography>
+                </TouchableOpacity>
+              )
             ) : (
-              <TouchableOpacity
-                style={styles.headerAction}
-                onPress={() => setSelectionMode(true)}
-                activeOpacity={0.7}
-              >
-                <Typography variant="body" style={styles.headerActionText}>
-                  Select
-                </Typography>
-              </TouchableOpacity>
+              <AppScreenHeaderTrailingSpacer />
             )
-          ) : (
-            <View style={styles.headerActionPlaceholder} />
-          )}
-        </View>
+          }
+        />
 
         <View style={styles.periodTypeToggle}>
           <View style={styles.glassRadioGroup}>
@@ -584,15 +571,16 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
           }
           ListEmptyComponent={
             <Card style={styles.emptyState}>
-              <Ionicons name="car-outline" size={48} color={UI_CONFIG.colors.textSecondary} />
-              <Typography variant="body" style={styles.emptyTitle}>
-                {trips.length === 0 ? 'No trips yet' : 'No trips in this period'}
-              </Typography>
-              <Typography variant="caption" style={styles.emptySubtext}>
-                {trips.length === 0
-                  ? 'Trips you add from Home appear here.'
-                  : 'Try another month or year, or switch between Month and Year.'}
-              </Typography>
+              <ScreenEmpty
+                compact
+                icon="car-outline"
+                title={trips.length === 0 ? 'No trips yet' : 'No trips in this period'}
+                message={
+                  trips.length === 0
+                    ? 'Trips you add from Home appear here.'
+                    : 'Try another month or year, or switch between Month and Year.'
+                }
+              />
             </Card>
           }
           renderItem={({ item }) => {
@@ -860,32 +848,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: UI_CONFIG.colors.background,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    color: UI_CONFIG.colors.textSecondary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
-    backgroundColor: UI_CONFIG.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
-  },
-  menuButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
   headerAction: {
     minWidth: 64,
     paddingVertical: 8,
@@ -893,20 +855,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
-  headerActionPlaceholder: {
-    minWidth: 64,
-  },
   headerActionText: {
     color: UI_CONFIG.colors.accent,
     fontWeight: '600',
-  },
-  title: {
-    color: UI_CONFIG.colors.text,
-    fontWeight: '700',
-  },
-  subtitle: {
-    color: UI_CONFIG.colors.textSecondary,
-    marginTop: 4,
   },
   periodTypeToggle: {
     paddingHorizontal: UI_CONFIG.spacing.lg,
@@ -1195,19 +1146,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   emptyState: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyTitle: {
-    marginTop: 16,
-    fontWeight: '600',
-    color: UI_CONFIG.colors.textSecondary,
-  },
-  emptySubtext: {
-    marginTop: 8,
-    textAlign: 'center',
-    color: UI_CONFIG.colors.textSecondary,
-    paddingHorizontal: 16,
+    overflow: 'hidden',
   },
   photoModalRoot: {
     flex: 1,

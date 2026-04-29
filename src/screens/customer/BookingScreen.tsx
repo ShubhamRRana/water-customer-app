@@ -17,8 +17,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useCreateBookingMutation, useUsersByRoleQuery, useVehiclesByAgencyQuery } from '../../hooks/queries';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { Typography } from '../../components/common';
+import { Typography, ScreenLoading } from '../../components/common';
 import TankerSelectionModal from '../../components/customer/TankerSelectionModal';
 import AgencySelectionModal from '../../components/customer/AgencySelectionModal';
 import SavedAddressModal from '../../components/customer/SavedAddressModal';
@@ -429,10 +428,7 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
   if (createBookingMutation.isPending) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <LoadingSpinner />
-          <Typography variant="body" style={styles.loadingText}>Creating your booking...</Typography>
-        </View>
+        <ScreenLoading message="Creating your booking..." />
       </SafeAreaView>
     );
   }
@@ -606,17 +602,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingBottom: 24,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: UI_CONFIG.colors.background,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
   },
   header: {
     flexDirection: 'row',

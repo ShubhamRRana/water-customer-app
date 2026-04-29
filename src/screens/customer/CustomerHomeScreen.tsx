@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
-  TouchableOpacity, 
   Alert, 
   ScrollView, 
   RefreshControl
@@ -17,9 +16,10 @@ import { useCustomerBookingsQuery } from '../../hooks/queries';
 import { getErrorMessage } from '../../utils/errors';
 import { isCustomerUser } from '../../types';
 import Card from '../../components/common/Card';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { Typography, CustomerMenuDrawer } from '../../components/common';
+import { Typography, CustomerMenuDrawer, ScreenLoading, ScreenEmpty } from '../../components/common';
+import { useRefreshControl } from '../../hooks/useRefreshControl';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
+import AppScreenHeader from '../../components/layouts/AppScreenHeader';
 import { BookingStatus } from '../../types';
 import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
 import { UI_CONFIG } from '../../constants/config';
@@ -45,19 +45,14 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
     ? getErrorMessage(bookingsQueryError, 'Failed to load bookings')
     : null;
 
-  const [refreshing, setRefreshing] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await refetchBookings();
-    } catch (error) {
+  const refetchBookingsSafe = useCallback(() => refetchBookings(), [refetchBookings]);
+  const { refreshing, onRefresh } = useRefreshControl(refetchBookingsSafe, {
+    onError: (error) => {
       errorLogger.medium('Failed to refresh customer data', error, { userId: user?.id });
-    } finally {
-      setRefreshing(false);
-    }
-  };
+    },
+  });
 
   const handleLogout = async () => {
     try {
@@ -149,10 +144,7 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
   if (bookingsLoading && !bookings.length) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <LoadingSpinner />
-          <Typography variant="body" style={styles.loadingText}>Loading your dashboard...</Typography>
-        </View>
+        <ScreenLoading message="Loading your dashboard..." />
       </SafeAreaView>
     );
   }
@@ -165,22 +157,12 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity 
-            style={styles.menuButton} 
-            onPress={() => setMenuVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="menu" size={24} color={UI_CONFIG.colors.text} />
-          </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
-            <Typography variant="body" style={styles.greeting}>Good {getGreeting()},</Typography>
-            <Typography variant="h2" style={styles.userName}>Hi, {user?.name || 'User'}</Typography>
-          </View>
-        </View>
-      </View>
+      <AppScreenHeader
+        left={{ type: 'menu', onPress: () => setMenuVisible(true) }}
+        subtitle={`Good ${getGreeting()},`}
+        title={`Hi, ${user?.name || 'User'}`}
+        subtitleFirst
+      />
 
       {/* Quick Actions */}
       <View style={styles.section}>
@@ -270,9 +252,12 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
           ))
         ) : (
           <Card style={styles.emptyState}>
-            <Ionicons name="receipt-outline" size={48} color={UI_CONFIG.colors.textSecondary} />
-            <Typography variant="body" style={styles.emptyStateText}>No orders yet</Typography>
-            <Typography variant="caption" style={styles.emptyStateSubtext}>Book your first tanker to get started</Typography>
+            <ScreenEmpty
+              compact
+              icon="receipt-outline"
+              title="No orders yet"
+              message="Book your first tanker to get started"
+            />
           </Card>
         )}
       </View>
@@ -313,46 +298,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: UI_CONFIG.colors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: UI_CONFIG.colors.background,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
-  },
-  header: {
-    backgroundColor: UI_CONFIG.colors.surface,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  menuButton: {
-    padding: 8,
-    marginRight: 12,
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
-  greeting: {
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
-    marginBottom: 4,
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: UI_CONFIG.colors.text,
   },
   section: {
     paddingHorizontal: 20,
@@ -462,20 +407,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   emptyState: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyStateText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: UI_CONFIG.colors.textSecondary,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateSubtext: {
-    fontSize: 14,
-    color: UI_CONFIG.colors.textSecondary,
-    textAlign: 'center',
+    overflow: 'hidden',
   },
   errorContainer: {
     margin: 20,

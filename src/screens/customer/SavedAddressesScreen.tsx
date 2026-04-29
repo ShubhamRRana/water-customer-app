@@ -13,8 +13,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import Card from '../../components/common/Card';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { Typography } from '../../components/common';
+import { Typography, ScreenLoading } from '../../components/common';
 import { Address, isCustomerUser } from '../../types';
 import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
 import { dataAccess } from '../../lib';
@@ -188,10 +187,7 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <LoadingSpinner />
-          <Typography variant="body" style={styles.loadingText}>Loading addresses...</Typography>
-        </View>
+        <ScreenLoading message="Loading addresses..." />
       </SafeAreaView>
     );
   }
@@ -328,17 +324,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: UI_CONFIG.colors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: UI_CONFIG.colors.background,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
   },
   header: {
     flexDirection: 'row',

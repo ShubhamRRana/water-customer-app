@@ -13,8 +13,7 @@ import { RouteProp } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
 import { useBookingByIdQuery, useBookingRealtimeSubscription } from '../../hooks/queries';
 import Card from '../../components/common/Card';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { Typography } from '../../components/common';
+import { Typography, ScreenLoading, ScreenError, ScreenEmpty } from '../../components/common';
 import { BookingStatus } from '../../types';
 import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
 import { PricingUtils } from '../../utils/pricing';
@@ -203,10 +202,7 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
   if (isPending) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <LoadingSpinner />
-          <Typography variant="body" style={styles.loadingText}>Loading order details...</Typography>
-        </View>
+        <ScreenLoading message="Loading order details..." />
       </SafeAreaView>
     );
   }
@@ -214,12 +210,7 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
   if (isError) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <Typography variant="body" style={styles.loadingText}>Failed to load order.</Typography>
-          <TouchableOpacity onPress={() => refetch()} style={{ marginTop: 16 }}>
-            <Typography variant="body" style={{ color: UI_CONFIG.colors.accent }}>Tap to retry</Typography>
-          </TouchableOpacity>
-        </View>
+        <ScreenError message="Failed to load order." onRetry={() => refetch()} retryLabel="Tap to retry" />
       </SafeAreaView>
     );
   }
@@ -227,12 +218,12 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
   if (!booking) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <Typography variant="body" style={styles.loadingText}>Order not found.</Typography>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16 }}>
-            <Typography variant="body" style={{ color: UI_CONFIG.colors.accent }}>Go back</Typography>
-          </TouchableOpacity>
-        </View>
+        <ScreenEmpty
+          icon="receipt-outline"
+          title="Order not found."
+          actionLabel="Go back"
+          onAction={() => navigation.goBack()}
+        />
       </SafeAreaView>
     );
   }
@@ -382,17 +373,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: UI_CONFIG.colors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: UI_CONFIG.colors.background,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
   },
   header: {
     flexDirection: 'row',

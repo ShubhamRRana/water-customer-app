@@ -16,7 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useFocusEffect } from '@react-navigation/native';
-import { Typography, LoadingSpinner, CustomerMenuDrawer } from '../../components/common';
+import { Typography, CustomerMenuDrawer, ScreenLoading, ScreenError } from '../../components/common';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
@@ -261,12 +261,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <LoadingSpinner size="large" />
-          <Typography variant="body" style={styles.loadingText}>
-            Loading profile...
-          </Typography>
-        </View>
+        <ScreenLoading message="Loading profile..." size="large" />
       </SafeAreaView>
     );
   }
@@ -274,14 +269,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   if (!user) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.errorContainer}>
-          <Typography variant="h3" style={styles.errorTitle}>
-            Profile Not Found
-          </Typography>
-          <Typography variant="body" style={styles.errorText}>
-            Unable to load your profile. Please try logging in again.
-          </Typography>
-        </View>
+        <ScreenError
+          title="Profile Not Found"
+          message="Unable to load your profile. Please try logging in again."
+        />
       </SafeAreaView>
     );
   }
@@ -620,33 +611,6 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingBottom: 32,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  loadingText: {
-    marginTop: 16,
-    color: UI_CONFIG.colors.textSecondary,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  errorTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: UI_CONFIG.colors.error,
-    marginBottom: 8,
-  },
-  errorText: {
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
-    textAlign: 'center',
   },
   headerGradient: {
     paddingTop: 8,

@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useFocusEffect } from '@react-navigation/native';
-import { Typography, CustomerMenuDrawer, LoadingSpinner } from '../../components/common';
+import { Typography, CustomerMenuDrawer, ScreenLoading } from '../../components/common';
 import Card from '../../components/common/Card';
 import { useAuthStore } from '../../store/authStore';
 import { SubscriptionService } from '../../services/subscription.service';
@@ -135,7 +135,7 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
       </ScrollView>
 
       {loading ? (
-        <LoadingSpinner />
+        <ScreenLoading message="Loading payments..." />
       ) : (
         <ScrollView
           contentContainerStyle={styles.scroll}

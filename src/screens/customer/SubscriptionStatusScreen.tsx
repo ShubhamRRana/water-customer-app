@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useFocusEffect } from '@react-navigation/native';
-import { Typography, CustomerMenuDrawer, LoadingSpinner } from '../../components/common';
+import { Typography, CustomerMenuDrawer, ScreenLoading } from '../../components/common';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import { useAuthStore } from '../../store/authStore';
@@ -120,7 +120,7 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       {loading ? (
-        <LoadingSpinner />
+        <ScreenLoading message="Loading subscription..." />
       ) : (
         <ScrollView
           contentContainerStyle={styles.scroll}

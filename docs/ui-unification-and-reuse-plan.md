@@ -49,22 +49,23 @@ It reflects your priorities:
 
 Order is intentional: **layouts and atoms before** moving files or renaming navigators (**UI 4 / UI 5**).
 
-### 1. Auth screen shell (`AuthScreenLayout` or similar)
+### 1. Auth screen shell (`AuthScreenLayout` or similar) — **implemented (Phase 1)**
 
-- **Single component** for: `SafeAreaView`, `KeyboardAvoidingView`, optional watermark layer (children or config for icon + positions), `ScrollView` defaults (`keyboardShouldPersistTaps`, `contentContainerStyle`).
-- **Slots**: `topBar` (back + label), `header` (title + subtitle), `children` (usually `Card` + form).
-- **Outcome**: `LoginScreen` / `SocietyLoginScreen` / `RegisterScreen` / `RoleSelectionScreen` shrink to content + navigation only; styling differences become props or small wrappers.
+- **`AuthScreenLayout`** (`src/components/layouts/AuthScreenLayout.tsx`): `SafeAreaView`, `KeyboardAvoidingView`, watermark layer (`watermarkIcon` prop), `ScrollView` with `keyboardShouldPersistTaps` + shared `contentContainerStyle`.
+- **API**: `title`, `subtitle`, `backLabel`, `onBack`, optional `bottomNotice`, `children` (form `Card`, footer links, etc.).
+- **Adopted**: `LoginScreen`, `SocietyLoginScreen`. **Next candidates**: `RegisterScreen`, `RoleSelectionScreen`.
 
-### 2. Main app shell (`AppScreenLayout` / `MainScreenHeader`)
+### 2. Main app shell (`AppScreenHeader`) — **implemented (Phase 2)**
 
-- **Header row**: left (menu or back), center (title + subtitle), right (optional action or placeholder for alignment).
-- **Integration**: Works with existing `CustomerMenuDrawer` pattern; consider a tiny hook `useMenuDrawer()` or pass `onMenuPress` so society-heavy screens do not copy header markup.
-- **Outcome**: Replace repeated `header` `StyleSheet` blocks with one component + tokens from `UI_CONFIG` (`constants/config`).
+- **`AppScreenHeader`** (`src/components/layouts/AppScreenHeader.tsx`): shared in-app header row — left `menu` or `back`, center title + subtitle (optional `subtitleFirst` for greeting-first layouts), optional `right` action; **`AppScreenHeaderTrailingSpacer`** for balanced alignment when there is no action.
+- **Tokens**: `UI_CONFIG.appScreenHeader` in `constants/config.ts` (padding, left button hit area, trailing min width).
+- **Adopted**: `CustomerHomeScreen`, `TripDetailsScreen`, `OrderHistoryScreen`.
 
-### 3. Standard async UI states
+### 3. Standard async UI states — **implemented (Phase 3)**
 
-- **Small primitives**: `ScreenLoading` (spinner + message), `ScreenError` (message + retry), `ScreenEmpty` (icon + message + optional CTA).
-- **Optional**: `useRefreshControl` helper for the repeated `refreshing` + `loadX` pattern on home/history-style screens.
+- **`ScreenLoading`**, **`ScreenError`**, **`ScreenEmpty`** (`src/components/common/`): shared full-screen and embedded empty patterns; align copy with query `isPending` / list empty states.
+- **`useRefreshControl`** (`src/hooks/useRefreshControl.ts`): shared `refreshing` + `onRefresh` for pull-to-refresh with optional `onError`.
+- **Adopted** on primary customer/society screens that duplicated spinners (home, orders, trip details, tracking, booking, profile, saved addresses, payment flow, subscription/payment history).
 
 ### 4. Folder and naming (after shells exist)
 
@@ -117,9 +118,9 @@ Complete [`state-management-migration.md`](./state-management-migration.md) firs
 
 | UI phase | Scope | Exit criteria |
 |----------|--------|----------------|
-| **UI 1** | `AuthScreenLayout` + adopt on 2 auth screens (e.g. `Login` + `SocietyLogin`) | Visual parity; no behavior change; critical auth tests pass. |
-| **UI 2** | `AppScreenHeader` (or `AppScreenLayout`) + adopt on 2–3 high-traffic screens (e.g. `CustomerHome`, `TripDetails`) | Duplicate header styles removed or reduced; menu/back behavior unchanged. |
-| **UI 3** | `ScreenLoading` / `ScreenError` / `ScreenEmpty` where repeated | Consistent UX; fewer one-off spinners; loading states align with **query** `isPending` / `isFetching` where applicable. |
+| **UI 1** ✅ **completed** | `AuthScreenLayout` + adopt on `LoginScreen` + `SocietyLoginScreen` | `AuthScreenLayout` in `src/components/layouts/`; scroll/back/header/watermark/bottom-notice shell shared; form logic unchanged; navigation test passes. |
+| **UI 2** ✅ **completed** | `AppScreenHeader` + adopt on `CustomerHome`, `TripDetails`, `OrderHistory` | Shared header + `UI_CONFIG.appScreenHeader`; menu/back + title/subtitle + optional trailing action; duplicate header blocks removed on adopted screens. |
+| **UI 3** ✅ **completed** | `ScreenLoading` / `ScreenError` / `ScreenEmpty` where repeated | Consistent UX; fewer one-off spinners; loading states align with **query** `isPending` / `isFetching` where applicable. |
 | **UI 4** | Optional: move shared screens under `screens/shared/` + update imports | No duplicate screen components; docs/README mention structure. |
 | **UI 5** | Optional: rename `CustomerNavigator` / `CustomerStackParamList` | Grep-clean rename; all tests and deep links updated. **Do as its own PR** after UI 1–3 (or 4) stabilize. |
 
@@ -156,3 +157,9 @@ Once you confirm these, implementation follows **UI 1 → UI 2 → …** with sm
 - Add **performance** tweaks only where lists or mega-components justify them; protect **critical flows** in tests as you go.
 
 Use **UI 1** as the first UI milestone once server state and cleanup match the migration doc; defer **UI 5** if you want to avoid churn until the rest is stable.
+
+**Phase 1 status:** Completed — shared auth shell is in place for login flows; extend `AuthScreenLayout` to remaining auth screens when ready (**UI 1** optional follow-up).
+
+**Phase 2 status:** Completed — `AppScreenHeader` and `appScreenHeader` tokens added; `CustomerHomeScreen`, `TripDetailsScreen`, and `OrderHistoryScreen` use the shared header; menu and trip selection header actions unchanged in behavior.
+
+**Phase 3 status:** Completed — `ScreenLoading`, `ScreenError`, and `ScreenEmpty` live under `src/components/common/`; `useRefreshControl` wraps pull-to-refresh on bookings home/history and trip details; adoption sweeps the main duplicated loading/error/empty patterns above.

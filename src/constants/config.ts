@@ -115,6 +115,15 @@ export const UI_CONFIG = {
     xl: 20,
     xxl: 24,
   },
+  /** In-app screens: menu/back row + title + optional trailing action */
+  appScreenHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    leftButtonPadding: 8,
+    leftButtonMarginRight: 12,
+    trailingMinWidth: 64,
+  },
 };
 
 // Validation Configuration

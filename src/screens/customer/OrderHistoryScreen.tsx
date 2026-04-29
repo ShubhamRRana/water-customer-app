@@ -15,9 +15,10 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuthStore } from '../../store/authStore';
 import { useCustomerBookingsQuery, useCancelBookingMutation } from '../../hooks/queries';
 import Card from '../../components/common/Card';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { Typography, CustomerMenuDrawer } from '../../components/common';
+import { Typography, CustomerMenuDrawer, ScreenLoading, ScreenEmpty } from '../../components/common';
+import { useRefreshControl } from '../../hooks/useRefreshControl';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
+import AppScreenHeader from '../../components/layouts/AppScreenHeader';
 import { Booking, BookingStatus } from '../../types';
 import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
 import { PricingUtils } from '../../utils/pricing';
@@ -40,7 +41,13 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
   } = useCustomerBookingsQuery(user?.id);
   const cancelBookingMutation = useCancelBookingMutation();
   
-  const [refreshing, setRefreshing] = useState(false);
+  const refetchBookingsSafe = useCallback(() => refetchBookings(), [refetchBookings]);
+  const { refreshing, onRefresh } = useRefreshControl(refetchBookingsSafe, {
+    onError: (error) => {
+      errorLogger.medium('Failed to refresh customer bookings', error, { userId: user?.id });
+      Alert.alert('Error', 'Failed to load your orders. Please try again.');
+    },
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<BookingStatus | 'all'>('all');
   const [menuVisible, setMenuVisible] = useState(false);
@@ -73,18 +80,6 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
 
     return filtered;
   }, [bookings, searchQuery, selectedFilter]);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await refetchBookings();
-    } catch (error) {
-      errorLogger.medium('Failed to refresh customer bookings', error, { userId: user?.id });
-      Alert.alert('Error', 'Failed to load your orders. Please try again.');
-    } finally {
-      setRefreshing(false);
-    }
-  };
 
   // Calculate counts for each filter
   const filterCounts = useMemo(() => {
@@ -183,10 +178,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
   if (isLoading && !bookings.length) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <LoadingSpinner />
-          <Typography variant="body" style={styles.loadingText}>Loading your orders...</Typography>
-        </View>
+        <ScreenLoading message="Loading your orders..." />
       </SafeAreaView>
     );
   }
@@ -202,20 +194,11 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.menuButton} 
-          onPress={() => setMenuVisible(true)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="menu" size={24} color={UI_CONFIG.colors.text} />
-        </TouchableOpacity>
-        <View style={styles.headerTextContainer}>
-          <Typography variant="h2" style={styles.title}>Order History</Typography>
-          <Typography variant="body" style={styles.subtitle}>{bookings.length} total orders</Typography>
-        </View>
-      </View>
+      <AppScreenHeader
+        left={{ type: 'menu', onPress: () => setMenuVisible(true) }}
+        title="Order History"
+        subtitle={`${bookings.length} total orders`}
+      />
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
@@ -357,21 +340,26 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
         style={styles.ordersContainer}
         contentContainerStyle={filteredBookings.length === 0 ? styles.emptyContainer : undefined}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={UI_CONFIG.colors.accent}
+          />
         }
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="receipt-outline" size={64} color={UI_CONFIG.colors.textSecondary} />
-            <Typography variant="h3" style={styles.emptyStateText}>
-              {searchQuery || selectedFilter !== 'all' ? 'No matching orders' : 'No orders yet'}
-            </Typography>
-            <Typography variant="body" style={styles.emptyStateSubtext}>
-              {searchQuery || selectedFilter !== 'all'
-                ? 'Try adjusting your search or filter' 
+          <ScreenEmpty
+            icon="receipt-outline"
+            title={
+              searchQuery || selectedFilter !== 'all'
+                ? 'No matching orders'
+                : 'No orders yet'
+            }
+            message={
+              searchQuery || selectedFilter !== 'all'
+                ? 'Try adjusting your search or filter'
                 : 'Book your first tanker to get started'
-              }
-            </Typography>
-          </View>
+            }
+          />
         }
         removeClippedSubviews={true}
         maxToRenderPerBatch={10}
@@ -400,43 +388,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: UI_CONFIG.colors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: UI_CONFIG.colors.background,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: UI_CONFIG.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
-  },
-  menuButton: {
-    padding: 8,
-    marginRight: 12,
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: UI_CONFIG.colors.text,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
   },
   searchContainer: {
     paddingHorizontal: 20,
@@ -521,24 +472,6 @@ const styles = StyleSheet.create({
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyStateText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: UI_CONFIG.colors.textSecondary,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateSubtext: {
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
-    textAlign: 'center',
   },
   orderCard: {
     marginBottom: 16,
