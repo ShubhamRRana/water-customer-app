@@ -37,7 +37,7 @@ There is no “better library” than Zustand for that last bucket. The win come
 - `src/navigation/CustomerNavigator.tsx`
 - `src/screens/auth/LoginScreen.tsx`, `RegisterScreen.tsx`, `SocietyLoginScreen.tsx`
 - `src/screens/customer/BookingScreen.tsx`, `CustomerHomeScreen.tsx`, `ProfileScreen.tsx`, `SavedAddressesScreen.tsx`, `OrderHistoryScreen.tsx`, `PastOrdersScreen.tsx`, `OrderTrackingScreen.tsx` (if any), `PaymentHistoryScreen.tsx`, `SubscriptionPlansScreen.tsx`, `SubscriptionStatusScreen.tsx`
-- `src/screens/society/AddTripScreen.tsx`, `TripDetailsScreen.tsx`, `SubscriptionComingSoonScreen.tsx`, `SettlePaymentPlaceholderScreen.tsx`
+- `src/screens/shared/AddTripScreen.tsx`, `TripDetailsScreen.tsx`, `SettlePaymentPlaceholderScreen.tsx`; `src/screens/society/SubscriptionComingSoonScreen.tsx`
 
 **Server lists / bookings:** `src/hooks/queries/*` (`useCustomerBookingsQuery`, `useUsersByRoleQuery`, `useVehiclesByAgencyQuery`, mutations, realtime subscription helpers).
 
@@ -83,7 +83,7 @@ These stores power fewer screens than booking and are mostly **fetch + list + se
 2. Replace `fetchUsersByRole` / `fetchVehiclesByAgency` **call sites** in:
    - `BookingScreen.tsx`
    - `CustomerHomeScreen.tsx` (user paths)
-   - `AddTripScreen.tsx`
+   - `src/screens/shared/AddTripScreen.tsx`
 3. Keep `subscribeToAllUsers` / `subscribeToAgencyVehicles` behavior initially either:
    - **Still in Zustand** until Phase 1b, or
    - Move to a **`useEffect` + `queryClient.setQueryData`** when the subscription fires.
@@ -97,7 +97,7 @@ These stores power fewer screens than booking and are mostly **fetch + list + se
 - `src/hooks/queries/useVehiclesByAgencyQuery.ts` — `VehicleService.getVehiclesByAgency`, `enabled` when `agencyId` is set.
 - `src/hooks/queries/index.ts` — re-exports.
 - `src/screens/customer/BookingScreen.tsx` — agencies and vehicles from Query; agency change resets vehicle/price via `useEffect` on `selectedAgency?.id`.
-- `src/screens/society/AddTripScreen.tsx` — same pattern for admin list and agency vehicles.
+- `src/screens/shared/AddTripScreen.tsx` — same pattern for admin list and agency vehicles.
 - `src/screens/customer/CustomerHomeScreen.tsx` — bookings via Query only (Phase 4 removed residual `useUserStore` / `userError`).
 
 **Follow-up (optional):** wire user/vehicle **realtime** subscriptions to `queryClient.setQueryData` if live admin lists are required app-wide (was never invoked from screens while stores existed).

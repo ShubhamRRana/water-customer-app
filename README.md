@@ -596,7 +596,8 @@ water-customer-app/
 │   │   └── common/
 │   ├── screens/
 │   │   ├── customer/       # Booking, orders, profile, subscriptions, payments
-│   │   ├── society/        # Trips, placeholders, subscription intro
+│   │   ├── shared/         # Cross-role stack screens: add trip, trip details, settle payment
+│   │   ├── society/        # Society-only flows (e.g. subscription intro)
 │   │   └── auth/           # Role selection, login, society login, register
 │   ├── navigation/
 │   │   ├── AuthNavigator.tsx

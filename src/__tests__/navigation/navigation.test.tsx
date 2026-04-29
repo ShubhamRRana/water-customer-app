@@ -89,13 +89,13 @@ jest.mock('../../screens/customer/BookingScreen', () => {
   return () => <View testID="BookingScreen"><Text>BookingScreen</Text></View>;
 });
 
-jest.mock('../../screens/society/AddTripScreen', () => {
+jest.mock('../../screens/shared/AddTripScreen', () => {
   const React = require('react');
   const { View, Text } = require('react-native');
   return () => <View testID="AddTripScreen"><Text>AddTripScreen</Text></View>;
 });
 
-jest.mock('../../screens/society/TripDetailsScreen', () => {
+jest.mock('../../screens/shared/TripDetailsScreen', () => {
   const React = require('react');
   const { View, Text } = require('react-native');
   return () => (
@@ -105,7 +105,7 @@ jest.mock('../../screens/society/TripDetailsScreen', () => {
   );
 });
 
-jest.mock('../../screens/society/SettlePaymentPlaceholderScreen', () => {
+jest.mock('../../screens/shared/SettlePaymentPlaceholderScreen', () => {
   const React = require('react');
   const { View, Text } = require('react-native');
   return () => (
