@@ -14,7 +14,6 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
 import { useCustomerBookingsQuery } from '../../hooks/queries';
-import { useUserStore } from '../../store/userStore';
 import { getErrorMessage } from '../../utils/errors';
 import { isCustomerUser } from '../../types';
 import Card from '../../components/common/Card';
@@ -45,7 +44,6 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
   const bookingError = bookingsQueryError
     ? getErrorMessage(bookingsQueryError, 'Failed to load bookings')
     : null;
-  const { error: userError } = useUserStore();
 
   const [refreshing, setRefreshing] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -280,10 +278,10 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
       </View>
 
       {/* Error Messages */}
-      {(bookingError || userError) && (
+      {bookingError && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>
-            {bookingError || userError}
+            {bookingError}
           </Text>
         </View>
       )}

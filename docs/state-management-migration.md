@@ -25,11 +25,10 @@ There is no “better library” than Zustand for that last bucket. The win come
 | Store | File | Main responsibilities |
 |-------|------|------------------------|
 | Auth | `src/store/authStore.ts` | Session bootstrap, Supabase `onAuthStateChange`, login/register/logout, `customerAccountKind`, password recovery flags, society intro flag |
-| Booking | `src/store/bookingStore.ts` | Lists, `currentBooking`, CRUD-style actions, **realtime subscription** per booking |
-| User | `src/store/userStore.ts` | Admin/user lists, role fetches, CRUD, realtime subscription for all users |
-| Vehicle | `src/store/vehicleStore.ts` | Agency vehicles, CRUD, realtime subscription per agency |
 
-`src/store/index.ts` re-exports auth, booking, and user (vehicle is imported directly from `vehicleStore.ts` where needed).
+**Removed in Phase 4:** `bookingStore`, `userStore`, and `vehicleStore` — customer and society booking flows use **TanStack Query** + `*Service`; list/cache tests moved to hook tests (see Phase 4).
+
+`src/store/index.ts` re-exports **`useAuthStore`** only.
 
 ### Screen-level consumers (for scoping refactors)
 
@@ -40,28 +39,14 @@ There is no “better library” than Zustand for that last bucket. The win come
 - `src/screens/customer/BookingScreen.tsx`, `CustomerHomeScreen.tsx`, `ProfileScreen.tsx`, `SavedAddressesScreen.tsx`, `OrderHistoryScreen.tsx`, `PastOrdersScreen.tsx`, `OrderTrackingScreen.tsx` (if any), `PaymentHistoryScreen.tsx`, `SubscriptionPlansScreen.tsx`, `SubscriptionStatusScreen.tsx`
 - `src/screens/society/AddTripScreen.tsx`, `TripDetailsScreen.tsx`, `SubscriptionComingSoonScreen.tsx`, `SettlePaymentPlaceholderScreen.tsx`
 
-**`useBookingStore`**
+**Server lists / bookings:** `src/hooks/queries/*` (`useCustomerBookingsQuery`, `useUsersByRoleQuery`, `useVehiclesByAgencyQuery`, mutations, realtime subscription helpers).
 
-- `src/screens/customer/BookingScreen.tsx`, `CustomerHomeScreen.tsx`, `OrderHistoryScreen.tsx`, `PastOrdersScreen.tsx`, `OrderTrackingScreen.tsx`
+### Tests tied to stores and queries
 
-**`useUserStore`**
+- `src/__tests__/store/authStore.test.ts` — auth Zustand
+- `src/hooks/queries/serverDataQueries.test.tsx` — `useUsersByRoleQuery`, `useVehiclesByAgencyQuery`, `useCustomerBookingsQuery` with `QueryClientProvider`
 
-- `src/screens/customer/BookingScreen.tsx`, `CustomerHomeScreen.tsx`
-- `src/screens/society/AddTripScreen.tsx`
-
-**`useVehicleStore`**
-
-- `src/screens/customer/BookingScreen.tsx`
-- `src/screens/society/AddTripScreen.tsx`
-
-### Tests tied to stores
-
-- `src/__tests__/store/authStore.test.ts`
-- `src/__tests__/store/bookingStore.test.ts`
-- `src/__tests__/store/userStore.test.ts`
-- `src/__tests__/store/vehicleStore.test.ts`
-
-Service-level tests under `src/__tests__/services/` remain the best place to validate IO boundaries during migration.
+Service-level tests under `src/__tests__/services/` remain the primary place to validate IO boundaries.
 
 ---
 
@@ -113,13 +98,13 @@ These stores power fewer screens than booking and are mostly **fetch + list + se
 - `src/hooks/queries/index.ts` — re-exports.
 - `src/screens/customer/BookingScreen.tsx` — agencies and vehicles from Query; agency change resets vehicle/price via `useEffect` on `selectedAgency?.id`.
 - `src/screens/society/AddTripScreen.tsx` — same pattern for admin list and agency vehicles.
-- `src/screens/customer/CustomerHomeScreen.tsx` — trims unused `userLoading` / `updateUser` from `useUserStore` (this screen never called the read paths); still uses the store only for `userError` until later phases.
+- `src/screens/customer/CustomerHomeScreen.tsx` — bookings via Query only (Phase 4 removed residual `useUserStore` / `userError`).
 
-Realtime subscriptions remain in Zustand for a follow-up (Phase 1b / Phase 2 adjacent work).
+**Follow-up (optional):** wire user/vehicle **realtime** subscriptions to `queryClient.setQueryData` if live admin lists are required app-wide (was never invoked from screens while stores existed).
 
 ### Phase 2 — `useBookingStore` (lists + mutations, realtime last) — **completed**
 
-Order matters: **lists and mutations before realtime**, because `OrderTrackingScreen` couples subscription + `useBookingStore.subscribe`.
+Order matters: **lists and mutations before realtime**, because `OrderTrackingScreen` originally coupled subscription with the booking store (now **Query + `useBookingRealtimeSubscription`**).
 
 1. **List queries:** `fetchCustomerBookings`, `fetchAvailableBookings`, etc. → `useQuery` with keys like `['bookings', 'customer', customerId]`.
 2. **Mutations:** `createBooking`, `updateBookingStatus`, `cancelBooking` → `useMutation` + invalidate relevant keys.
@@ -140,7 +125,7 @@ Order matters: **lists and mutations before realtime**, because `OrderTrackingSc
 - `src/hooks/queries/bookingQueryUtils.ts` — `setBookingDetailInCache`, `patchBookingInCustomerListCache`.
 - Customer screens wired: `CustomerHomeScreen`, `OrderHistoryScreen`, `PastOrdersScreen`, `BookingScreen`, `OrderTrackingScreen`.
 
-The Zustand **booking store** remains for tests and any non-migrated call sites (e.g. driver/admin); customer flows read/write bookings through React Query + mutations.
+Phase 4 removed the Zustand booking store (no remaining call sites); customer flows use React Query + mutations + realtime cache helpers only.
 
 ### Phase 3 — Auth store: narrow, don’t necessarily delete — **completed**
 
@@ -162,13 +147,21 @@ Defer moving auth until Phases 1–2 stabilize, to avoid debugging session + cac
 - `src/screens/customer/ProfileScreen.tsx`, `SavedAddressesScreen.tsx` — profile query / invalidation wiring.
 - `src/hooks/queries/index.ts` — re-exports auth query helpers.
 
-### Phase 4 — Cleanup
+### Phase 4 — Cleanup — **completed**
 
 1. Remove dead Zustand state and actions whose data now lives only in React Query.
 2. Update or replace `src/__tests__/store/*.test.ts`:
    - Prefer testing **hooks** with `QueryClientProvider` + `wrapper`, or
    - Rely more on **service tests** + a few integration tests.
 3. Re-export pattern: optional `src/hooks/queries/*` or `src/api/queries/*` for discoverability.
+
+**Implemented:**
+
+- Removed `src/store/bookingStore.ts`, `userStore.ts`, `vehicleStore.ts` and deleted `bookingStore` / `userStore` / `vehicleStore` store tests (no production imports after Phases 1–2).
+- `src/store/index.ts` exports **`useAuthStore`** only.
+- `src/screens/customer/CustomerHomeScreen.tsx` — error UI uses bookings query only (no `useUserStore`).
+- `src/hooks/queries/serverDataQueries.test.tsx` — Jest + `QueryClientProvider` coverage for list queries (`jest.mock` paths align with `../../services/*` so real services / Supabase are not loaded).
+- Discoverability: **`src/hooks/queries/index.ts`** remains the barrel for query hooks and helpers.
 
 ---
 
@@ -189,7 +182,7 @@ Use stable, hierarchical keys so invalidation stays predictable:
 
 ## Pitfalls to avoid
 
-1. **Duplicating source of truth** — During migration, avoid both Zustand `bookings` and React Query `bookings` updating independently. Pick one write path; use the other as a temporary shim only.
+1. **Duplicating source of truth** — After Phase 4, **bookings / user lists / vehicles** should not be mirrored in Zustand; use Query cache + `*Service` as the single remote source.
 2. **Realtime + cache** — Always update the same query key the UI reads from; otherwise screens will flicker or show stale data.
 3. **Global loading** — Prefer **per-query** `isPending` / `isFetching` over a single global `isLoading` in Zustand for server work (reduces coupling).
 4. **Auth listener vs Query** — Do not try to “refetch session” with Query; Supabase owns session. Query should reflect **server entities**, not JWT plumbing.
@@ -200,6 +193,6 @@ Use stable, hierarchical keys so invalidation stays predictable:
 
 - **Keep Zustand** for cross-screen **client and auth-adjacent** state (your app already centralizes session and intro flags there).
 - **Add TanStack Query** for **bookings, users, vehicles** (and similar remote data).
-- **Migrate in phases:** Phase 0 (provider), Phase 1 (user/vehicle list reads), Phase 2 (customer booking queries, mutations, realtime → cache), and Phase 3 (auth boundaries + optional profile query) are complete; next is cleanup and tests (Phase 4).
+- **Migrate in phases:** Phases 0–4 are complete: provider, user/vehicle/booking queries, auth profile query boundaries, Zustand cleanup, and hook-based tests for server list queries.
 
 This matches your existing **`services` layer** (`auth.service`, `booking.service`, etc.) and minimizes risky big-bang refactors.
