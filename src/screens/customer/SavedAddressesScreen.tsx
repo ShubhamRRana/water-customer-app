@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import Card from '../../components/common/Card';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -18,7 +19,7 @@ import { Address, isCustomerUser } from '../../types';
 import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
 import { dataAccess } from '../../lib';
 import { UI_CONFIG, LOCATION_CONFIG } from '../../constants/config';
-import { ValidationUtils, SanitizationUtils } from '../../utils';
+import { invalidateAuthProfileQueries } from '../../hooks/queries';
 
 type SavedAddressesScreenNavigationProp = StackNavigationProp<CustomerStackParamList, 'SavedAddresses'>;
 
@@ -27,6 +28,7 @@ interface SavedAddressesScreenProps {
 }
 
 const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation }) => {
+  const queryClient = useQueryClient();
   const { user, updateUser, isLoading } = useAuthStore();
   
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -96,6 +98,7 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
       // Update user in auth store
       if (user) {
         await updateUser({ savedAddresses: updatedAddresses });
+        invalidateAuthProfileQueries(queryClient, user.id);
       }
 
       setNewAddressText('');
@@ -105,7 +108,7 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
     } catch (error) {
       Alert.alert('Error', 'Failed to save address. Please try again.');
     }
-  }, [newAddressText, editingAddress, addresses, user, updateUser]);
+  }, [newAddressText, editingAddress, addresses, user, updateUser, queryClient]);
 
   const handleDeleteAddress = useCallback((addressId: string) => {
     Alert.alert(
@@ -134,8 +137,9 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
               
               if (user) {
                 await updateUser({ savedAddresses: updatedAddresses });
+                invalidateAuthProfileQueries(queryClient, user.id);
               }
-              
+
               Alert.alert('Success', 'Address deleted successfully');
             } catch (error) {
               Alert.alert('Error', 'Failed to delete address. Please try again.');
@@ -144,7 +148,7 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
         },
       ]
     );
-  }, [addresses, user, updateUser]);
+  }, [addresses, user, updateUser, queryClient]);
 
   const handleSetDefault = useCallback(async (addressId: string) => {
     if (!user) {
@@ -162,13 +166,14 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
       
       if (user) {
         await updateUser({ savedAddresses: updatedAddresses });
+        invalidateAuthProfileQueries(queryClient, user.id);
       }
       
       Alert.alert('Success', 'Default address updated successfully');
     } catch (error) {
       Alert.alert('Error', 'Failed to update default address. Please try again.');
     }
-  }, [addresses, user, updateUser]);
+  }, [addresses, user, updateUser, queryClient]);
 
   const handleEditAddress = useCallback((address: Address) => {
     setEditingAddress(address);

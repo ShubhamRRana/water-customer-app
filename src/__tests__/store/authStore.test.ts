@@ -319,6 +319,49 @@ describe('useAuthStore', () => {
     });
   });
 
+  describe('refreshUserProfile', () => {
+    it('should no-op when there is no user', async () => {
+      await useAuthStore.getState().refreshUserProfile();
+      expect(AuthService.getCurrentUserData).not.toHaveBeenCalled();
+    });
+
+    it('should update user when fetch returns data', async () => {
+      const mockUser: User = {
+        id: 'user-1',
+        email: 'test@example.com',
+        password: 'hashed',
+        name: 'Test User',
+        role: 'customer',
+        createdAt: new Date(),
+      };
+      const refreshed: User = { ...mockUser, name: 'Refreshed' };
+      useAuthStore.setState({ user: mockUser, isAuthenticated: true });
+      (AuthService.getCurrentUserData as jest.Mock).mockResolvedValue(refreshed);
+
+      await useAuthStore.getState().refreshUserProfile();
+
+      expect(AuthService.getCurrentUserData).toHaveBeenCalledWith('user-1');
+      expect(useAuthStore.getState().user?.name).toBe('Refreshed');
+    });
+
+    it('should leave user unchanged when fetch returns null', async () => {
+      const mockUser: User = {
+        id: 'user-1',
+        email: 'test@example.com',
+        password: 'hashed',
+        name: 'Test User',
+        role: 'customer',
+        createdAt: new Date(),
+      };
+      useAuthStore.setState({ user: mockUser, isAuthenticated: true });
+      (AuthService.getCurrentUserData as jest.Mock).mockResolvedValue(null);
+
+      await useAuthStore.getState().refreshUserProfile();
+
+      expect(useAuthStore.getState().user?.name).toBe('Test User');
+    });
+  });
+
   describe('setUser', () => {
     it('should set user and update isAuthenticated', () => {
       const mockUser: User = {

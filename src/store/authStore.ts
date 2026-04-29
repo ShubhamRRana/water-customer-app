@@ -39,9 +39,13 @@ function isNetworkFailure(error: unknown): boolean {
 
 /**
  * Authentication store state interface
- * 
- * Manages user authentication state, loading states, and authentication operations.
- * Uses Zustand for state management.
+ *
+ * **Phase 3 — responsibilities (see `docs/state-management-migration.md`):**
+ * Zustand keeps session lifecycle, Supabase `onAuthStateChange`, deep-link recovery,
+ * `AsyncStorage` for customer account kind, and cross-screen flags (`showSocietySubscriptionIntro`,
+ * `needsPasswordReset`). Remote profile rows may also be cached under React Query
+ * (`useAuthProfileQuery`) for refetch/invalidation; this store remains the source for
+ * `user` / `isAuthenticated` used by navigation.
  */
 interface AuthState {
   user: User | null;
@@ -78,6 +82,8 @@ interface AuthState {
   ) => Promise<{ needsEmailConfirmation?: boolean } | void>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
+  /** Refetch profile from the server and update `user` (lighter than full `initializeAuth`). */
+  refreshUserProfile: () => Promise<void>;
   setUser: (user: User | null) => void;
   setLoading: (loading: boolean) => void;
   initializeAuth: () => Promise<void>;
@@ -86,20 +92,8 @@ interface AuthState {
 }
 
 /**
- * Authentication store using Zustand
- * 
- * Provides global authentication state management including:
- * - User data and authentication status
- * - Login, logout, and registration operations
- * - User profile updates
- * - Real-time auth state subscriptions (placeholder for Supabase)
- * 
- * @example
- * ```tsx
- * const { user, login, logout, isAuthenticated } = useAuthStore();
- * 
- * await login('user@example.com', 'password');
- * ```
+ * Authentication store using Zustand — session, flags, and imperative auth API.
+ * Optional profile caching via React Query is layered on in hooks; see `useAuthProfileQuery`.
  */
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
@@ -451,6 +445,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       set({ isLoading: false });
       throw error;
+    }
+  },
+
+  refreshUserProfile: async () => {
+    const { user } = get();
+    if (!user?.id) return;
+    try {
+      const userData = await AuthService.getCurrentUserData(user.id);
+      if (userData) {
+        set({
+          user: userData,
+          isAuthenticated: true,
+        });
+      }
+    } catch (error) {
+      if (!isNetworkFailure(error)) {
+        handleError(error, {
+          context: { operation: 'refreshUserProfile', userId: user.id },
+          userFacing: false,
+          severity: ErrorSeverity.MEDIUM,
+        });
+      }
     }
   },
 

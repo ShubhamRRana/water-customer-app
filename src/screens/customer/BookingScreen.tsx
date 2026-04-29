@@ -51,7 +51,7 @@ const getTodayDateString = (): string => {
 
 const BookingScreen: React.FC<BookingScreenProps> = () => {
   const navigation = useNavigation<BookingScreenNavigationProp>();
-  const { user, isLoading: authLoading, initializeAuth } = useAuthStore();
+  const { user, isLoading: authLoading, initializeAuth, refreshUserProfile } = useAuthStore();
   const createBookingMutation = useCreateBookingMutation();
 
   const [selectedVehicle, setSelectedVehicle] = useState<{ id: string; capacity: number; amount?: number; vehicleNumber: string } | null>(null);
@@ -79,10 +79,10 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
     if (!user && !authLoading) {
       initializeAuth();
     } else if (user && !user.id && !authLoading) {
-      // User exists but missing id - reload auth
-      initializeAuth();
+      // User exists but missing id — lightweight profile reload
+      void refreshUserProfile();
     }
-  }, [user, authLoading, initializeAuth]);
+  }, [user, authLoading, initializeAuth, refreshUserProfile]);
 
   // Load default address when user data is available
   useEffect(() => {
@@ -318,10 +318,9 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
         return;
       }
 
-      // If user exists but missing id, try to reload auth
+      // If user exists but missing id, try reloading profile from server (narrow fetch vs full init)
       if (!currentUser.id) {
-        // Try to reload user data
-        await initializeAuth();
+        await refreshUserProfile();
         const { user: reloadedUser } = useAuthStore.getState();
         
         if (!reloadedUser || !reloadedUser.id) {
@@ -423,7 +422,7 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
       userFacing: true,
     });
     }
-  }, [selectedVehicle, selectedAgency, user, deliveryAddress, deliveryDate, deliveryTime, timePeriod, priceBreakdown, createBookingMutation, initializeAuth, navigation]);
+  }, [selectedVehicle, selectedAgency, user, deliveryAddress, deliveryDate, deliveryTime, timePeriod, priceBreakdown, createBookingMutation, refreshUserProfile, navigation]);
 
 
 

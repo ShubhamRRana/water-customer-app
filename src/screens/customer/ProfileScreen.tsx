@@ -18,6 +18,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Typography, LoadingSpinner, CustomerMenuDrawer } from '../../components/common';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import { AuthService } from '../../services/auth.service';
 import { User } from '../../types';
@@ -25,6 +26,7 @@ import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
 import { APP_CONFIG, UI_CONFIG } from '../../constants/config';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
 import { formatDateOnly } from '../../utils/dateUtils';
+import { invalidateAuthProfileQueries, useAuthProfileQuery } from '../../hooks/queries';
 
 type ProfileScreenNavigationProp = StackNavigationProp<CustomerStackParamList, 'Profile'>;
 
@@ -34,7 +36,11 @@ interface ProfileScreenProps {
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const { user, updateUser, logout, isLoading, customerAccountKind } = useAuthStore();
+  const profileQuery = useAuthProfileQuery(user?.id);
+  const { refetch: refetchProfile } = profileQuery;
+  const displayUser = profileQuery.data ?? user;
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -56,24 +62,17 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const editFormOpacity = useRef(new Animated.Value(0)).current;
   const editFormTranslateY = useRef(new Animated.Value(20)).current;
 
-  useEffect(() => {
-    if (user) {
-      setEditForm({
-        name: user.name || '',
-        email: user.email || '',
-        phone: user.phone || '',
-      });
-    }
-  }, [user]);
-
-  // Reset and replay animations when screen comes into focus
+  // Refetch profile when screen focuses; replay intro animations
   useFocusEffect(
     React.useCallback(() => {
+      if (user?.id) {
+        void refetchProfile();
+      }
       // Reset animation values
       fadeAnim.setValue(0);
       slideAnim.setValue(50);
       scaleAnim.setValue(0.95);
-      
+
       // Reset edit form animation values if not editing
       if (!isEditing) {
         editFormOpacity.setValue(0);
@@ -99,8 +98,27 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           useNativeDriver: true,
         }),
       ]).start();
-    }, [fadeAnim, slideAnim, scaleAnim, editFormOpacity, editFormTranslateY, isEditing])
+    }, [
+      user?.id,
+      refetchProfile,
+      fadeAnim,
+      slideAnim,
+      scaleAnim,
+      editFormOpacity,
+      editFormTranslateY,
+      isEditing,
+    ])
   );
+
+  useEffect(() => {
+    if (displayUser) {
+      setEditForm({
+        name: displayUser.name || '',
+        email: displayUser.email || '',
+        phone: displayUser.phone || '',
+      });
+    }
+  }, [displayUser]);
 
   useEffect(() => {
     if (isEditing) {
@@ -176,6 +194,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       };
 
       await updateUser(updates);
+      if (user.id) invalidateAuthProfileQueries(queryClient, user.id);
       setIsEditing(false);
       Alert.alert('Success', 'Profile updated successfully!');
     } catch (error) {
@@ -184,11 +203,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   };
 
   const handleCancelEdit = () => {
-    if (user) {
+    if (displayUser) {
       setEditForm({
-        name: user.name || '',
-        email: user.email || '',
-        phone: user.phone || '',
+        name: displayUser.name || '',
+        email: displayUser.email || '',
+        phone: displayUser.phone || '',
       });
     }
     setIsEditing(false);
@@ -319,14 +338,14 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               ]}
             >
               <Typography variant="h2" style={styles.userName}>
-                {user.name}
+                {displayUser.name}
               </Typography>
               <Typography variant="body" style={styles.userPhone}>
-                {user.email}
+                {displayUser.email}
               </Typography>
-              {user.phone && (
+              {displayUser.phone && (
                 <Typography variant="body" style={styles.userPhone}>
-                  {user.phone}
+                  {displayUser.phone}
                 </Typography>
               )}
             </Animated.View>
@@ -351,7 +370,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   Member Since
                 </Typography>
                 <Typography variant="body" style={styles.infoValue}>
-                  {formatDate(user.createdAt)}
+                  {formatDate(displayUser.createdAt)}
                 </Typography>
               </View>
             </View>

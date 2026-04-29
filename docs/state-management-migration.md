@@ -142,7 +142,7 @@ Order matters: **lists and mutations before realtime**, because `OrderTrackingSc
 
 The Zustand **booking store** remains for tests and any non-migrated call sites (e.g. driver/admin); customer flows read/write bookings through React Query + mutations.
 
-### Phase 3 — Auth store: narrow, don’t necessarily delete
+### Phase 3 — Auth store: narrow, don’t necessarily delete — **completed**
 
 `authStore.ts` is **highly integrated** (Supabase session, `Linking` recovery flow, `AsyncStorage` for account kind). A full rewrite is unnecessary.
 
@@ -152,6 +152,15 @@ Recommended end state:
 - **Optional:** move **pure profile refresh** (e.g. after update) to a small `useQuery` keyed by user id **if** you want automatic refetch — keep session lifecycle in the store.
 
 Defer moving auth until Phases 1–2 stabilize, to avoid debugging session + cache at the same time.
+
+**Implemented:**
+
+- `src/hooks/queries/queryKeys.ts` — `auth.profile`, `auth.profileIdle`.
+- `src/hooks/queries/useAuthProfileQuery.ts` — `AuthService.getCurrentUserData(userId)`; used on Profile with refetch on focus.
+- `src/hooks/queries/authQueryUtils.ts` — `invalidateAuthProfileQueries` after profile edits.
+- `src/store/authStore.ts` — Phase 3 scope documented; `refreshUserProfile()` for a light server reload (Booking flow when `user.id` was missing vs full `initializeAuth`).
+- `src/screens/customer/ProfileScreen.tsx`, `SavedAddressesScreen.tsx` — profile query / invalidation wiring.
+- `src/hooks/queries/index.ts` — re-exports auth query helpers.
 
 ### Phase 4 — Cleanup
 
@@ -173,7 +182,7 @@ Use stable, hierarchical keys so invalidation stays predictable:
 ['booking', bookingId]
 ['users', 'role', role]
 ['vehicles', 'agency', agencyId]
-['auth', 'profile', userId]   // optional, if you add profile query
+['auth', 'profile', userId]   // optional profile query (Phase 3)
 ```
 
 ---
@@ -191,6 +200,6 @@ Use stable, hierarchical keys so invalidation stays predictable:
 
 - **Keep Zustand** for cross-screen **client and auth-adjacent** state (your app already centralizes session and intro flags there).
 - **Add TanStack Query** for **bookings, users, vehicles** (and similar remote data).
-- **Migrate in phases:** Phase 0 (provider), Phase 1 (user/vehicle list reads), and Phase 2 (customer booking queries, mutations, realtime → cache) are complete; next is optional auth tightening (Phase 3), then cleanup and tests (Phase 4).
+- **Migrate in phases:** Phase 0 (provider), Phase 1 (user/vehicle list reads), Phase 2 (customer booking queries, mutations, realtime → cache), and Phase 3 (auth boundaries + optional profile query) are complete; next is cleanup and tests (Phase 4).
 
 This matches your existing **`services` layer** (`auth.service`, `booking.service`, etc.) and minimizes risky big-bang refactors.

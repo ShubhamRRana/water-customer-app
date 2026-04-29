@@ -1,6 +1,13 @@
 import type { UserRole } from '../../types';
 
 export const queryKeys = {
+  /** Optional profile cache (session lifecycle stays in Zustand `authStore`). */
+  auth: {
+    all: ['auth'] as const,
+    /** When no user id (query disabled). */
+    profileIdle: ['auth', 'profile', '_idle'] as const,
+    profile: (userId: string) => ['auth', 'profile', userId] as const,
+  },
   users: {
     all: ['users'] as const,
     byRole: (role: UserRole) => ['users', 'role', role] as const,
