@@ -18,7 +18,7 @@ There is no “better library” than Zustand for that last bucket. The win come
 ### Dependencies (as of this guide)
 
 - **Zustand** is installed (`package.json`: `zustand`).
-- **TanStack Query is not** installed yet; add it when you start Phase 0.
+- **TanStack Query** is installed (`package.json`: `@tanstack/react-query`). Phase 0 added the provider; **no devtools** yet (optional for a later pass, e.g. Expo web only).
 
 ### Zustand stores today
 
@@ -76,12 +76,17 @@ Service-level tests under `src/__tests__/services/` remain the best place to val
 
 ## Migration order (lowest risk first)
 
-### Phase 0 — Tooling only
+### Phase 0 — Tooling only — **done**
 
 1. Install `@tanstack/react-query` (and enable devtools in development if you want).
 2. Create a **`QueryClient`** (sensible defaults: `staleTime` for lists ~30s–2m depending on how fresh you need bookings).
 3. Wrap the root app (e.g. where `App` or navigation is mounted) in **`QueryClientProvider`**.
 4. **No screen changes yet** — confirm the app still runs.
+
+**Implemented:**
+
+- `src/lib/queryClient.ts` — `createAppQueryClient()` with default query `staleTime` 60s, `gcTime` 5m, `retry` 2.
+- `App.tsx` — `QueryClientProvider` wrapping `SafeAreaProvider` and navigation (client from `useState(() => createAppQueryClient())`).
 
 **Expo / React Native note:** `@tanstack/react-query` works with RN; use the same provider pattern as on web.
 
@@ -162,6 +167,6 @@ Use stable, hierarchical keys so invalidation stays predictable:
 
 - **Keep Zustand** for cross-screen **client and auth-adjacent** state (your app already centralizes session and intro flags there).
 - **Add TanStack Query** for **bookings, users, vehicles** (and similar remote data).
-- **Migrate in phases:** provider → user/vehicle reads → booking lists/mutations → booking realtime → optional auth tightening → tests and store deletion.
+- **Migrate in phases:** Phase 0 (provider) is complete; next is user/vehicle reads → booking lists/mutations → booking realtime → optional auth tightening → tests and store deletion.
 
 This matches your existing **`services` layer** (`auth.service`, `booking.service`, etc.) and minimizes risky big-bang refactors.

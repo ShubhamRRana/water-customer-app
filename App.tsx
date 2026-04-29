@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
@@ -14,6 +15,7 @@ import { useAuthStore } from './src/store/authStore';
 
 // Components
 import ErrorBoundary from './src/components/common/ErrorBoundary';
+import { createAppQueryClient } from './src/lib/queryClient';
 
 // Types
 import { User, isCustomerUser } from './src/types';
@@ -24,6 +26,7 @@ export type { RootStackParamList };
 const Stack = createStackNavigator<RootStackParamList>();
 
 const App: React.FC = () => {
+  const [queryClient] = useState(() => createAppQueryClient());
   const { user, initializeAuth } = useAuthStore();
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
 
@@ -69,20 +72,22 @@ const App: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <SafeAreaProvider>
-        <NavigationContainer ref={navigationRef}>
-          <StatusBar style="light" />
-          <Stack.Navigator
-            initialRouteName={getInitialRouteName(user)}
-            screenOptions={{
-              headerShown: false,
-            }}
-          >
-            <Stack.Screen name="Auth" component={AuthNavigator} />
-            <Stack.Screen name="Customer" component={CustomerNavigator} />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </SafeAreaProvider>
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider>
+          <NavigationContainer ref={navigationRef}>
+            <StatusBar style="light" />
+            <Stack.Navigator
+              initialRouteName={getInitialRouteName(user)}
+              screenOptions={{
+                headerShown: false,
+              }}
+            >
+              <Stack.Screen name="Auth" component={AuthNavigator} />
+              <Stack.Screen name="Customer" component={CustomerNavigator} />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </SafeAreaProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 };
