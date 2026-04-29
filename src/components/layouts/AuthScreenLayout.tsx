@@ -6,7 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,9 +26,8 @@ export interface AuthScreenLayoutProps {
 }
 
 function useWatermarkPositions() {
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   return useMemo(() => {
-    const screenWidth = Dimensions.get('window').width;
-    const screenHeight = Dimensions.get('window').height;
     const iconSize = 50;
     const minSpacing = 70;
     const positions: Array<{ top: number; left: number }> = [];
@@ -69,7 +68,7 @@ function useWatermarkPositions() {
       positions.push({ top, left });
     }
     return positions;
-  }, []);
+  }, [screenWidth, screenHeight]);
 }
 
 /**

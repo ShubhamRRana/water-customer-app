@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +22,7 @@ interface Props {
 }
 
 const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [selectedAccount, setSelectedAccount] = useState<'individual' | 'society' | null>(null);
   const [isButtonPressed, setIsButtonPressed] = useState(false);
 
@@ -50,8 +51,6 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const watermarkPositions = useMemo(() => {
-    const screenWidth = Dimensions.get('window').width;
-    const screenHeight = Dimensions.get('window').height;
     const iconSize = 50;
     const minSpacing = 70;
     const positions: Array<{ top: number; left: number }> = [];
@@ -98,7 +97,7 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
     }
 
     return positions;
-  }, []);
+  }, [screenWidth, screenHeight]);
 
   const renderWatermarkIcon = (index: number) => {
     if (index < 10) {

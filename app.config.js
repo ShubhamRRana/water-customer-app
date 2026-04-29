@@ -11,13 +11,18 @@ module.exports = {
     name: 'water-tanker-app',
     slug: 'water-tanker-app',
     version: '1.0.0',
-    orientation: 'portrait',
+    orientation: 'default',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
     splash: {
       image: './assets/splash-icon.png',
       resizeMode: 'contain',
       backgroundColor: '#ffffff',
+    },
+    // Transparent status bar for edge-to-edge (splash alone would use #fff and legacy APIs).
+    androidStatusBar: {
+      backgroundColor: '#00000000',
+      barStyle: 'light-content',
     },
     ios: {
       supportsTablet: true,
