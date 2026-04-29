@@ -38,11 +38,16 @@ jest.mock('@react-navigation/bottom-tabs', () => {
   return {
     createBottomTabNavigator: () => ({
       Navigator: ({ children }: { children: React.ReactNode }) => <View testID="TabNavigator">{children}</View>,
-      Screen: ({ component: Component }: { component: React.ComponentType; name: string }) => 
+      Screen: ({ component: Component }: { component: React.ComponentType; name: string }) =>
         Component ? <Component /> : null,
     }),
   };
 });
+
+jest.mock('../../store/authStore', () => ({
+  useAuthStore: (selector: (state: { showSocietySubscriptionIntro: boolean }) => unknown) =>
+    selector({ showSocietySubscriptionIntro: false }),
+}));
 
 import React from 'react';
 import { render } from '@testing-library/react-native';
@@ -54,6 +59,16 @@ jest.mock('../../screens/auth/LoginScreen', () => {
   const React = require('react');
   const { View, Text } = require('react-native');
   return () => <View testID="LoginScreen"><Text>LoginScreen</Text></View>;
+});
+
+jest.mock('../../screens/auth/SocietyLoginScreen', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return () => (
+    <View testID="SocietyLoginScreen">
+      <Text>SocietyLoginScreen</Text>
+    </View>
+  );
 });
 
 jest.mock('../../screens/auth/RegisterScreen', () => {
@@ -78,6 +93,76 @@ jest.mock('../../screens/society/AddTripScreen', () => {
   const React = require('react');
   const { View, Text } = require('react-native');
   return () => <View testID="AddTripScreen"><Text>AddTripScreen</Text></View>;
+});
+
+jest.mock('../../screens/society/TripDetailsScreen', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return () => (
+    <View testID="TripDetailsScreen">
+      <Text>TripDetailsScreen</Text>
+    </View>
+  );
+});
+
+jest.mock('../../screens/society/SettlePaymentPlaceholderScreen', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return () => (
+    <View testID="SettlePaymentPlaceholderScreen">
+      <Text>SettlePaymentPlaceholderScreen</Text>
+    </View>
+  );
+});
+
+jest.mock('../../screens/society/SubscriptionComingSoonScreen', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return () => (
+    <View testID="SubscriptionComingSoonScreen">
+      <Text>SubscriptionComingSoonScreen</Text>
+    </View>
+  );
+});
+
+jest.mock('../../screens/customer/SubscriptionPlansScreen', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return () => (
+    <View testID="SubscriptionPlansScreen">
+      <Text>SubscriptionPlansScreen</Text>
+    </View>
+  );
+});
+
+jest.mock('../../screens/customer/SubscriptionStatusScreen', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return () => (
+    <View testID="SubscriptionStatusScreen">
+      <Text>SubscriptionStatusScreen</Text>
+    </View>
+  );
+});
+
+jest.mock('../../screens/customer/PaymentScreen', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return () => (
+    <View testID="PaymentScreen">
+      <Text>PaymentScreen</Text>
+    </View>
+  );
+});
+
+jest.mock('../../screens/customer/PaymentHistoryScreen', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return () => (
+    <View testID="PaymentHistoryScreen">
+      <Text>PaymentHistoryScreen</Text>
+    </View>
+  );
 });
 
 jest.mock('../../screens/customer/OrderTrackingScreen', () => {
@@ -114,17 +199,6 @@ jest.mock('../../components/common/ErrorBoundary', () => {
   const React = require('react');
   return ({ children }: { children: React.ReactNode }) => <>{children}</>;
 });
-
-jest.mock('../../constants/config', () => ({
-  UI_CONFIG: {
-    colors: {
-      accent: '#fca311',
-      textSecondary: '#5a5a5a',
-      surface: '#f5f0e0',
-      border: '#d4c9b0',
-    },
-  },
-}));
 
 describe('Navigation Configuration', () => {
   describe('AuthNavigator', () => {

@@ -18,7 +18,7 @@ import { handleError } from '../../utils/errorHandler';
 import { getErrorMessage } from '../../utils/errors';
 import { AuthStackParamList } from '../../types/index';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { Typography, CustomerIcon, Button, Card } from '../../components/common';
+import { Typography, Button, Card } from '../../components/common';
 import { UI_CONFIG } from '../../constants/config';
 
 type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
@@ -118,21 +118,18 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  // Customer app: watermark for customer-only login
   const watermarkPositions = useMemo(() => {
     const screenWidth = Dimensions.get('window').width;
     const screenHeight = Dimensions.get('window').height;
-    const iconSize = 10;
+    const iconSize = 50;
     const minSpacing = 70;
     const positions: Array<{ top: number; left: number }> = [];
-    const watermarkCount = 30;
+    const watermarkCount = 24;
     const maxAttempts = 100;
 
-    const hasOverlap = (newTop: number, newLeft: number, existingPositions: Array<{ top: number; left: number }>) => {
-      for (const pos of existingPositions) {
-        const distance = Math.sqrt(
-          Math.pow(newTop - pos.top, 2) + Math.pow(newLeft - pos.left, 2)
-        );
+    const hasOverlap = (newTop: number, newLeft: number, existing: Array<{ top: number; left: number }>) => {
+      for (const pos of existing) {
+        const distance = Math.sqrt(Math.pow(newTop - pos.top, 2) + Math.pow(newLeft - pos.left, 2));
         if (distance < minSpacing) return true;
       }
       return false;
@@ -140,7 +137,8 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
     for (let i = 0; i < watermarkCount; i++) {
       let attempts = 0;
-      let top: number, left: number;
+      let top: number;
+      let left: number;
       do {
         top = Math.random() * (screenHeight - iconSize - 40) + 20;
         left = Math.random() * (screenWidth - iconSize - 40) + 20;
@@ -161,11 +159,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     return positions;
   }, []);
 
-  const renderWatermarkIcon = () => {
-    const iconProps = { size: 50, color: UI_CONFIG.colors.textSecondary };
-    return <CustomerIcon {...iconProps} />;
-  };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -183,83 +176,108 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               },
             ]}
           >
-            {renderWatermarkIcon()}
+            <Ionicons name="person-outline" size={50} color={UI_CONFIG.colors.textSecondary} />
           </View>
         ))}
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.header}>
-          <Typography variant="h1" style={styles.title}>Welcome to TankerHub</Typography>
-          <Typography variant="body" style={styles.subtitle}>
-            Sign in to your account
-          </Typography>
-        </View>
-
-        <Card padding="large" style={styles.formCard}>
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Typography variant="body" style={styles.label}>Email Address</Typography>
-            <TextInput
-              style={[styles.input, errors.email && styles.inputError]}
-              value={email}
-              onChangeText={handleEmailChange}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            {errors.email && <Typography variant="caption" style={styles.errorText}>{errors.email}</Typography>}
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Typography variant="body" style={styles.label}>Password</Typography>
-            <View style={styles.passwordInputContainer}>
-              <TextInput
-                style={[styles.input, styles.passwordInput, errors.password && styles.inputError]}
-                value={password}
-                onChangeText={handlePasswordChange}
-                secureTextEntry={!showPassword}
-              />
-              <TouchableOpacity
-                style={styles.eyeIcon}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={24}
-                  color={UI_CONFIG.colors.textSecondary}
-                />
-              </TouchableOpacity>
-            </View>
-            {errors.password && <Typography variant="caption" style={styles.errorText}>{errors.password}</Typography>}
-          </View>
-
-          <Button
-            title={isLoading ? 'Signing In...' : 'Sign In'}
-            onPress={handleLogin}
-            variant="primary"
-            disabled={isLoading}
-            loading={isLoading}
-            style={styles.submitButton}
-          />
-        </View>
-        </Card>
-
-        <View style={styles.footer}>
-          <Typography variant="body" style={styles.footerText}>
-            {"Don't have an account? "}
-          </Typography>
+        <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
           <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('Register', { accountKind: 'individual' })}
+            style={styles.backRow}
+            onPress={() => navigation.navigate('RoleSelection')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <Typography variant="body" style={styles.linkText}>Sign Up</Typography>
+            <Ionicons name="chevron-back" size={24} color={UI_CONFIG.colors.accent} />
+            <Typography variant="body" style={styles.backLabel}>
+              Account type
+            </Typography>
           </TouchableOpacity>
-        </View>
-      </ScrollView>
 
-      <View style={styles.bottomNoticeWrapper} pointerEvents="none">
-        <Typography variant="caption" style={styles.bottomNoticeText}>
-          Reset password feature is not available yet. Do not forget your password.
-        </Typography>
-      </View>
+          <View style={styles.header}>
+            <Typography variant="h1" style={styles.title}>
+              Individual sign in
+            </Typography>
+            <Typography variant="body" style={styles.subtitle}>
+              Order water tankers for personal use
+            </Typography>
+          </View>
+
+          <Card padding="large" style={styles.formCard}>
+            <View style={styles.form}>
+              <View style={styles.inputContainer}>
+                <Typography variant="body" style={styles.label}>
+                  Email address
+                </Typography>
+                <TextInput
+                  style={[styles.input, errors.email && styles.inputError]}
+                  value={email}
+                  onChangeText={handleEmailChange}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {errors.email ? (
+                  <Typography variant="caption" style={styles.errorText}>
+                    {errors.email}
+                  </Typography>
+                ) : null}
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Typography variant="body" style={styles.label}>
+                  Password
+                </Typography>
+                <View style={styles.passwordInputContainer}>
+                  <TextInput
+                    style={[styles.input, styles.passwordInput, errors.password && styles.inputError]}
+                    value={password}
+                    onChangeText={handlePasswordChange}
+                    secureTextEntry={!showPassword}
+                  />
+                  <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowPassword(!showPassword)}>
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={24}
+                      color={UI_CONFIG.colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+                {errors.password ? (
+                  <Typography variant="caption" style={styles.errorText}>
+                    {errors.password}
+                  </Typography>
+                ) : null}
+              </View>
+
+              <Button
+                title={isLoading ? 'Signing in…' : 'Sign in to personal account'}
+                onPress={handleLogin}
+                variant="primary"
+                disabled={isLoading}
+                loading={isLoading}
+                style={styles.submitButton}
+              />
+            </View>
+          </Card>
+
+          <View style={styles.footer}>
+            <Typography variant="body" style={styles.footerText}>
+              New to TankerHub?{' '}
+            </Typography>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('Register', { accountKind: 'individual' })}
+            >
+              <Typography variant="body" style={styles.linkText}>
+                Create an account
+              </Typography>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+
+        <View style={styles.bottomNoticeWrapper} pointerEvents="none">
+          <Typography variant="caption" style={styles.bottomNoticeText}>
+            Reset password is not available yet. Please keep your password safe.
+          </Typography>
+        </View>
     </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -282,9 +300,19 @@ const styles = StyleSheet.create({
     paddingBottom: 96,
     zIndex: 1,
   },
+  backRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginBottom: 16,
+  },
+  backLabel: {
+    color: UI_CONFIG.colors.accent,
+    fontWeight: '600',
+  },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 32,
   },
   title: {
     fontSize: 28,
@@ -292,10 +320,14 @@ const styles = StyleSheet.create({
     fontFamily: 'PlayfairDisplay-Regular',
     color: UI_CONFIG.colors.text,
     marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     color: UI_CONFIG.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: 8,
   },
   formCard: {
     marginBottom: 24,
@@ -350,6 +382,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   footerText: {
     fontSize: 16,
