@@ -89,8 +89,8 @@ Service-level tests under `src/__tests__/services/` remain the best place to val
 - `App.tsx` — `QueryClientProvider` wrapping `SafeAreaProvider` and navigation (client from `useState(() => createAppQueryClient())`).
 
 **Expo / React Native note:** `@tanstack/react-query` works with RN; use the same provider pattern as on web.
-
-### Phase 1 — `useUserStore` / `useVehicleStore` (read paths)
+        
+### Phase 1 — `useUserStore` / `useVehicleStore` (read paths) — **completed**
 
 These stores power fewer screens than booking and are mostly **fetch + list + selected entity**.
 
@@ -105,7 +105,19 @@ These stores power fewer screens than booking and are mostly **fetch + list + se
 
 **Exit criteria:** Those screens no longer depend on Zustand for **cached list data**; Zustand methods can be deprecated or thin wrappers during transition.
 
-### Phase 2 — `useBookingStore` (lists + mutations, realtime last)
+**Implemented:**
+
+- `src/hooks/queries/queryKeys.ts` — stable keys: `['users','role', role]`, `['vehicles','agency', agencyId]` (plus idle key when no agency).
+- `src/hooks/queries/useUsersByRoleQuery.ts` — `UserService.getUsersByRole`.
+- `src/hooks/queries/useVehiclesByAgencyQuery.ts` — `VehicleService.getVehiclesByAgency`, `enabled` when `agencyId` is set.
+- `src/hooks/queries/index.ts` — re-exports.
+- `src/screens/customer/BookingScreen.tsx` — agencies and vehicles from Query; agency change resets vehicle/price via `useEffect` on `selectedAgency?.id`.
+- `src/screens/society/AddTripScreen.tsx` — same pattern for admin list and agency vehicles.
+- `src/screens/customer/CustomerHomeScreen.tsx` — trims unused `userLoading` / `updateUser` from `useUserStore` (this screen never called the read paths); still uses the store only for `userError` until later phases.
+
+Realtime subscriptions remain in Zustand for a follow-up (Phase 1b / Phase 2 adjacent work).
+
+### Phase 2 — `useBookingStore` (lists + mutations, realtime last) — **completed**
 
 Order matters: **lists and mutations before realtime**, because `OrderTrackingScreen` couples subscription + `useBookingStore.subscribe`.
 
@@ -117,6 +129,18 @@ Order matters: **lists and mutations before realtime**, because `OrderTrackingSc
    - On each callback, update `['booking', bookingId]` and optionally merge into list queries.
 
 **Exit criteria:** `OrderHistoryScreen`, `PastOrdersScreen`, `CustomerHomeScreen`, `BookingScreen` use Query; tracking screen uses Query + subscription bridge.
+
+**Implemented:**
+
+- `src/hooks/queries/queryKeys.ts` — `bookings.customer`, `bookings.detail`, `bookings.available` (key helper for future use).
+- `src/hooks/queries/useCustomerBookingsQuery.ts` — `BookingService.getBookingsByCustomer`.
+- `src/hooks/queries/useBookingByIdQuery.ts` — `BookingService.getBookingById`.
+- `src/hooks/queries/useBookingMutations.ts` — `useCreateBookingMutation`, `useUpdateBookingStatusMutation`, `useCancelBookingMutation`.
+- `src/hooks/queries/useBookingRealtimeSubscription.ts` — cache updates + list patch via `bookingQueryUtils`.
+- `src/hooks/queries/bookingQueryUtils.ts` — `setBookingDetailInCache`, `patchBookingInCustomerListCache`.
+- Customer screens wired: `CustomerHomeScreen`, `OrderHistoryScreen`, `PastOrdersScreen`, `BookingScreen`, `OrderTrackingScreen`.
+
+The Zustand **booking store** remains for tests and any non-migrated call sites (e.g. driver/admin); customer flows read/write bookings through React Query + mutations.
 
 ### Phase 3 — Auth store: narrow, don’t necessarily delete
 
@@ -167,6 +191,6 @@ Use stable, hierarchical keys so invalidation stays predictable:
 
 - **Keep Zustand** for cross-screen **client and auth-adjacent** state (your app already centralizes session and intro flags there).
 - **Add TanStack Query** for **bookings, users, vehicles** (and similar remote data).
-- **Migrate in phases:** Phase 0 (provider) is complete; next is user/vehicle reads → booking lists/mutations → booking realtime → optional auth tightening → tests and store deletion.
+- **Migrate in phases:** Phase 0 (provider), Phase 1 (user/vehicle list reads), and Phase 2 (customer booking queries, mutations, realtime → cache) are complete; next is optional auth tightening (Phase 3), then cleanup and tests (Phase 4).
 
 This matches your existing **`services` layer** (`auth.service`, `booking.service`, etc.) and minimizes risky big-bang refactors.

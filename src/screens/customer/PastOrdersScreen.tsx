@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { useBookingStore } from '../../store/bookingStore';
+import { useCustomerBookingsQuery } from '../../hooks/queries';
 import { useAuthStore } from '../../store/authStore';
 import { Typography, CustomerMenuDrawer } from '../../components/common';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
@@ -35,7 +35,7 @@ interface PastOrdersScreenProps {
 
 const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
   const { user, logout, customerAccountKind } = useAuthStore();
-  const { bookings, fetchCustomerBookings } = useBookingStore();
+  const { data: bookings = [], refetch: refetchBookings } = useCustomerBookingsQuery(user?.id);
   const [refreshing, setRefreshing] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [periodType, setPeriodType] = useState<'month' | 'year'>('month');
@@ -66,11 +66,13 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
 
   const availableYears = getAvailableYears();
 
-  useEffect(() => {
-    loadReportData();
-  }, []);
-
-  // Animate glider when periodType changes
+  const loadReportData = async () => {
+    try {
+      await refetchBookings();
+    } catch (error) {
+      errorLogger.medium('Failed to load past orders', error, { userId: user?.id });
+    }
+  };
   useEffect(() => {
     if (periodTypeOptionWidth > 0) {
       Animated.spring(periodTypeGliderAnim, {
@@ -106,15 +108,6 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
       }).start();
     }
   }, [selectedYear, yearOptionWidth]);
-
-  const loadReportData = async () => {
-    if (!user?.id) return;
-    try {
-      await fetchCustomerBookings(user.id);
-    } catch (error) {
-      errorLogger.medium('Failed to load past orders', error, { userId: user.id });
-    }
-  };
 
 
   const onRefresh = async () => {

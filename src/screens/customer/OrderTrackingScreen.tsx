@@ -5,25 +5,23 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
-import { useBookingStore } from '../../store/bookingStore';
+import { useAuthStore } from '../../store/authStore';
+import { useBookingByIdQuery, useBookingRealtimeSubscription } from '../../hooks/queries';
 import Card from '../../components/common/Card';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { Typography } from '../../components/common';
-import { Booking, BookingStatus } from '../../types';
+import { BookingStatus } from '../../types';
 import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
 import { PricingUtils } from '../../utils/pricing';
 import { UI_CONFIG } from '../../constants/config';
 import { LocationTrackingService, DriverLocation } from '../../services/locationTracking.service';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
-
-const { width } = Dimensions.get('window');
 
 type OrderTrackingScreenNavigationProp = StackNavigationProp<CustomerStackParamList, 'OrderTracking'>;
 type OrderTrackingScreenRouteProp = RouteProp<CustomerStackParamList, 'OrderTracking'>;
@@ -35,20 +33,19 @@ interface OrderTrackingScreenProps {
 
 const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, route }) => {
   const { orderId } = route.params;
-  const { getBookingById, isLoading } = useBookingStore();
+  const { user } = useAuthStore();
+  const {
+    data: booking,
+    isPending,
+    isError,
+    refetch,
+  } = useBookingByIdQuery(orderId);
+
+  useBookingRealtimeSubscription(orderId, booking?.customerId ?? user?.id);
   
-  const [booking, setBooking] = useState<Booking | null>(null);
-  const [trackingStatus, setTrackingStatus] = useState<BookingStatus>('pending');
-  const [estimatedDeliveryTime, setEstimatedDeliveryTime] = useState<number | null>(null);
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(null);
 
   useEffect(() => {
-    loadBooking();
-    
-    // Subscribe to real-time booking updates
-    useBookingStore.getState().subscribeToBooking(orderId);
-    
-    // Subscribe to real-time location updates for this booking
     let unsubscribeLocation: (() => void) | null = null;
     
     const setupLocationTracking = async () => {
@@ -76,61 +73,36 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
     setupLocationTracking();
 
     return () => {
-      useBookingStore.getState().unsubscribeFromBooking();
       if (unsubscribeLocation) {
         unsubscribeLocation();
       }
     };
   }, [orderId]);
 
-  const loadBooking = async () => {
-    try {
-      const bookingData = await getBookingById(orderId);
-      if (bookingData) {
-        setBooking(bookingData);
-        setTrackingStatus(bookingData.status);
-        
-        // Calculate estimated delivery time
-        if (bookingData.distance) {
-          const estimatedTime = PricingUtils.calculateDeliveryTime(bookingData.distance);
-          setEstimatedDeliveryTime(estimatedTime);
-        }
-        
-        // Load driver location if booking is in transit
-        if (bookingData.status === 'in_transit' || bookingData.status === 'accepted') {
-          try {
-            const location = await LocationTrackingService.getBookingLocation(orderId);
-            if (location) {
-              setDriverLocation(location);
-            }
-          } catch (error) {
-            errorLogger.medium('Failed to load driver location', error, { orderId, status: bookingData.status });
-          }
-        }
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to load booking details');
-    }
-  };
-  
-  // Subscribe to booking updates from store
+  const estimatedDeliveryTime = booking?.distance
+    ? PricingUtils.calculateDeliveryTime(booking.distance)
+    : null;
+  const trackingStatus: BookingStatus = booking?.status ?? 'pending';
+
   useEffect(() => {
-    const unsubscribe = useBookingStore.subscribe((state, prevState) => {
-      const currentBooking = state.currentBooking;
-      if (currentBooking && currentBooking.id === orderId) {
-        setBooking(currentBooking);
-        setTrackingStatus(currentBooking.status);
-        
-        // Update estimated delivery time if distance changed
-        if (currentBooking.distance) {
-          const estimatedTime = PricingUtils.calculateDeliveryTime(currentBooking.distance);
-          setEstimatedDeliveryTime(estimatedTime);
+    if (!booking || (booking.status !== 'in_transit' && booking.status !== 'accepted')) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const location = await LocationTrackingService.getBookingLocation(orderId);
+        if (!cancelled && location) {
+          setDriverLocation(location);
         }
+      } catch (error) {
+        errorLogger.medium('Failed to load driver location', error, { orderId, status: booking.status });
       }
-    });
-    
-    return unsubscribe;
-  }, [orderId]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [orderId, booking?.id, booking?.status]);
 
   const getStatusColor = (status: BookingStatus) => {
     switch (status) {
@@ -228,12 +200,38 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
     );
   };
 
-  if (isLoading || !booking) {
+  if (isPending) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.loadingContainer}>
           <LoadingSpinner />
           <Typography variant="body" style={styles.loadingText}>Loading order details...</Typography>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isError) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <Typography variant="body" style={styles.loadingText}>Failed to load order.</Typography>
+          <TouchableOpacity onPress={() => refetch()} style={{ marginTop: 16 }}>
+            <Typography variant="body" style={{ color: UI_CONFIG.colors.accent }}>Tap to retry</Typography>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <Typography variant="body" style={styles.loadingText}>Order not found.</Typography>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16 }}>
+            <Typography variant="body" style={{ color: UI_CONFIG.colors.accent }}>Go back</Typography>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );

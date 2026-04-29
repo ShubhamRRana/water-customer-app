@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Text, 
@@ -13,15 +13,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
-import { useBookingStore } from '../../store/bookingStore';
+import { useCustomerBookingsQuery } from '../../hooks/queries';
 import { useUserStore } from '../../store/userStore';
+import { getErrorMessage } from '../../utils/errors';
 import { isCustomerUser } from '../../types';
 import Card from '../../components/common/Card';
-import Button from '../../components/common/Button';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { Typography, CustomerMenuDrawer } from '../../components/common';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
-import { Booking, BookingStatus } from '../../types';
+import { BookingStatus } from '../../types';
 import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
 import { UI_CONFIG } from '../../constants/config';
 import { PricingUtils } from '../../utils/pricing';
@@ -36,41 +36,24 @@ interface CustomerHomeScreenProps {
 const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
   const navigation = useNavigation<CustomerHomeScreenNavigationProp>();
   const { user, logout, customerAccountKind } = useAuthStore();
-  const { 
-    bookings, 
-    isLoading: bookingsLoading, 
-    fetchCustomerBookings,
-    error: bookingError 
-  } = useBookingStore();
-  const { 
-    isLoading: userLoading, 
-    updateUser,
-    error: userError 
-  } = useUserStore();
+  const {
+    data: bookings = [],
+    isPending: bookingsLoading,
+    error: bookingsQueryError,
+    refetch: refetchBookings,
+  } = useCustomerBookingsQuery(user?.id);
+  const bookingError = bookingsQueryError
+    ? getErrorMessage(bookingsQueryError, 'Failed to load bookings')
+    : null;
+  const { error: userError } = useUserStore();
 
   const [refreshing, setRefreshing] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
 
-  useEffect(() => {
-    if (user?.id) {
-      loadCustomerData();
-    }
-  }, [user?.id]);
-
-  const loadCustomerData = async () => {
-    if (!user?.id) return;
-    
-    try {
-      await fetchCustomerBookings(user.id);
-    } catch (error) {
-      errorLogger.medium('Failed to load customer bookings', error, { userId: user.id });
-    }
-  };
-
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await loadCustomerData();
+      await refetchBookings();
     } catch (error) {
       errorLogger.medium('Failed to refresh customer data', error, { userId: user?.id });
     } finally {

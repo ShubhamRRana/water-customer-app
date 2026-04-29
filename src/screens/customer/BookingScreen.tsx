@@ -14,9 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
-import { useBookingStore } from '../../store/bookingStore';
-import { useUserStore } from '../../store/userStore';
-import { useVehicleStore } from '../../store/vehicleStore';
+import { useCreateBookingMutation, useUsersByRoleQuery, useVehiclesByAgencyQuery } from '../../hooks/queries';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -54,14 +52,10 @@ const getTodayDateString = (): string => {
 const BookingScreen: React.FC<BookingScreenProps> = () => {
   const navigation = useNavigation<BookingScreenNavigationProp>();
   const { user, isLoading: authLoading, initializeAuth } = useAuthStore();
-  const { createBooking, isLoading } = useBookingStore();
-  const { fetchUsersByRole, users: allUsers, isLoading: usersLoading } = useUserStore();
-  const { fetchVehiclesByAgency } = useVehicleStore();
+  const createBookingMutation = useCreateBookingMutation();
 
   const [selectedVehicle, setSelectedVehicle] = useState<{ id: string; capacity: number; amount?: number; vehicleNumber: string } | null>(null);
   const [selectedAgency, setSelectedAgency] = useState<{ id: string; name: string; ownerName?: string } | null>(null);
-  const [availableVehicles, setAvailableVehicles] = useState<Array<{ id: string; vehicleCapacity: number; amount?: number; vehicleNumber: string }>>([]);
-  const [vehiclesLoading, setVehiclesLoading] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
   const [deliveryDate, setDeliveryDate] = useState<string>(() => getTodayDateString());
   const [deliveryTime, setDeliveryTime] = useState<string>('');
@@ -71,6 +65,14 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
   const [showSavedAddressModal, setShowSavedAddressModal] = useState(false);
   const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null);
   const [dateError, setDateError] = useState<string>('');
+
+  const { data: adminUsers = [], isFetching: usersLoading } = useUsersByRoleQuery('admin');
+  const vehiclesQuery = useVehiclesByAgencyQuery(selectedAgency?.id);
+  const availableVehicles = useMemo(
+    () => (selectedAgency ? vehiclesQuery.data ?? [] : []),
+    [selectedAgency, vehiclesQuery.data],
+  );
+  const vehiclesLoading = Boolean(selectedAgency && vehiclesQuery.isFetching);
 
   // Ensure auth is initialized when component mounts
   useEffect(() => {
@@ -92,24 +94,14 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
     }
   }, [user, deliveryAddress]);
 
-  // Fetch admin users (agencies) with business names
   useEffect(() => {
-    const loadAgencies = async () => {
-      try {
-        await fetchUsersByRole('admin');
-      } catch (error) {
-        handleError(error, {
-          context: { operation: 'loadAgencies' },
-          userFacing: false,
-        });
-      }
-    };
-    loadAgencies();
-  }, [fetchUsersByRole]);
+    setSelectedVehicle(null);
+    setPriceBreakdown(null);
+  }, [selectedAgency?.id]);
 
   // Build tanker agencies list from admin users with business names
   const tankerAgencies: Array<{ id: string; name: string; ownerName?: string }> = React.useMemo(() => {
-    return allUsers
+    return adminUsers
       .filter(isAdminUser)
       .filter(admin => admin.businessName || admin.name)
       .map(admin => ({
@@ -117,36 +109,7 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
         name: admin.businessName || admin.name || 'Unnamed Agency',
         ownerName: admin.name
       }));
-  }, [allUsers]);
-
-  // Fetch vehicles when agency is selected
-  useEffect(() => {
-    const loadVehiclesForAgency = async () => {
-      if (selectedAgency) {
-        setVehiclesLoading(true);
-        try {
-          const vehicles = await fetchVehiclesByAgency(selectedAgency.id);
-          setAvailableVehicles(vehicles);
-          // Reset selected vehicle when agency changes
-          setSelectedVehicle(null);
-          setPriceBreakdown(null);
-        } catch (error) {
-          handleError(error, {
-            context: { operation: 'loadVehiclesForAgency', agencyId: selectedAgency.id },
-            userFacing: false,
-          });
-          setAvailableVehicles([]);
-        } finally {
-          setVehiclesLoading(false);
-        }
-      } else {
-        setAvailableVehicles([]);
-        setSelectedVehicle(null);
-        setPriceBreakdown(null);
-      }
-    };
-    loadVehiclesForAgency();
-  }, [selectedAgency, fetchVehiclesByAgency]);
+  }, [adminUsers]);
 
   const calculatePrice = useCallback(() => {
     if (!selectedVehicle) return;
@@ -291,14 +254,15 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
 
   // Memoized disabled state for Book Now button
   const isBookingDisabled = useMemo(() => {
-    return !selectedVehicle || 
+    return createBookingMutation.isPending ||
+           !selectedVehicle || 
            !selectedAgency || 
            !deliveryAddress.trim() || 
            !deliveryDate.trim() || 
            !deliveryTime.trim() || 
            !priceBreakdown || 
            !!(dateError && dateError.length > 0);
-  }, [selectedVehicle, selectedAgency, deliveryAddress, deliveryDate, deliveryTime, priceBreakdown, dateError]);
+  }, [createBookingMutation.isPending, selectedVehicle, selectedAgency, deliveryAddress, deliveryDate, deliveryTime, priceBreakdown, dateError]);
 
   // Memoized addresses array for SavedAddressModal
   const savedAddresses = useMemo(() => {
@@ -440,7 +404,7 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
         canCancel: true,
       };
 
-      await createBooking(bookingData);
+      await createBookingMutation.mutateAsync(bookingData);
       
       // Show success alert
       Alert.alert(
@@ -459,11 +423,11 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
       userFacing: true,
     });
     }
-  }, [selectedVehicle, selectedAgency, user, deliveryAddress, deliveryDate, deliveryTime, timePeriod, priceBreakdown, createBooking, initializeAuth, navigation]);
+  }, [selectedVehicle, selectedAgency, user, deliveryAddress, deliveryDate, deliveryTime, timePeriod, priceBreakdown, createBookingMutation, initializeAuth, navigation]);
 
 
 
-  if (isLoading) {
+  if (createBookingMutation.isPending) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.loadingContainer}>

@@ -16,8 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
-import { useUserStore } from '../../store/userStore';
-import { useVehicleStore } from '../../store/vehicleStore';
+import { useUsersByRoleQuery, useVehiclesByAgencyQuery } from '../../hooks/queries';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import { Typography } from '../../components/common';
@@ -68,8 +67,6 @@ const parseTankerAmountInput = (text: string): { amount: number | null; error?: 
 const AddTripScreen: React.FC = () => {
   const navigation = useNavigation<AddTripNavigationProp>();
   const { user } = useAuthStore();
-  const { fetchUsersByRole, users: allUsers, isLoading: usersLoading } = useUserStore();
-  const { fetchVehiclesByAgency } = useVehicleStore();
 
   const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [selectedAgency, setSelectedAgency] = useState<{
@@ -84,10 +81,6 @@ const AddTripScreen: React.FC = () => {
   } | null>(null);
   /** Set when agency has no vehicles — user picks from BOOKING_CONFIG.defaultTankerSizes */
   const [fallbackTankerLiters, setFallbackTankerLiters] = useState<number | null>(null);
-  const [availableVehicles, setAvailableVehicles] = useState<
-    Array<{ id: string; vehicleCapacity: number; amount?: number; vehicleNumber: string }>
-  >([]);
-  const [vehiclesLoading, setVehiclesLoading] = useState(false);
   const [showAgencyModal, setShowAgencyModal] = useState(false);
   const [showTankerModal, setShowTankerModal] = useState(false);
   const [showSizeFallbackModal, setShowSizeFallbackModal] = useState(false);
@@ -98,8 +91,16 @@ const AddTripScreen: React.FC = () => {
   const [tankerAmountText, setTankerAmountText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const { data: adminUsers = [], isFetching: usersLoading } = useUsersByRoleQuery('admin');
+  const vehiclesQuery = useVehiclesByAgencyQuery(selectedAgency?.id);
+  const availableVehicles = useMemo(
+    () => (selectedAgency ? vehiclesQuery.data ?? [] : []),
+    [selectedAgency, vehiclesQuery.data],
+  );
+  const vehiclesLoading = Boolean(selectedAgency && vehiclesQuery.isFetching);
+
   const tankerAgencies = useMemo(() => {
-    return allUsers
+    return adminUsers
       .filter(isAdminUser)
       .filter(admin => admin.businessName || admin.name)
       .map(admin => ({
@@ -107,7 +108,7 @@ const AddTripScreen: React.FC = () => {
         name: admin.businessName || admin.name || 'Unnamed Agency',
         ownerName: admin.name,
       }));
-  }, [allUsers]);
+  }, [adminUsers]);
 
   const effectiveTankerLiters = useMemo(() => {
     if (selectedVehicle) return selectedVehicle.capacity;
@@ -116,50 +117,10 @@ const AddTripScreen: React.FC = () => {
   }, [selectedVehicle, fallbackTankerLiters]);
 
   useEffect(() => {
-    const loadAgencies = async () => {
-      try {
-        await fetchUsersByRole('admin');
-      } catch (error) {
-        handleError(error, {
-          context: { operation: 'addTripLoadAgencies' },
-          userFacing: false,
-        });
-      }
-    };
-    loadAgencies();
-  }, [fetchUsersByRole]);
-
-  useEffect(() => {
     setSelectedVehicle(null);
     setFallbackTankerLiters(null);
     setTankerAmountText('');
   }, [selectedAgency?.id]);
-
-  useEffect(() => {
-    if (!selectedAgency) {
-      setAvailableVehicles([]);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      setVehiclesLoading(true);
-      try {
-        const vehicles = await fetchVehiclesByAgency(selectedAgency.id);
-        if (!cancelled) setAvailableVehicles(vehicles);
-      } catch (error) {
-        handleError(error, {
-          context: { operation: 'addTripLoadVehicles', agencyId: selectedAgency.id },
-          userFacing: false,
-        });
-        if (!cancelled) setAvailableVehicles([]);
-      } finally {
-        if (!cancelled) setVehiclesLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedAgency, fetchVehiclesByAgency]);
 
   const validateDate = useCallback((dateString: string): { isValid: boolean; error: string } => {
     const sanitized = SanitizationUtils.sanitizeDateString(dateString);

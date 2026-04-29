@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuthStore } from '../../store/authStore';
-import { useBookingStore } from '../../store/bookingStore';
+import { useCustomerBookingsQuery, useCancelBookingMutation } from '../../hooks/queries';
 import Card from '../../components/common/Card';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { Typography, CustomerMenuDrawer } from '../../components/common';
@@ -33,7 +33,12 @@ interface OrderHistoryScreenProps {
 
 const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) => {
   const { user, logout, customerAccountKind } = useAuthStore();
-  const { bookings, isLoading, fetchCustomerBookings, cancelBooking } = useBookingStore();
+  const {
+    data: bookings = [],
+    isPending: isLoading,
+    refetch: refetchBookings,
+  } = useCustomerBookingsQuery(user?.id);
+  const cancelBookingMutation = useCancelBookingMutation();
   
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,12 +52,6 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
       Alert.alert('Error', 'Failed to logout. Please try again.');
     }
   };
-
-  useEffect(() => {
-    if (user?.id) {
-      loadBookings();
-    }
-  }, [user?.id]);
 
   const filteredBookings = useMemo(() => {
     let filtered = [...bookings];
@@ -75,23 +74,13 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
     return filtered;
   }, [bookings, searchQuery, selectedFilter]);
 
-  const loadBookings = async () => {
-    if (!user?.id) return;
-    try {
-      await fetchCustomerBookings(user.id);
-    } catch (error) {
-      errorLogger.medium('Failed to load customer bookings', error, { userId: user.id });
-      Alert.alert('Error', 'Failed to load your orders. Please try again.');
-    }
-  };
-
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await loadBookings();
+      await refetchBookings();
     } catch (error) {
       errorLogger.medium('Failed to refresh customer bookings', error, { userId: user?.id });
-      // Error already handled in loadBookings, no need to show alert again
+      Alert.alert('Error', 'Failed to load your orders. Please try again.');
     } finally {
       setRefreshing(false);
     }
@@ -118,32 +107,40 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
     { key: 'cancelled', label: 'Cancelled', icon: 'close-circle-outline', count: filterCounts.cancelled },
   ], [filterCounts]);
 
-  const handleCancelBooking = useCallback((booking: Booking) => {
-    if (!booking.canCancel) {
-      Alert.alert('Cannot Cancel', 'This booking cannot be cancelled as it has already been accepted by a driver.');
-      return;
-    }
+  const handleCancelBooking = useCallback(
+    (booking: Booking) => {
+      if (!user?.id) return;
+      if (!booking.canCancel) {
+        Alert.alert('Cannot Cancel', 'This booking cannot be cancelled as it has already been accepted by a driver.');
+        return;
+      }
 
-    Alert.alert(
-      'Cancel Booking',
-      `Are you sure you want to cancel order #${booking.id.slice(-6)}?`,
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await cancelBooking(booking.id, 'Cancelled by customer');
-              Alert.alert('Success', 'Booking cancelled successfully');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to cancel booking. Please try again.');
-            }
+      Alert.alert(
+        'Cancel Booking',
+        `Are you sure you want to cancel order #${booking.id.slice(-6)}?`,
+        [
+          { text: 'No', style: 'cancel' },
+          {
+            text: 'Yes, Cancel',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await cancelBookingMutation.mutateAsync({
+                  bookingId: booking.id,
+                  reason: 'Cancelled by customer',
+                  customerId: user.id,
+                });
+                Alert.alert('Success', 'Booking cancelled successfully');
+              } catch {
+                Alert.alert('Error', 'Failed to cancel booking. Please try again.');
+              }
+            },
           },
-        },
-      ]
-    );
-  }, []);
+        ]
+      );
+    },
+    [user?.id, cancelBookingMutation],
+  );
 
   const getStatusColor = useCallback((status: BookingStatus) => {
     switch (status) {
