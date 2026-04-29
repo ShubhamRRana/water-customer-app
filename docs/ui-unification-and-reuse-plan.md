@@ -22,7 +22,7 @@ It reflects your priorities:
 
 ## Current baseline (facts from the repo)
 
-- **Navigation**: Society flows already live on the same stack as customer: `CustomerNavigator.tsx` registers `AddTrip`, `TripDetails`, `SettlePaymentPlaceholder`, etc., alongside customer routes. Types live in `CustomerStackParamList` (`rootNavigation.ts`). Naming says “Customer” but behavior is already **mixed-role**.
+- **Navigation**: Society flows already live on the same stack as individuals: `MainNavigator.tsx` registers `AddTrip`, `TripDetails`, `SettlePaymentPlaceholder`, etc., alongside other routes. Types live in `AppStackParamList` (`rootNavigation.ts`). The stack serves **mixed-role** end users (individual + society).
 - **Shared primitives**: `src/components/common/` exports `Button`, `Input`, `Card`, `Typography`, `LoadingSpinner`, `CustomerMenuDrawer`, `ErrorBoundary`, etc.
 - **Duplication hotspots** (candidates for extraction):
   - **Auth cluster**: `LoginScreen`, `SocietyLoginScreen`, `RegisterScreen`, `RoleSelectionScreen` repeat `SafeAreaView` + `KeyboardAvoidingView`, watermark background pattern, back row, header (title + subtitle), and `Card`-wrapped forms.
@@ -71,7 +71,7 @@ Order is intentional: **layouts and atoms before** moving files or renaming navi
 
 - **`src/screens/shared/`**: cross-role stack screens — **Add trip**, **trip details**, **settle payment** (`AddTripScreen`, `TripDetailsScreen`, `SettlePaymentPlaceholderScreen`). Society-only screens remain under **`src/screens/society/`** (e.g. subscription intro).
 - **`src/components/layouts/`**: `AuthScreenLayout`, `AppScreenHeader` (see UI 1–2).
-- **Navigator rename** (optional — **UI 5**): `CustomerNavigator` → `MainNavigator`, `CustomerStackParamList` → `AppStackParamList` (or `MainStackParamList`). This is **high churn** (imports, tests, types); schedule it **after** **UI 1–4** so diffs stay reviewable.
+- **Navigator rename** (**UI 5** — done): `CustomerNavigator` → `MainNavigator`, `CustomerStackParamList` → `AppStackParamList`; root stack screen `Customer` → `Main` in `RootStackParamList`.
 
 ---
 
@@ -122,9 +122,9 @@ Complete [`state-management-migration.md`](./state-management-migration.md) firs
 | **UI 2** ✅ **completed** | `AppScreenHeader` + adopt on `CustomerHome`, `TripDetails`, `OrderHistory` | Shared header + `UI_CONFIG.appScreenHeader`; menu/back + title/subtitle + optional trailing action; duplicate header blocks removed on adopted screens. |
 | **UI 3** ✅ **completed** | `ScreenLoading` / `ScreenError` / `ScreenEmpty` where repeated | Consistent UX; fewer one-off spinners; loading states align with **query** `isPending` / `isFetching` where applicable. |
 | **UI 4** ✅ **completed** | Move shared screens under `screens/shared/` + update imports | `AddTrip`, `TripDetails`, `SettlePaymentPlaceholder` live in `src/screens/shared/`; imports and navigation tests updated; README + docs paths updated. |
-| **UI 5** | Optional: rename `CustomerNavigator` / `CustomerStackParamList` | Grep-clean rename; all tests and deep links updated. **Do as its own PR** after UI 1–3 (or 4) stabilize. |
+| **UI 5** ✅ **completed** | Rename `CustomerNavigator` / `CustomerStackParamList` / root `Customer` route | `MainNavigator.tsx`, `AppStackParamList`, root key `Main`; tests and docs aligned. |
 
-**Note:** **UI 5** touches every import of stack types—keep it separate from any remaining store/query touch-ups so reviews stay small.
+**Note:** **UI 5** was completed in a focused pass after UI 1–4; future stack changes should still avoid mixing with large store/query refactors in one diff.
 
 ---
 
@@ -132,7 +132,7 @@ Complete [`state-management-migration.md`](./state-management-migration.md) firs
 
 | Risk | Mitigation |
 |------|------------|
-| **Big-bang rename** of navigator/types | Do **UI 5** alone, in one PR, after shells land and state migration is settled. |
+| **Big-bang rename** of navigator/types | **UI 5** shipped in one pass; future renames should likewise stay isolated. |
 | **Two sources of truth** for data during Query migration | Follow migration doc: shim Zustand → Query, then delete duplicate state. |
 | **Society vs customer menu items** | Keep a single drawer component with **route list by role** or `customerAccountKind` (already in auth store)—do not fork drawers per folder. |
 
@@ -141,7 +141,7 @@ Complete [`state-management-migration.md`](./state-management-migration.md) firs
 ## Open decisions for you
 
 1. **Folder name**: Prefer `screens/shared/`, `screens/app/`, or keep society under `screens/society/` with only **components** shared?
-2. **Navigator rename**: Do you want `Customer*` names gone in the **medium term**, or is naming cleanup low priority?
+2. **Navigator rename:** Done for this app — main stack is `MainNavigator`, param list is `AppStackParamList`, root route is `Main`.
 3. **Auth watermark**: Should it be **one** reusable pattern (icon prop) or removed for simplicity?
 4. **Menu**: Should society admins use the **same** `CustomerMenuDrawer` with different items, or **one** `AppMenuDrawer` rename?
 
@@ -152,11 +152,11 @@ Once you confirm these, implementation follows **UI 1 → UI 2 → …** with sm
 ## Summary
 
 - **First:** Finish [`state-management-migration.md`](./state-management-migration.md) (through Phase 4 when possible).
-- **Then:** Run **UI 1 → UI 5** here—extract **auth layout**, then **main app header**, then async primitives, then **shared screen folder** (UI 4 — done), then optional navigator rename (UI 5).
-- Treat **customer + society as one stack** (already true in code); **UI 5** improves navigator/type names when ready.
+- **Then:** Run **UI 1 → UI 5** here—extract **auth layout**, then **main app header**, then async primitives, then **shared screen folder** (UI 4 — done), then navigator/type renames (**UI 5** — done).
+- Treat **customer + society as one stack** (already true in code); **UI 5** renames navigator, param list type, and root route for clarity.
 - Add **performance** tweaks only where lists or mega-components justify them; protect **critical flows** in tests as you go.
 
-Use **UI 1** as the first UI milestone once server state and cleanup match the migration doc; defer **UI 5** if you want to avoid churn until the rest is stable.
+Use **UI 1** as the first UI milestone once server state and cleanup match the migration doc; **UI 5** is done (see Phase 5 status below).
 
 **Phase 1 status:** Completed — shared auth shell is in place for login flows; extend `AuthScreenLayout` to remaining auth screens when ready (**UI 1** optional follow-up).
 
@@ -164,4 +164,6 @@ Use **UI 1** as the first UI milestone once server state and cleanup match the m
 
 **Phase 3 status:** Completed — `ScreenLoading`, `ScreenError`, and `ScreenEmpty` live under `src/components/common/`; `useRefreshControl` wraps pull-to-refresh on bookings home/history and trip details; adoption sweeps the main duplicated loading/error/empty patterns above.
 
-**Phase 4 status:** Completed — trip logging, trip details, and settlement placeholder screens moved to `src/screens/shared/`; `CustomerNavigator` and `navigation.test.tsx` import from the new paths; README Project Structure and `state-management-migration.md` consumer paths updated. **UI 5** (navigator/type renames) remains optional as a separate step.
+**Phase 4 status:** Completed — trip logging, trip details, and settlement placeholder screens moved to `src/screens/shared/`; `MainNavigator` (formerly `CustomerNavigator`) and `navigation.test.tsx` import from the new paths; README Project Structure and `state-management-migration.md` consumer paths updated.
+
+**Phase 5 status:** Completed — `MainNavigator` (`src/navigation/MainNavigator.tsx`), `AppStackParamList`, and root stack route `Main` replace `CustomerNavigator`, `CustomerStackParamList`, and `Customer`; screen types import from `rootNavigation`; navigation and App tests updated; README/doc references to the navigator file updated.

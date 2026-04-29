@@ -8,7 +8,7 @@ import { useFonts } from 'expo-font';
 
 // Static imports (React.lazy/dynamic import not supported by Metro in RN)
 import AuthNavigator from './src/navigation/AuthNavigator';
-import CustomerNavigator from './src/navigation/CustomerNavigator';
+import MainNavigator from './src/navigation/MainNavigator';
 
 // Store imports
 import { useAuthStore } from './src/store/authStore';
@@ -45,7 +45,7 @@ const App: React.FC = () => {
   // Customer app: only customers may enter. Non-customer users (e.g. admin/driver from session restore) go to Auth.
   const getInitialRouteName = (user: User | null): keyof RootStackParamList => {
     if (!user) return 'Auth';
-    if (isCustomerUser(user)) return 'Customer';
+    if (isCustomerUser(user)) return 'Main';
     return 'Auth';
   };
 
@@ -83,7 +83,7 @@ const App: React.FC = () => {
               }}
             >
               <Stack.Screen name="Auth" component={AuthNavigator} />
-              <Stack.Screen name="Customer" component={CustomerNavigator} />
+              <Stack.Screen name="Main" component={MainNavigator} />
             </Stack.Navigator>
           </NavigationContainer>
         </SafeAreaProvider>

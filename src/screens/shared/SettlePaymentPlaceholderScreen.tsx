@@ -4,20 +4,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
+import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { Button, Card, Typography } from '../../components/common';
 import { UI_CONFIG } from '../../constants/config';
 import { useAuthStore } from '../../store/authStore';
 import { SocietyTripService } from '../../services/societyTrip.service';
 
-type Nav = StackNavigationProp<CustomerStackParamList, 'SettlePaymentPlaceholder'>;
+type Nav = StackNavigationProp<AppStackParamList, 'SettlePaymentPlaceholder'>;
 
 interface Props {
   navigation: Nav;
 }
 
 const SettlePaymentPlaceholderScreen: React.FC<Props> = ({ navigation }) => {
-  const route = useRoute<RouteProp<CustomerStackParamList, 'SettlePaymentPlaceholder'>>();
+  const route = useRoute<RouteProp<AppStackParamList, 'SettlePaymentPlaceholder'>>();
   const { periodType, year, month } = route.params;
   const user = useAuthStore((s) => s.user);
   const [saving, setSaving] = useState(false);

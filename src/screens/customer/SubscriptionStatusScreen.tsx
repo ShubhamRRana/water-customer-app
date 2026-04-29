@@ -18,12 +18,12 @@ import { useAuthStore } from '../../store/authStore';
 import { SubscriptionService } from '../../services/subscription.service';
 import type { UserSubscription, SubscriptionPlan } from '../../types/subscription.types';
 import { navigateCustomerMenuRoute } from '../../navigation/customerMenuNavigation';
-import type { CustomerStackParamList } from '../../navigation/rootNavigation';
+import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { UI_CONFIG } from '../../constants/config';
 import { errorLogger } from '../../utils/errorLogger';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 
-type Nav = StackNavigationProp<CustomerStackParamList, 'SubscriptionStatus'>;
+type Nav = StackNavigationProp<AppStackParamList, 'SubscriptionStatus'>;
 
 interface Props {
   navigation: Nav;

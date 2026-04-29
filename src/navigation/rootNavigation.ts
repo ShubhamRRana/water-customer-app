@@ -12,7 +12,7 @@ export function societyPaymentPeriodKey(p: SocietyPaymentCompletePeriod): string
   return `m:${p.year}-${p.month}`;
 }
 
-export type CustomerStackParamList = {
+export type AppStackParamList = {
   Home: undefined;
   SubscriptionComingSoon: undefined;
   Orders: undefined;
@@ -37,5 +37,5 @@ export type CustomerStackParamList = {
 
 export type RootStackParamList = {
   Auth: undefined;
-  Customer: NavigatorScreenParams<CustomerStackParamList> | undefined;
+  Main: NavigatorScreenParams<AppStackParamList> | undefined;
 };

@@ -12,9 +12,9 @@ import Card from '../common/Card';
 import { Typography } from '../common';
 import { Address } from '../../types';
 import { UI_CONFIG } from '../../constants/config';
-import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
+import type { AppStackParamList } from '../../navigation/rootNavigation';
 
-type SavedAddressModalNavigationProp = StackNavigationProp<CustomerStackParamList>;
+type SavedAddressModalNavigationProp = StackNavigationProp<AppStackParamList>;
 
 interface SavedAddressModalProps {
   visible: boolean;

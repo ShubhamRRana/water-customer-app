@@ -22,13 +22,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import { AuthService } from '../../services/auth.service';
 import { User } from '../../types';
-import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
+import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { APP_CONFIG, UI_CONFIG } from '../../constants/config';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
 import { formatDateOnly } from '../../utils/dateUtils';
 import { invalidateAuthProfileQueries, useAuthProfileQuery } from '../../hooks/queries';
 
-type ProfileScreenNavigationProp = StackNavigationProp<CustomerStackParamList, 'Profile'>;
+type ProfileScreenNavigationProp = StackNavigationProp<AppStackParamList, 'Profile'>;
 
 interface ProfileScreenProps {
   navigation: ProfileScreenNavigationProp;

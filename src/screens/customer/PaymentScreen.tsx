@@ -17,13 +17,13 @@ import {
   PhonePeService,
   parseInitiatePaymentResponse,
 } from '../../services/phonepe.service';
-import { CustomerStackParamList } from '../../navigation/rootNavigation';
+import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { UI_CONFIG, PRICING_CONFIG, LOADING_MESSAGES } from '../../constants/config';
 import { errorLogger } from '../../utils/errorLogger';
 import Constants from 'expo-constants';
 
-type Nav = StackNavigationProp<CustomerStackParamList, 'Payment'>;
-type R = RouteProp<CustomerStackParamList, 'Payment'>;
+type Nav = StackNavigationProp<AppStackParamList, 'Payment'>;
+type R = RouteProp<AppStackParamList, 'Payment'>;
 
 interface Props {
   navigation: Nav;

@@ -15,12 +15,12 @@ import { useAuthStore } from '../../store/authStore';
 import Card from '../../components/common/Card';
 import { Typography, ScreenLoading } from '../../components/common';
 import { Address, isCustomerUser } from '../../types';
-import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
+import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { dataAccess } from '../../lib';
 import { UI_CONFIG, LOCATION_CONFIG } from '../../constants/config';
 import { invalidateAuthProfileQueries } from '../../hooks/queries';
 
-type SavedAddressesScreenNavigationProp = StackNavigationProp<CustomerStackParamList, 'SavedAddresses'>;
+type SavedAddressesScreenNavigationProp = StackNavigationProp<AppStackParamList, 'SavedAddresses'>;
 
 interface SavedAddressesScreenProps {
   navigation: SavedAddressesScreenNavigationProp;

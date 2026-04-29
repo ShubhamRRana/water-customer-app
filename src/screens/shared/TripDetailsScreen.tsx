@@ -25,7 +25,7 @@ import AppScreenHeader, {
   AppScreenHeaderTrailingSpacer,
 } from '../../components/layouts/AppScreenHeader';
 import { SocietyTrip } from '../../types';
-import { societyPaymentPeriodKey, type CustomerStackParamList } from '../../navigation/rootNavigation';
+import { societyPaymentPeriodKey, type AppStackParamList } from '../../navigation/rootNavigation';
 import { BOOKING_CONFIG, UI_CONFIG } from '../../constants/config';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
@@ -33,7 +33,7 @@ import { PricingUtils } from '../../utils/pricing';
 import { SocietyTripService } from '../../services/societyTrip.service';
 import { useRefreshControl } from '../../hooks/useRefreshControl';
 
-type TripDetailsNavigationProp = StackNavigationProp<CustomerStackParamList, 'TripDetails'>;
+type TripDetailsNavigationProp = StackNavigationProp<AppStackParamList, 'TripDetails'>;
 
 interface TripDetailsScreenProps {
   navigation: TripDetailsNavigationProp;

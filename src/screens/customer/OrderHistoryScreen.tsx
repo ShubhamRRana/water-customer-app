@@ -20,13 +20,13 @@ import { useRefreshControl } from '../../hooks/useRefreshControl';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import AppScreenHeader from '../../components/layouts/AppScreenHeader';
 import { Booking, BookingStatus } from '../../types';
-import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
+import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { PricingUtils } from '../../utils/pricing';
 import { UI_CONFIG } from '../../constants/config';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
 
-type OrderHistoryScreenNavigationProp = StackNavigationProp<CustomerStackParamList, 'Orders'>;
+type OrderHistoryScreenNavigationProp = StackNavigationProp<AppStackParamList, 'Orders'>;
 
 interface OrderHistoryScreenProps {
   navigation: OrderHistoryScreenNavigationProp;

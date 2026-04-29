@@ -23,13 +23,13 @@ import AgencySelectionModal from '../../components/customer/AgencySelectionModal
 import SavedAddressModal from '../../components/customer/SavedAddressModal';
 import DateTimeInput from '../../components/customer/DateTimeInput';
 import { Address, isAdminUser, isCustomerUser } from '../../types';
-import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
+import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
 import { UI_CONFIG, LOCATION_CONFIG } from '../../constants/config';
 import { handleError } from '../../utils/errorHandler';
 import { createScheduledDate as createScheduledDateFromUtils } from '../../utils/dateUtils';
 
-type BookingScreenNavigationProp = StackNavigationProp<CustomerStackParamList, 'Booking'>;
+type BookingScreenNavigationProp = StackNavigationProp<AppStackParamList, 'Booking'>;
 
 interface BookingScreenProps {
 }

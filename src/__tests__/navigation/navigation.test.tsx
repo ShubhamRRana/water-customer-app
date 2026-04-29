@@ -52,7 +52,7 @@ jest.mock('../../store/authStore', () => ({
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import AuthNavigator from '../../navigation/AuthNavigator';
-import CustomerNavigator from '../../navigation/CustomerNavigator';
+import MainNavigator from '../../navigation/MainNavigator';
 
 // Mock all screen components
 jest.mock('../../screens/auth/LoginScreen', () => {
@@ -215,15 +215,15 @@ describe('Navigation Configuration', () => {
     });
   });
 
-  describe('CustomerNavigator', () => {
+  describe('MainNavigator', () => {
     it('should render without crashing', () => {
-      const { getByTestId } = render(<CustomerNavigator />);
+      const { getByTestId } = render(<MainNavigator />);
       // Should render the StackNavigator
       expect(getByTestId('StackNavigator')).toBeTruthy();
     });
 
     it('should have all required screens registered', () => {
-      const { getByTestId } = render(<CustomerNavigator />);
+      const { getByTestId } = render(<MainNavigator />);
       // Should render the navigator
       expect(getByTestId('StackNavigator')).toBeTruthy();
     });
@@ -235,7 +235,7 @@ describe('Navigation Configuration', () => {
       expect(testParams).toBeDefined();
     });
 
-    it('should export CustomerStackParamList type', () => {
+    it('should export AppStackParamList shape for main stack', () => {
       const testParams: { Home: undefined } = { Home: undefined };
       expect(testParams).toBeDefined();
     });

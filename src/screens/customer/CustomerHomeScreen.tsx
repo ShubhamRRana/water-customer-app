@@ -21,13 +21,13 @@ import { useRefreshControl } from '../../hooks/useRefreshControl';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import AppScreenHeader from '../../components/layouts/AppScreenHeader';
 import { BookingStatus } from '../../types';
-import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
+import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { UI_CONFIG } from '../../constants/config';
 import { PricingUtils } from '../../utils/pricing';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
 
-type CustomerHomeScreenNavigationProp = StackNavigationProp<CustomerStackParamList, 'Home'>;
+type CustomerHomeScreenNavigationProp = StackNavigationProp<AppStackParamList, 'Home'>;
 
 interface CustomerHomeScreenProps {
 }

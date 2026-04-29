@@ -16,7 +16,7 @@ import { useAuthStore } from '../../store/authStore';
 import { Typography, CustomerMenuDrawer } from '../../components/common';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import { UI_CONFIG } from '../../constants/config';
-import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
+import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { PricingUtils } from '../../utils/pricing';
 import {
   calculateMonthlyData,
@@ -27,7 +27,7 @@ import {
 import { errorLogger } from '../../utils/errorLogger';
 import { exportReportToExcel } from '../../utils/excelExport';
 
-type PastOrdersScreenNavigationProp = StackNavigationProp<CustomerStackParamList, 'PastOrders'>;
+type PastOrdersScreenNavigationProp = StackNavigationProp<AppStackParamList, 'PastOrders'>;
 
 interface PastOrdersScreenProps {
   navigation: PastOrdersScreenNavigationProp;

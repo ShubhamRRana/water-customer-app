@@ -23,7 +23,7 @@ import { Typography } from '../../components/common';
 import DateTimeInput from '../../components/customer/DateTimeInput';
 import AgencySelectionModal from '../../components/customer/AgencySelectionModal';
 import TankerSelectionModal from '../../components/customer/TankerSelectionModal';
-import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
+import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { UI_CONFIG, BOOKING_CONFIG } from '../../constants/config';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
 import { StorageService } from '../../services/storage.service';
@@ -34,7 +34,7 @@ import { handleError } from '../../utils/errorHandler';
 
 const MAX_TRIP_PHOTOS = 10;
 
-type AddTripNavigationProp = StackNavigationProp<CustomerStackParamList, 'AddTrip'>;
+type AddTripNavigationProp = StackNavigationProp<AppStackParamList, 'AddTrip'>;
 
 const getTodayDateString = (): string => {
   const today = new Date();

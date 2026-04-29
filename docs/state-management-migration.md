@@ -34,7 +34,7 @@ There is no “better library” than Zustand for that last bucket. The win come
 
 **`useAuthStore`**
 
-- `src/navigation/CustomerNavigator.tsx`
+- `src/navigation/MainNavigator.tsx`
 - `src/screens/auth/LoginScreen.tsx`, `RegisterScreen.tsx`, `SocietyLoginScreen.tsx`
 - `src/screens/customer/BookingScreen.tsx`, `CustomerHomeScreen.tsx`, `ProfileScreen.tsx`, `SavedAddressesScreen.tsx`, `OrderHistoryScreen.tsx`, `PastOrdersScreen.tsx`, `OrderTrackingScreen.tsx` (if any), `PaymentHistoryScreen.tsx`, `SubscriptionPlansScreen.tsx`, `SubscriptionStatusScreen.tsx`
 - `src/screens/shared/AddTripScreen.tsx`, `TripDetailsScreen.tsx`, `SettlePaymentPlaceholderScreen.tsx`; `src/screens/society/SubscriptionComingSoonScreen.tsx`

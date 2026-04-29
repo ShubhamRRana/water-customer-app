@@ -15,15 +15,15 @@ import { useBookingByIdQuery, useBookingRealtimeSubscription } from '../../hooks
 import Card from '../../components/common/Card';
 import { Typography, ScreenLoading, ScreenError, ScreenEmpty } from '../../components/common';
 import { BookingStatus } from '../../types';
-import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
+import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { PricingUtils } from '../../utils/pricing';
 import { UI_CONFIG } from '../../constants/config';
 import { LocationTrackingService, DriverLocation } from '../../services/locationTracking.service';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
 
-type OrderTrackingScreenNavigationProp = StackNavigationProp<CustomerStackParamList, 'OrderTracking'>;
-type OrderTrackingScreenRouteProp = RouteProp<CustomerStackParamList, 'OrderTracking'>;
+type OrderTrackingScreenNavigationProp = StackNavigationProp<AppStackParamList, 'OrderTracking'>;
+type OrderTrackingScreenRouteProp = RouteProp<AppStackParamList, 'OrderTracking'>;
 
 interface OrderTrackingScreenProps {
   navigation: OrderTrackingScreenNavigationProp;

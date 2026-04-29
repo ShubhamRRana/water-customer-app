@@ -78,10 +78,10 @@ jest.mock('../../navigation/AuthNavigator', () => {
   return () => <View testID="AuthNavigator"><Text>AuthNavigator</Text></View>;
 });
 
-jest.mock('../../navigation/CustomerNavigator', () => {
+jest.mock('../../navigation/MainNavigator', () => {
   const React = require('react');
   const { View, Text } = require('react-native');
-  return () => <View testID="CustomerNavigator"><Text>CustomerNavigator</Text></View>;
+  return () => <View testID="MainNavigator"><Text>MainNavigator</Text></View>;
 });
 
 // Mock ErrorBoundary
@@ -113,11 +113,12 @@ describe('App Navigation Logic', () => {
   describe('getInitialRouteName logic', () => {
     // Test the route determination logic directly
     it('should return Auth route when user is null', () => {
-      const route = null ? 'Customer' : 'Auth';
+      const user = null;
+      const route = !user ? 'Auth' : 'Main';
       expect(route).toBe('Auth');
     });
 
-    it('should return Customer route when user is customer', () => {
+    it('should return Main route when user is customer', () => {
       const customerUser: CustomerUser = {
         id: '1',
         email: 'customer@test.com',
@@ -126,11 +127,11 @@ describe('App Navigation Logic', () => {
         role: 'customer',
         createdAt: new Date(),
       };
-      const route = customerUser.role === 'customer' ? 'Customer' : 'Auth';
-      expect(route).toBe('Customer');
+      const route = customerUser.role === 'customer' ? 'Main' : 'Auth';
+      expect(route).toBe('Main');
     });
 
-    it('should return Customer route when user is customer', () => {
+    it('should return Main route for any user with customer role', () => {
       const anyUser: CustomerUser = {
         id: '1',
         email: 'user@test.com',
@@ -139,8 +140,8 @@ describe('App Navigation Logic', () => {
         role: 'customer',
         createdAt: new Date(),
       };
-      const route = anyUser.role === 'customer' ? 'Customer' : 'Auth';
-      expect(route).toBe('Customer');
+      const route = anyUser.role === 'customer' ? 'Main' : 'Auth';
+      expect(route).toBe('Main');
     });
 
     it('should return Auth route when user is non-customer (admin/driver) on session restore', () => {
@@ -152,7 +153,7 @@ describe('App Navigation Logic', () => {
         role: 'admin' as const,
         createdAt: new Date(),
       };
-      const route = adminUser.role === 'customer' ? 'Customer' : 'Auth';
+      const route = adminUser.role === 'customer' ? 'Main' : 'Auth';
       expect(route).toBe('Auth');
     });
 
@@ -172,11 +173,11 @@ describe('App Navigation Logic', () => {
   });
 
   describe('RootStackParamList type', () => {
-    it('should have correct route names (customer app: Auth and Customer only)', () => {
-      const routes: Array<'Auth' | 'Customer'> = ['Auth', 'Customer'];
+    it('should have correct route names (end-user app: Auth and Main only)', () => {
+      const routes: Array<'Auth' | 'Main'> = ['Auth', 'Main'];
       expect(routes).toHaveLength(2);
       expect(routes).toContain('Auth');
-      expect(routes).toContain('Customer');
+      expect(routes).toContain('Main');
     });
   });
 });

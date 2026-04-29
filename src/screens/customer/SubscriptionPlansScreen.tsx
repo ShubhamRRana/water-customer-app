@@ -21,9 +21,9 @@ import { UI_CONFIG, PRICING_CONFIG } from '../../constants/config';
 import { errorLogger } from '../../utils/errorLogger';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import { navigateCustomerMenuRoute } from '../../navigation/customerMenuNavigation';
-import type { CustomerStackParamList } from '../../navigation/rootNavigation';
+import type { AppStackParamList } from '../../navigation/rootNavigation';
 
-type Nav = StackNavigationProp<CustomerStackParamList, 'SubscriptionPlans'>;
+type Nav = StackNavigationProp<AppStackParamList, 'SubscriptionPlans'>;
 
 interface Props {
   navigation: Nav;

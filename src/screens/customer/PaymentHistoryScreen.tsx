@@ -17,12 +17,12 @@ import { useAuthStore } from '../../store/authStore';
 import { SubscriptionService } from '../../services/subscription.service';
 import type { PaymentTransaction, PaymentTransactionStatus } from '../../types/subscription.types';
 import { navigateCustomerMenuRoute } from '../../navigation/customerMenuNavigation';
-import type { CustomerStackParamList } from '../../navigation/rootNavigation';
+import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { UI_CONFIG, PRICING_CONFIG } from '../../constants/config';
 import { errorLogger } from '../../utils/errorLogger';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 
-type Nav = StackNavigationProp<CustomerStackParamList, 'PaymentHistory'>;
+type Nav = StackNavigationProp<AppStackParamList, 'PaymentHistory'>;
 
 interface Props {
   navigation: Nav;

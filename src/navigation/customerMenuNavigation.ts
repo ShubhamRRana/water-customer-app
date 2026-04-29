@@ -1,12 +1,12 @@
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { CustomerMenuRoute } from '../components/common/CustomerMenuDrawer';
-import type { CustomerStackParamList } from './rootNavigation';
+import type { AppStackParamList } from './rootNavigation';
 
 /**
  * Navigate to a drawer-listed customer stack screen (no route params).
  */
 export function navigateCustomerMenuRoute(
-  navigation: StackNavigationProp<CustomerStackParamList>,
+  navigation: StackNavigationProp<AppStackParamList>,
   route: CustomerMenuRoute
 ): void {
   switch (route) {

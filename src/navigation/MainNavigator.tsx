@@ -19,23 +19,23 @@ import PaymentScreen from '../screens/customer/PaymentScreen';
 import PaymentHistoryScreen from '../screens/customer/PaymentHistoryScreen';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import { useAuthStore } from '../store/authStore';
-import type { CustomerStackParamList, RootStackParamList } from './rootNavigation';
+import type { AppStackParamList, RootStackParamList } from './rootNavigation';
 
-export type { CustomerStackParamList } from './rootNavigation';
+export type { AppStackParamList } from './rootNavigation';
 
-const Stack = createStackNavigator<CustomerStackParamList>();
+const Stack = createStackNavigator<AppStackParamList>();
 
-const CustomerNavigator: React.FC = () => {
+const MainNavigator: React.FC = () => {
   const showSocietySubscriptionIntro = useAuthStore(s => s.showSocietySubscriptionIntro);
   const rootNavigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   useEffect(() => {
     if (!showSocietySubscriptionIntro) return;
-    rootNavigation.navigate('Customer', { screen: 'SubscriptionComingSoon' });
+    rootNavigation.navigate('Main', { screen: 'SubscriptionComingSoon' });
   }, [showSocietySubscriptionIntro]);
 
   return (
-    <ErrorBoundary resetKeys={['Customer']}>
+    <ErrorBoundary resetKeys={['Main']}>
       <Stack.Navigator
         initialRouteName="Home"
         screenOptions={{
@@ -62,4 +62,4 @@ const CustomerNavigator: React.FC = () => {
   );
 };
 
-export default CustomerNavigator;
+export default MainNavigator;

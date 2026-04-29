@@ -3,13 +3,13 @@ import { BackHandler, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { CustomerStackParamList } from '../../navigation/CustomerNavigator';
+import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { Button, Card, Typography } from '../../components/common';
 import { UI_CONFIG } from '../../constants/config';
 import { useAuthStore } from '../../store/authStore';
 
 type SubscriptionComingSoonNavigationProp = StackNavigationProp<
-  CustomerStackParamList,
+  AppStackParamList,
   'SubscriptionComingSoon'
 >;
 

@@ -216,7 +216,7 @@ classDiagram
 graph TB
     subgraph "Presentation Layer"
         A[App.tsx] --> B[AuthNavigator]
-        A --> C[CustomerNavigator]
+        A --> C[MainNavigator]
         
         B --> F[RoleSelectionScreen]
         B --> G[LoginScreen]
@@ -405,7 +405,7 @@ graph LR
     
     subgraph "Navigation"
         E[AuthNavigator]
-        F[CustomerNavigator]
+        F[MainNavigator]
     end
     
     subgraph "Screens"
@@ -601,7 +601,7 @@ water-customer-app/
 │   │   └── auth/           # Role selection, login, society login, register
 │   ├── navigation/
 │   │   ├── AuthNavigator.tsx
-│   │   ├── CustomerNavigator.tsx
+│   │   ├── MainNavigator.tsx
 │   │   ├── customerMenuNavigation.ts
 │   │   └── rootNavigation.ts
 │   ├── services/
