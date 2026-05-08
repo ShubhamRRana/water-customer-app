@@ -408,6 +408,9 @@ describe('Configuration Constants', () => {
       const authSuccess = SUCCESS_MESSAGES.auth;
       expect(authSuccess).toHaveProperty('loginSuccess');
       expect(authSuccess).toHaveProperty('registerSuccess');
+      expect(authSuccess).toHaveProperty('registerNeedsEmailConfirmation');
+      expect(authSuccess).toHaveProperty('welcomeAfterRegister');
+      expect(authSuccess).toHaveProperty('verifyEmailTitle');
       expect(authSuccess).toHaveProperty('logoutSuccess');
       Object.values(authSuccess).forEach(value => {
         expect(typeof value).toBe('string');

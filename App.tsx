@@ -49,21 +49,37 @@ const App: React.FC = () => {
     return 'Auth';
   };
 
-  // Navigate when user state changes
+  // Navigate when user state changes (also flushed onNavigationContainer onReady)
   useEffect(() => {
-    if (navigationRef.current && navigationRef.current.isReady()) {
-      const targetRoute = getInitialRouteName(user);
-      const currentRoute = navigationRef.current.getCurrentRoute()?.name;
-      
-      // Only navigate if we're not already on the target route
-      if (currentRoute !== targetRoute) {
-        navigationRef.current.reset({
-          index: 0,
-          routes: [{ name: targetRoute }],
-        });
-      }
+    const nav = navigationRef.current;
+    if (!nav?.isReady()) return;
+
+    const targetRoute = getInitialRouteName(user);
+    const currentRoute = nav.getCurrentRoute()?.name;
+
+    if (currentRoute !== targetRoute) {
+      nav.reset({
+        index: 0,
+        routes: [{ name: targetRoute }],
+      });
     }
   }, [user]);
+
+  const onNavigationReady = () => {
+    const nav = navigationRef.current;
+    if (!nav?.isReady()) return;
+
+    const u = useAuthStore.getState().user;
+    const targetRoute = getInitialRouteName(u);
+    const currentRoute = nav.getCurrentRoute()?.name;
+
+    if (currentRoute !== targetRoute) {
+      nav.reset({
+        index: 0,
+        routes: [{ name: targetRoute }],
+      });
+    }
+  };
 
   // Don't render until fonts are loaded
   if (!fontsLoaded) {
@@ -74,7 +90,7 @@ const App: React.FC = () => {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
-          <NavigationContainer ref={navigationRef}>
+          <NavigationContainer ref={navigationRef} onReady={onNavigationReady}>
             <StatusBar style="light" />
             <Stack.Navigator
               initialRouteName={getInitialRouteName(user)}

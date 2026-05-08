@@ -4,7 +4,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,7 +12,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
-import { SUCCESS_MESSAGES } from '../../constants/config';
 import { handleError } from '../../utils/errorHandler';
 import { AuthStackParamList, CustomerAccountKind } from '../../types/index';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -214,21 +212,11 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
         registrationAccountKind
       );
       if (regResult?.needsEmailConfirmation) {
-        Alert.alert(
-          'Confirm your email',
-          SUCCESS_MESSAGES.auth.registerNeedsEmailConfirmation,
-          [
-            {
-              text: 'OK',
-              onPress: () =>
-                registrationAccountKind === 'society'
-                  ? navigation.navigate('SocietyLogin')
-                  : navigation.navigate('Login', { accountType: 'individual' }),
-            },
-          ]
-        );
-      } else {
-        Alert.alert('Success', SUCCESS_MESSAGES.auth.registerSuccess);
+        navigation.navigate('VerifyEmail', {
+          email: sanitizedEmail,
+          accountKind: registrationAccountKind,
+        });
+        return;
       }
     } catch (error) {
       handleError(error, {

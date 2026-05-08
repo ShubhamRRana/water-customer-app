@@ -57,6 +57,7 @@ export const supabase = {
       error: null,
     }),
     signOut: jest.fn().mockResolvedValue({ error: null }),
+    resend: jest.fn().mockResolvedValue({ error: null }),
     getSession: jest.fn().mockResolvedValue({
       data: {
         session: {

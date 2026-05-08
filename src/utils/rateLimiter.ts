@@ -27,6 +27,7 @@ class RateLimiter {
     // Authentication limits
     ['login', { maxRequests: 5, windowMs: 15 * 60 * 1000 }], // 5 attempts per 15 minutes
     ['register', { maxRequests: 3, windowMs: 60 * 60 * 1000 }], // 3 attempts per hour
+    ['resend_signup_email', { maxRequests: 3, windowMs: 60 * 60 * 1000 }], // 3 resends per hour per email
     ['password_reset', { maxRequests: 3, windowMs: 60 * 60 * 1000 }], // 3 attempts per hour
     
     // API call limits

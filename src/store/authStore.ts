@@ -43,7 +43,7 @@ function isNetworkFailure(error: unknown): boolean {
  * **Phase 3 — responsibilities (see `docs/state-management-migration.md`):**
  * Zustand keeps session lifecycle, Supabase `onAuthStateChange`, deep-link recovery,
  * `AsyncStorage` for customer account kind, and cross-screen flags (`showSocietySubscriptionIntro`,
- * `needsPasswordReset`). Remote profile rows may also be cached under React Query
+ * `showPostRegisterWelcome`, `needsPasswordReset`). Remote profile rows may also be cached under React Query
  * (`useAuthProfileQuery`) for refetch/invalidation; this store remains the source for
  * `user` / `isAuthenticated` used by navigation.
  */
@@ -60,7 +60,10 @@ interface AuthState {
   customerAccountKind: CustomerAccountKind | null;
   /** After society login, show subscription intro once before home */
   showSocietySubscriptionIntro: boolean;
+  /** After successful registration with session, show one-time welcome on home */
+  showPostRegisterWelcome: boolean;
   dismissSocietySubscriptionIntro: () => void;
+  dismissPostRegisterWelcome: () => void;
   clearNeedsPasswordReset: () => void;
   login: (email: string, password: string) => Promise<void>;
   loginWithRole: (email: string, role: UserRole) => Promise<void>;
@@ -104,8 +107,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   needsPasswordReset: false,
   customerAccountKind: null,
   showSocietySubscriptionIntro: false,
+  showPostRegisterWelcome: false,
 
   dismissSocietySubscriptionIntro: () => set({ showSocietySubscriptionIntro: false }),
+
+  dismissPostRegisterWelcome: () => set({ showPostRegisterWelcome: false }),
 
   clearNeedsPasswordReset: () => set({ needsPasswordReset: false }),
 
@@ -126,6 +132,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             isLoading: false,
             customerAccountKind: null,
             showSocietySubscriptionIntro: false,
+            showPostRegisterWelcome: false,
           });
           get().subscribeToAuthChanges();
           return;
@@ -158,6 +165,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                     needsPasswordReset: true,
                     isLoading: false,
                     showSocietySubscriptionIntro: false,
+                    showPostRegisterWelcome: false,
                   });
                   get().subscribeToAuthChanges();
                   return;
@@ -182,6 +190,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               isLoading: false,
               customerAccountKind: null,
               showSocietySubscriptionIntro: false,
+              showPostRegisterWelcome: false,
             });
             get().subscribeToAuthChanges();
             return;
@@ -203,6 +212,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isLoading: false,
           customerAccountKind: userData ? kind : null,
           showSocietySubscriptionIntro: false,
+          showPostRegisterWelcome: false,
         });
       } else {
         set({
@@ -211,6 +221,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isLoading: false,
           customerAccountKind: null,
           showSocietySubscriptionIntro: false,
+          showPostRegisterWelcome: false,
         });
       }
 
@@ -223,6 +234,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isLoading: false,
           customerAccountKind: null,
           showSocietySubscriptionIntro: false,
+          showPostRegisterWelcome: false,
         });
         get().subscribeToAuthChanges();
         return;
@@ -382,6 +394,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isLoading: false,
           customerAccountKind: resolvedKind,
           showSocietySubscriptionIntro: resolvedKind === 'society',
+          showPostRegisterWelcome: true,
         });
         return;
       }
@@ -413,6 +426,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
         customerAccountKind: null,
         showSocietySubscriptionIntro: false,
+        showPostRegisterWelcome: false,
       });
     } catch (error) {
       handleError(error, {
@@ -527,8 +541,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           user: null,
           isAuthenticated: false,
           needsPasswordReset: true,
+          isLoading: false,
           customerAccountKind: null,
           showSocietySubscriptionIntro: false,
+          showPostRegisterWelcome: false,
         });
         return;
       }
@@ -545,6 +561,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           needsPasswordReset: false,
           customerAccountKind: null,
           showSocietySubscriptionIntro: false,
+          showPostRegisterWelcome: false,
         });
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
         const { pendingLoginRole } = get();

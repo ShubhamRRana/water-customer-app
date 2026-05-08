@@ -5,7 +5,8 @@ import {
   StyleSheet, 
   Alert, 
   ScrollView, 
-  RefreshControl
+  RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,7 +23,7 @@ import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDraw
 import AppScreenHeader from '../../components/layouts/AppScreenHeader';
 import { BookingStatus } from '../../types';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
-import { UI_CONFIG } from '../../constants/config';
+import { UI_CONFIG, SUCCESS_MESSAGES } from '../../constants/config';
 import { PricingUtils } from '../../utils/pricing';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
@@ -34,7 +35,7 @@ interface CustomerHomeScreenProps {
 
 const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
   const navigation = useNavigation<CustomerHomeScreenNavigationProp>();
-  const { user, logout, customerAccountKind } = useAuthStore();
+  const { user, logout, customerAccountKind, showPostRegisterWelcome, dismissPostRegisterWelcome } = useAuthStore();
   const {
     data: bookings = [],
     isPending: bookingsLoading,
@@ -163,6 +164,21 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
         title={`Hi, ${user?.name || 'User'}`}
         subtitleFirst
       />
+
+      {showPostRegisterWelcome ? (
+        <View style={styles.welcomeBanner}>
+          <Typography variant="body" style={styles.welcomeBannerText}>
+            {SUCCESS_MESSAGES.auth.welcomeAfterRegister}
+          </Typography>
+          <TouchableOpacity
+            onPress={dismissPostRegisterWelcome}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityLabel="Dismiss welcome message"
+          >
+            <Ionicons name="close" size={22} color={UI_CONFIG.colors.text} />
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       {/* Quick Actions */}
       <View style={styles.section}>
@@ -421,6 +437,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: UI_CONFIG.colors.error,
     textAlign: 'center',
+  },
+  welcomeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: UI_CONFIG.colors.surfaceLight,
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: UI_CONFIG.colors.success,
+  },
+  welcomeBannerText: {
+    flex: 1,
+    color: UI_CONFIG.colors.text,
+    lineHeight: 22,
+    paddingRight: 8,
   },
 });
 

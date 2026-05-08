@@ -2,6 +2,8 @@
  * Auth Store Tests
  */
 
+jest.mock('../../lib/supabaseClient');
+
 import { useAuthStore } from '../../store/authStore';
 import { AuthService } from '../../services/auth.service';
 import { User, UserRole } from '../../types';
@@ -17,6 +19,11 @@ describe('useAuthStore', () => {
       isLoading: false,
       isAuthenticated: false,
       unsubscribeAuth: null,
+      pendingLoginRole: null,
+      needsPasswordReset: false,
+      customerAccountKind: null,
+      showSocietySubscriptionIntro: false,
+      showPostRegisterWelcome: false,
     });
     jest.clearAllMocks();
   });
@@ -205,12 +212,36 @@ describe('useAuthStore', () => {
         'test@example.com',
         'password',
         'Test User',
-        'customer'
+        'customer',
+        '9876543210'
       );
 
       const state = useAuthStore.getState();
       expect(state.user).toEqual(mockUser);
       expect(state.isAuthenticated).toBe(true);
+      expect(state.isLoading).toBe(false);
+      expect(state.showPostRegisterWelcome).toBe(true);
+    });
+
+    it('should return needsEmailConfirmation without setting user or welcome flag', async () => {
+      (AuthService.register as jest.Mock).mockResolvedValue({
+        success: true,
+        needsEmailConfirmation: true,
+      });
+
+      const result = await useAuthStore.getState().register(
+        'test@example.com',
+        'password',
+        'Test User',
+        'customer',
+        '9876543210'
+      );
+
+      expect(result).toEqual({ needsEmailConfirmation: true });
+      const state = useAuthStore.getState();
+      expect(state.user).toBeNull();
+      expect(state.isAuthenticated).toBe(false);
+      expect(state.showPostRegisterWelcome).toBe(false);
       expect(state.isLoading).toBe(false);
     });
 
@@ -225,7 +256,8 @@ describe('useAuthStore', () => {
           'test@example.com',
           'password',
           'Test User',
-          'customer'
+          'customer',
+          '9876543210'
         )
       ).rejects.toThrow('Email already exists');
 
@@ -253,6 +285,7 @@ describe('useAuthStore', () => {
       const state = useAuthStore.getState();
       expect(state.user).toBeNull();
       expect(state.isAuthenticated).toBe(false);
+      expect(state.showPostRegisterWelcome).toBe(false);
       expect(state.isLoading).toBe(false);
       expect(AuthService.logout).toHaveBeenCalled();
     });

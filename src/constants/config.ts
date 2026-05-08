@@ -214,7 +214,19 @@ export const SUCCESS_MESSAGES = {
   auth: {
     loginSuccess: 'Login successful!',
     registerSuccess: 'Registration successful!',
-    registerNeedsEmailConfirmation: 'Please check your email to confirm your account. You can then sign in.',
+    registerNeedsEmailConfirmation:
+      'We sent a confirmation link. Open the email, tap the link to verify, then return here and sign in.',
+    verifyEmailTitle: 'Verify your email',
+    verifyEmailSubtitle:
+      'Your account is almost ready. Confirm your email to finish setup—then you can sign in.',
+    verifyEmailStepCheckInbox: 'Open the inbox for the address you used to register.',
+    verifyEmailStepClickLink: 'Open the confirmation message and tap the link (check spam if you do not see it).',
+    verifyEmailStepSignIn: 'Come back to the app and use Sign in with the same email and password.',
+    verifyEmailResendCta: 'Resend confirmation email',
+    verifyEmailResent: 'If an account exists for this email, we sent another confirmation message.',
+    verifyEmailOpenMail: 'Open email app',
+    verifyEmailContinueSignIn: 'Continue to sign in',
+    welcomeAfterRegister: "You're all set — welcome to TankerHub!",
     logoutSuccess: 'Logged out successfully!',
   },
   booking: {

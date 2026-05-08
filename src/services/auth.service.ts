@@ -789,6 +789,61 @@ export class AuthService {
   }
 
   /**
+   * Resend the signup confirmation email (when Dashboard "Confirm email" / RLS blocks session until verified).
+   */
+  static async resendSignupConfirmation(email: string): Promise<AuthResult> {
+    const sanitizedEmail = SanitizationUtils.sanitizeEmail(email);
+    const emailValidation = ValidationUtils.validateEmail(sanitizedEmail, true);
+    if (!emailValidation.isValid) {
+      return {
+        success: false,
+        error: emailValidation.error || 'Invalid email address',
+      };
+    }
+
+    const rateLimitCheck = rateLimiter.isAllowed('resend_signup_email', sanitizedEmail);
+    if (!rateLimitCheck.allowed) {
+      return {
+        success: false,
+        error: `Too many resend attempts. Try again after ${new Date(rateLimitCheck.resetTime).toLocaleTimeString()}.`,
+      };
+    }
+
+    const authSuccessUrl =
+      process.env.EXPO_PUBLIC_AUTH_SUCCESS_URL || 'https://tankerhub.in/auth/success';
+
+    try {
+      rateLimiter.record('resend_signup_email', sanitizedEmail);
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: sanitizedEmail,
+        options: {
+          emailRedirectTo: authSuccessUrl,
+        },
+      });
+
+      if (error) {
+        const msg = error.message || 'Failed to resend confirmation email';
+        const normalized = msg.toLowerCase();
+        if (normalized.includes('rate limit') || normalized.includes('too many')) {
+          return {
+            success: false,
+            error: 'Too many emails sent. Please wait a few minutes and try again.',
+          };
+        }
+        return { success: false, error: msg };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: getErrorMessage(error, 'Failed to resend confirmation email'),
+      };
+    }
+  }
+
+  /**
    * Login with email and password.
    * 
    * Supports multi-role users - if user has multiple roles and no preferredRole is provided, returns requiresRoleSelection flag.
