@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { 
   View, 
   StyleSheet, 
@@ -16,6 +16,8 @@ import { useAuthStore } from '../../store/authStore';
 import { Typography, CustomerMenuDrawer } from '../../components/common';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import { UI_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { PricingUtils } from '../../utils/pricing';
 import {
@@ -34,6 +36,8 @@ interface PastOrdersScreenProps {
 }
 
 const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createPastOrdersStyles(colors), [colors]);
   const { user, logout, customerAccountKind } = useAuthStore();
   const { data: bookings = [], refetch: refetchBookings } = useCustomerBookingsQuery(user?.id);
   const [refreshing, setRefreshing] = useState(false);
@@ -178,7 +182,7 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
               onPress={() => setMenuVisible(true)}
               activeOpacity={0.7}
             >
-              <Ionicons name="menu" size={24} color={UI_CONFIG.colors.text} />
+              <Ionicons name="menu" size={24} color={colors.text} />
             </TouchableOpacity>
             <View style={styles.headerTextContainer}>
               <Typography variant="h2" style={styles.title}>
@@ -193,7 +197,7 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
               onPress={handleDownloadExcel}
               activeOpacity={0.7}
             >
-              <Ionicons name="download-outline" size={24} color={UI_CONFIG.colors.text} />
+              <Ionicons name="download-outline" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
         </View>
@@ -470,21 +474,22 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+function createPastOrdersStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
+    backgroundColor: colors.background,
   },
   header: {
     paddingHorizontal: UI_CONFIG.spacing.lg,
     paddingVertical: UI_CONFIG.spacing.md,
-    backgroundColor: UI_CONFIG.colors.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
+    borderBottomColor: colors.border,
   },
   headerContent: {
     flexDirection: 'row',
@@ -504,12 +509,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
+    color: colors.textSecondary,
   },
   periodTypeToggle: {
     paddingHorizontal: UI_CONFIG.spacing.lg,
@@ -528,11 +533,11 @@ const styles = StyleSheet.create({
   glassRadioGroup: {
     position: 'relative',
     flexDirection: 'row',
-    backgroundColor: UI_CONFIG.colors.overlaySubtle,
+    backgroundColor: colors.overlaySubtle,
     borderRadius: 16,
     overflow: 'hidden',
     alignSelf: 'center',
-    shadowColor: UI_CONFIG.colors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 4,
@@ -555,10 +560,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0.3,
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
   },
   glassRadioLabelActive: {
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
   },
   glassGlider: {
     position: 'absolute',
@@ -567,8 +572,8 @@ const styles = StyleSheet.create({
     left: 0,
     borderRadius: 16,
     zIndex: 1,
-    backgroundColor: UI_CONFIG.colors.accent,
-    shadowColor: UI_CONFIG.colors.accent,
+    backgroundColor: colors.accent,
+    shadowColor: colors.accent,
     shadowOffset: {
       width: 0,
       height: 0,
@@ -586,7 +591,7 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     marginBottom: UI_CONFIG.spacing.lg,
   },
   summaryMetrics: {
@@ -611,13 +616,13 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: UI_CONFIG.colors.accent,
+    color: colors.accent,
     textAlign: 'center',
     width: '100%',
   },
   summaryLabel: {
     fontSize: 14,
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     fontWeight: '500',
   },
   dailySection: {
@@ -628,13 +633,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: UI_CONFIG.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
+    borderBottomColor: colors.border,
     marginBottom: UI_CONFIG.spacing.sm,
   },
   dailyHeaderText: {
     fontSize: 14,
     fontWeight: '600',
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
   },
   dailyHeaderLeft: {
     flex: 1,
@@ -652,7 +657,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: UI_CONFIG.spacing.md,
     paddingHorizontal: UI_CONFIG.spacing.sm,
-    backgroundColor: UI_CONFIG.colors.background,
+    backgroundColor: colors.background,
     borderRadius: 8,
     marginBottom: 4,
     alignItems: 'center',
@@ -661,23 +666,24 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '500',
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
   },
   dailyRevenue: {
     flex: 1,
     fontSize: 14,
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     textAlign: 'center',
   },
   dailyOrders: {
     flex: 1,
     fontSize: 14,
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     textAlign: 'right',
   },
   bottomSpacing: {
     height: 40,
   },
-});
+  });
+}
 
 export default PastOrdersScreen;

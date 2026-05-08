@@ -19,6 +19,8 @@ import type { PaymentTransaction, PaymentTransactionStatus } from '../../types/s
 import { navigateCustomerMenuRoute } from '../../navigation/customerMenuNavigation';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { UI_CONFIG, PRICING_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { errorLogger } from '../../utils/errorLogger';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 
@@ -39,6 +41,8 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 ];
 
 const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createPaymentHistoryStyles(colors), [colors]);
   const { user, logout, customerAccountKind } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -102,13 +106,13 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn} accessibilityLabel="Go back">
-          <Ionicons name="chevron-back" size={28} color={UI_CONFIG.colors.accent} />
+          <Ionicons name="chevron-back" size={28} color={colors.accent} />
         </TouchableOpacity>
         <Typography variant="h2" style={styles.headerTitle}>
           Payment history
         </Typography>
         <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.iconBtn} accessibilityLabel="Open menu">
-          <Ionicons name="menu" size={26} color={UI_CONFIG.colors.accent} />
+          <Ionicons name="menu" size={26} color={colors.accent} />
         </TouchableOpacity>
       </View>
 
@@ -140,11 +144,11 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
         <ScrollView
           contentContainerStyle={styles.scroll}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={UI_CONFIG.colors.accent} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
           }
         >
           {filtered.length === 0 ? (
-            <Typography variant="body" style={{ color: UI_CONFIG.colors.textSecondary, textAlign: 'center' }}>
+            <Typography variant="body" style={{ color: colors.textSecondary, textAlign: 'center' }}>
               No transactions match this filter.
             </Typography>
           ) : (
@@ -156,18 +160,18 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
                       {PRICING_CONFIG.currencySymbol}
                       {tx.amount.toFixed(2)}
                     </Typography>
-                    <Typography variant="caption" style={{ color: UI_CONFIG.colors.textSecondary }}>
+                    <Typography variant="caption" style={{ color: colors.textSecondary }}>
                       {tx.initiatedAt.toLocaleString()}
                     </Typography>
                   </View>
-                  <View style={[styles.pill, statusStyle(tx.status)]}>
+                  <View style={[styles.pill, statusStyle(tx.status, colors)]}>
                     <Typography variant="caption" style={styles.pillText}>
                       {tx.status}
                     </Typography>
                   </View>
                 </View>
                 {tx.gatewayOrderId ? (
-                  <Typography variant="caption" style={{ marginTop: 8, color: UI_CONFIG.colors.textSecondary }}>
+                  <Typography variant="caption" style={{ marginTop: 8, color: colors.textSecondary }}>
                     Order: {tx.gatewayOrderId}
                   </Typography>
                 ) : null}
@@ -189,7 +193,7 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
   );
 };
 
-function statusStyle(s: PaymentTransactionStatus) {
+function statusStyle(s: PaymentTransactionStatus, colors: ThemeColors) {
   switch (s) {
     case 'success':
       return { backgroundColor: 'rgba(34, 197, 94, 0.2)' };
@@ -199,12 +203,13 @@ function statusStyle(s: PaymentTransactionStatus) {
     case 'processing':
       return { backgroundColor: 'rgba(250, 204, 21, 0.15)' };
     default:
-      return { backgroundColor: UI_CONFIG.colors.surfaceLight };
+      return { backgroundColor: colors.surfaceLight };
   }
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: UI_CONFIG.colors.primary },
+function createPaymentHistoryStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.primary },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -212,27 +217,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: UI_CONFIG.spacing.md,
     paddingVertical: UI_CONFIG.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
+    borderBottomColor: colors.border,
   },
   iconBtn: { padding: UI_CONFIG.spacing.xs },
   headerTitle: { flex: 1, textAlign: 'center' },
-  chips: { maxHeight: 48, borderBottomWidth: 1, borderBottomColor: UI_CONFIG.colors.border },
+  chips: { maxHeight: 48, borderBottomWidth: 1, borderBottomColor: colors.border },
   chipsInner: { paddingHorizontal: UI_CONFIG.spacing.md, paddingVertical: UI_CONFIG.spacing.sm, gap: 8, alignItems: 'center' },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: UI_CONFIG.colors.surface,
+    backgroundColor: colors.surface,
     marginRight: 8,
   },
-  chipOn: { backgroundColor: UI_CONFIG.colors.accent },
-  chipText: { color: UI_CONFIG.colors.textSecondary },
-  chipTextOn: { color: UI_CONFIG.colors.primary, fontWeight: '600' },
+  chipOn: { backgroundColor: colors.accent },
+  chipText: { color: colors.textSecondary },
+  chipTextOn: { color: colors.primary, fontWeight: '600' },
   scroll: { padding: UI_CONFIG.spacing.md, paddingBottom: UI_CONFIG.spacing.xl },
   card: { marginBottom: UI_CONFIG.spacing.sm },
   cardRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   pillText: { textTransform: 'capitalize' },
-});
+  });
+}
 
 export default PaymentHistoryScreen;

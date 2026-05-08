@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   View, 
   StyleSheet, 
@@ -20,10 +20,14 @@ import { Typography, CustomerMenuDrawer, ScreenLoading, ScreenError } from '../.
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
+import { useThemeStore } from '../../store/themeStore';
 import { AuthService } from '../../services/auth.service';
 import { User } from '../../types';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { APP_CONFIG, UI_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import type { ThemePreference } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
 import { formatDateOnly } from '../../utils/dateUtils';
 import { invalidateAuthProfileQueries, useAuthProfileQuery } from '../../hooks/queries';
@@ -35,12 +39,16 @@ interface ProfileScreenProps {
 }
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createProfileStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { user, updateUser, logout, isLoading, customerAccountKind } = useAuthStore();
   const profileQuery = useAuthProfileQuery(user?.id);
   const { refetch: refetchProfile } = profileQuery;
   const displayUser = profileQuery.data ?? user;
+  const preference = useThemeStore((s) => s.preference);
+  const setPreference = useThemeStore((s) => s.setPreference);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -286,6 +294,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   const showContactCta =
     customerAccountKind === 'individual' || customerAccountKind === 'society';
+  const appearanceOptions: Array<{ key: ThemePreference; label: string }> = [
+    { key: 'light', label: 'Light' },
+    { key: 'dark', label: 'Dark' },
+    { key: 'system', label: 'Match device' },
+  ];
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -301,7 +314,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         >
           {/* Header with Gradient */}
           <LinearGradient
-            colors={[UI_CONFIG.colors.surface, UI_CONFIG.colors.surfaceLight]}
+            colors={[colors.surface, colors.surfaceLight]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.headerGradient}
@@ -312,7 +325,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                 onPress={() => setMenuVisible(true)}
                 activeOpacity={0.7}
               >
-                <Ionicons name="menu" size={24} color={UI_CONFIG.colors.textLight} />
+                <Ionicons name="menu" size={24} color={colors.textLight} />
               </TouchableOpacity>
               <Typography variant="h2" style={styles.headerTitle}>Profile</Typography>
               <View style={styles.headerSpacer} />
@@ -354,7 +367,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           >
             <View style={styles.infoRow}>
               <View style={styles.infoIconContainer}>
-                <Ionicons name="calendar-outline" size={20} color={UI_CONFIG.colors.accent} />
+                <Ionicons name="calendar-outline" size={20} color={colors.accent} />
               </View>
               <View style={styles.infoContent}>
                 <Typography variant="caption" style={styles.infoLabel}>
@@ -387,7 +400,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                 <Ionicons
                   name="create-outline"
                   size={22}
-                  color={UI_CONFIG.colors.accent}
+                  color={colors.accent}
                 />
                 <Typography variant="body" style={styles.actionButtonText}>
                   Edit Profile
@@ -405,12 +418,49 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                 activeOpacity={0.8}
                 disabled={isDeleting}
               >
-                <Ionicons name="chatbubbles-outline" size={22} color={UI_CONFIG.colors.accent} />
+                <Ionicons name="chatbubbles-outline" size={22} color={colors.accent} />
                 <Typography variant="body" style={styles.actionButtonText}>
                   Contact Us
                 </Typography>
               </TouchableOpacity>
             )}
+          </Animated.View>
+          <Animated.View
+            style={[
+              styles.appearanceCard,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <Typography variant="h3" style={styles.appearanceTitle}>
+              Appearance
+            </Typography>
+            {appearanceOptions.map((option) => {
+              const selected = preference === option.key;
+              return (
+                <TouchableOpacity
+                  key={option.key}
+                  style={[
+                    styles.appearanceOption,
+                    selected && styles.appearanceOptionActive,
+                    selected && { borderColor: colors.accent, backgroundColor: colors.surfaceLight },
+                  ]}
+                  onPress={() => setPreference(option.key)}
+                  activeOpacity={0.8}
+                >
+                  <Typography variant="body" style={styles.appearanceOptionText}>
+                    {option.label}
+                  </Typography>
+                  {selected ? (
+                    <Ionicons name="checkmark-circle" size={20} color={colors.accent} />
+                  ) : (
+                    <Ionicons name="ellipse-outline" size={20} color={colors.textSecondary} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </Animated.View>
 
           {/* Edit Profile Form */}
@@ -426,7 +476,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             >
               <View style={styles.editCard}>
                 <View style={styles.editHeader}>
-                  <Ionicons name="person-outline" size={24} color={UI_CONFIG.colors.accent} />
+                  <Ionicons name="person-outline" size={24} color={colors.accent} />
                   <Typography variant="h3" style={styles.editTitle}>
                     Edit Profile Information
                   </Typography>
@@ -434,13 +484,13 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                 
                 <View style={styles.inputContainer}>
                   <View style={styles.inputLabelContainer}>
-                    <Ionicons name="person" size={16} color={UI_CONFIG.colors.textSecondary} />
+                    <Ionicons name="person" size={16} color={colors.textSecondary} />
                     <Typography variant="body" style={styles.inputLabel}>
                       Full Name
                     </Typography>
                   </View>
                   <TextInput
-                    style={[styles.textInput, formErrors.name && { borderColor: UI_CONFIG.colors.error }]}
+                    style={[styles.textInput, formErrors.name && { borderColor: colors.error }]}
                     value={editForm.name}
                     onChangeText={(text) => {
                       const sanitized = SanitizationUtils.sanitizeNameWhileEditing(text);
@@ -454,10 +504,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       }
                     }}
                     placeholder="Enter your full name"
-                    placeholderTextColor={UI_CONFIG.colors.textSecondary}
+                    placeholderTextColor={colors.textSecondary}
                   />
                   {formErrors.name && (
-                    <Typography variant="caption" style={{ color: UI_CONFIG.colors.error, marginTop: 4 }}>
+                    <Typography variant="caption" style={{ color: colors.error, marginTop: 4 }}>
                       {formErrors.name}
                     </Typography>
                   )}
@@ -465,13 +515,13 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
                 <View style={styles.inputContainer}>
                   <View style={styles.inputLabelContainer}>
-                    <Ionicons name="mail" size={16} color={UI_CONFIG.colors.textSecondary} />
+                    <Ionicons name="mail" size={16} color={colors.textSecondary} />
                     <Typography variant="body" style={styles.inputLabel}>
                       Email Address
                     </Typography>
                   </View>
                   <TextInput
-                    style={[styles.textInput, formErrors.email && { borderColor: UI_CONFIG.colors.error }]}
+                    style={[styles.textInput, formErrors.email && { borderColor: colors.error }]}
                     value={editForm.email}
                     onChangeText={(text) => {
                       const sanitized = SanitizationUtils.sanitizeEmail(text);
@@ -485,12 +535,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       }
                     }}
                     placeholder="Enter your email address"
-                    placeholderTextColor={UI_CONFIG.colors.textSecondary}
+                    placeholderTextColor={colors.textSecondary}
                     keyboardType="email-address"
                     autoCapitalize="none"
                   />
                   {formErrors.email && (
-                    <Typography variant="caption" style={{ color: UI_CONFIG.colors.error, marginTop: 4 }}>
+                    <Typography variant="caption" style={{ color: colors.error, marginTop: 4 }}>
                       {formErrors.email}
                     </Typography>
                   )}
@@ -498,13 +548,13 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
                 <View style={styles.inputContainer}>
                   <View style={styles.inputLabelContainer}>
-                    <Ionicons name="call" size={16} color={UI_CONFIG.colors.textSecondary} />
+                    <Ionicons name="call" size={16} color={colors.textSecondary} />
                     <Typography variant="body" style={styles.inputLabel}>
                       Phone Number
                     </Typography>
                   </View>
                   <TextInput
-                    style={[styles.textInput, formErrors.phone && { borderColor: UI_CONFIG.colors.error }]}
+                    style={[styles.textInput, formErrors.phone && { borderColor: colors.error }]}
                     value={editForm.phone}
                     onChangeText={(text) => {
                       const sanitized = SanitizationUtils.sanitizePhone(text);
@@ -518,12 +568,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                       }
                     }}
                     placeholder="Enter your phone number"
-                    placeholderTextColor={UI_CONFIG.colors.textSecondary}
+                    placeholderTextColor={colors.textSecondary}
                     keyboardType="phone-pad"
                     maxLength={10}
                   />
                   {formErrors.phone && (
-                    <Typography variant="caption" style={{ color: UI_CONFIG.colors.error, marginTop: 4 }}>
+                    <Typography variant="caption" style={{ color: colors.error, marginTop: 4 }}>
                       {formErrors.phone}
                     </Typography>
                   )}
@@ -535,12 +585,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   activeOpacity={0.8}
                 >
                   <LinearGradient
-                    colors={[UI_CONFIG.colors.accent, UI_CONFIG.colors.accentMuted]}
+                    colors={[colors.accent, colors.accentMuted]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.saveButtonGradient}
                   >
-                    <Ionicons name="checkmark-circle" size={20} color={UI_CONFIG.colors.textLight} />
+                    <Ionicons name="checkmark-circle" size={20} color={colors.textLight} />
                     <Typography variant="body" style={styles.saveButtonText}>
                       Save Changes
                     </Typography>
@@ -553,7 +603,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   activeOpacity={0.8}
                   disabled={isDeleting}
                 >
-                  <Ionicons name="close-circle" size={22} color={UI_CONFIG.colors.error} />
+                  <Ionicons name="close-circle" size={22} color={colors.error} />
                   <Typography variant="body" style={styles.actionButtonTextActive}>
                     Cancel
                   </Typography>
@@ -579,7 +629,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               activeOpacity={0.8}
               disabled={isDeleting}
             >
-              <Ionicons name="trash-outline" size={22} color={UI_CONFIG.colors.error} />
+              <Ionicons name="trash-outline" size={22} color={colors.error} />
               <Typography variant="body" style={styles.deleteAccountButtonText}>
                 {isDeleting ? 'Deleting...' : 'Delete Account'}
               </Typography>
@@ -600,14 +650,15 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+function createProfileStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
+    backgroundColor: colors.background,
   },
   contentContainer: {
     paddingBottom: 32,
@@ -617,7 +668,7 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
-    shadowColor: UI_CONFIG.colors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 4,
@@ -637,12 +688,12 @@ const styles = StyleSheet.create({
   menuButton: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: UI_CONFIG.colors.overlayLight,
+    backgroundColor: colors.overlayLight,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: UI_CONFIG.colors.textLight,
+    color: colors.textLight,
   },
   headerSpacer: {
     width: 40,
@@ -655,22 +706,22 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 25,
     fontWeight: 'bold',
-    color: UI_CONFIG.colors.accent,
+    color: colors.accent,
     marginBottom: 4,
     textAlign: 'center',
   },
   userPhone: {
     fontSize: 16,
-    color: UI_CONFIG.colors.textLight,
+    color: colors.textLight,
     textAlign: 'center',
   },
   infoCard: {
-    backgroundColor: UI_CONFIG.colors.surface,
+    backgroundColor: colors.surface,
     marginHorizontal: 20,
     marginTop: -20,
     borderRadius: 16,
     padding: 20,
-    shadowColor: UI_CONFIG.colors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -687,7 +738,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: `${UI_CONFIG.colors.primary}15`,
+    backgroundColor: `${colors.primary}15`,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -697,19 +748,50 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 12,
-    color: UI_CONFIG.colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   infoValue: {
     fontSize: 16,
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     fontWeight: '600',
   },
   actionButtonsContainer: {
     paddingHorizontal: 20,
     marginTop: 24,
+  },
+  appearanceCard: {
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderRadius: 12,
+    padding: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  appearanceTitle: {
+    marginBottom: 12,
+    color: colors.text,
+  },
+  appearanceOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
+    backgroundColor: colors.surface,
+  },
+  appearanceOptionActive: {
+    borderWidth: 1,
+  },
+  appearanceOptionText: {
+    color: colors.text,
   },
   contactUsButton: {
     marginTop: 12,
@@ -718,29 +800,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: UI_CONFIG.colors.border,
-    backgroundColor: UI_CONFIG.colors.background,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
   },
   deleteAccountButton: {
-    borderColor: UI_CONFIG.colors.error,
-    backgroundColor: `${UI_CONFIG.colors.error}10`,
+    borderColor: colors.error,
+    backgroundColor: `${colors.error}10`,
   },
   deleteAccountButtonText: {
     marginLeft: 8,
     fontSize: 16,
     fontWeight: '600',
-    color: UI_CONFIG.colors.error,
+    color: colors.error,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: UI_CONFIG.colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     borderWidth: 2,
-    borderColor: UI_CONFIG.colors.border,
-    shadowColor: UI_CONFIG.colors.shadow,
+    borderColor: colors.border,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -750,27 +832,27 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   actionButtonActive: {
-    borderColor: UI_CONFIG.colors.error,
-    backgroundColor: `${UI_CONFIG.colors.error}10`,
+    borderColor: colors.error,
+    backgroundColor: `${colors.error}10`,
   },
   actionButtonText: {
     marginLeft: 8,
     fontSize: 16,
     fontWeight: '600',
-    color: UI_CONFIG.colors.accent,
+    color: colors.accent,
   },
   actionButtonTextActive: {
-    color: UI_CONFIG.colors.error,
+    color: colors.error,
   },
   editFormContainer: {
     paddingHorizontal: 20,
     marginTop: 20,
   },
   editCard: {
-    backgroundColor: UI_CONFIG.colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 24,
-    shadowColor: UI_CONFIG.colors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 4,
@@ -787,7 +869,7 @@ const styles = StyleSheet.create({
   editTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     marginLeft: 12,
   },
   inputContainer: {
@@ -801,23 +883,23 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     marginLeft: 8,
   },
   textInput: {
     borderWidth: 2,
-    borderColor: UI_CONFIG.colors.border,
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: UI_CONFIG.colors.text,
-    backgroundColor: UI_CONFIG.colors.background,
+    color: colors.text,
+    backgroundColor: colors.background,
   },
   saveButton: {
     marginTop: 8,
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: UI_CONFIG.colors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 4,
@@ -836,7 +918,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 16,
     fontWeight: '600',
-    color: UI_CONFIG.colors.textLight,
+    color: colors.textLight,
   },
   cancelEditFooterButton: {
     marginTop: 12,
@@ -844,6 +926,7 @@ const styles = StyleSheet.create({
   bottomSpacing: {
     height: 40,
   },
-});
+  });
+}
 
 export default ProfileScreen;

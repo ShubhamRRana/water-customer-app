@@ -13,7 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { AuthStackParamList } from '../../types/index';
 import { CustomerIcon, Typography } from '../../components/common';
-import { UI_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 type RoleSelectionNavigationProp = StackNavigationProp<AuthStackParamList, 'RoleSelection'>;
 
@@ -21,7 +22,141 @@ interface Props {
   navigation: RoleSelectionNavigationProp;
 }
 
+function createRoleSelectionStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      position: 'relative',
+    },
+    watermarkContainer: {
+      position: 'absolute',
+      justifyContent: 'center',
+      alignItems: 'center',
+      opacity: 0.06,
+      zIndex: 0,
+      pointerEvents: 'none',
+    },
+    contentOverlay: {
+      zIndex: 1,
+    },
+    scrollContainer: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      padding: 24,
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: 40,
+    },
+    title: {
+      fontSize: 26,
+      fontWeight: 'bold',
+      fontFamily: 'PlayfairDisplay-Regular',
+      color: colors.text,
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    roleContainer: {
+      marginBottom: 32,
+    },
+    roleCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 20,
+      marginBottom: 16,
+      borderWidth: 2,
+      borderColor: colors.border,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    roleCardSelected: {
+      borderColor: colors.accent,
+      backgroundColor: colors.surfaceLight,
+    },
+    roleHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    iconContainer: {
+      marginLeft: 16,
+    },
+    roleInfo: {
+      flex: 1,
+    },
+    roleTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    roleTitleSelected: {
+      color: colors.accent,
+    },
+    roleDescription: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    roleDescriptionSelected: {
+      color: colors.accentMuted,
+    },
+    button: {
+      backgroundColor: colors.accent,
+      borderRadius: 8,
+      paddingHorizontal: 27,
+      paddingVertical: 11,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.accent,
+      shadowColor: colors.shadow,
+      shadowOffset: {
+        width: 6,
+        height: 6,
+      },
+      shadowOpacity: 0.6,
+      shadowRadius: 12,
+      elevation: 6,
+    },
+    buttonDisabled: {
+      backgroundColor: colors.disabled,
+      borderColor: colors.disabled,
+      shadowOpacity: 0.3,
+    },
+    buttonPressed: {
+      shadowOffset: {
+        width: 4,
+        height: 4,
+      },
+      shadowRadius: 8,
+      shadowOpacity: 0.5,
+      elevation: 4,
+    },
+    buttonText: {
+      color: colors.textLight,
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    buttonContainer: {
+      gap: 12,
+    },
+  });
+}
+
 const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createRoleSelectionStyles(colors), [colors]);
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [selectedAccount, setSelectedAccount] = useState<'individual' | 'society' | null>(null);
   const [isButtonPressed, setIsButtonPressed] = useState(false);
@@ -63,9 +198,7 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
       existingPositions: Array<{ top: number; left: number }>
     ) => {
       for (const pos of existingPositions) {
-        const distance = Math.sqrt(
-          Math.pow(newTop - pos.top, 2) + Math.pow(newLeft - pos.left, 2)
-        );
+        const distance = Math.sqrt(Math.pow(newTop - pos.top, 2) + Math.pow(newLeft - pos.left, 2));
         if (distance < minSpacing) return true;
       }
       return false;
@@ -101,9 +234,9 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
 
   const renderWatermarkIcon = (index: number) => {
     if (index < 10) {
-      return <CustomerIcon size={50} color={UI_CONFIG.colors.textSecondary} />;
+      return <CustomerIcon size={50} color={colors.textSecondary} />;
     }
-    return <Ionicons name="business-outline" size={50} color={UI_CONFIG.colors.textSecondary} />;
+    return <Ionicons name="business-outline" size={50} color={colors.textSecondary} />;
   };
 
   return (
@@ -126,8 +259,12 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
 
         <ScrollView contentContainerStyle={styles.scrollContainer} style={styles.contentOverlay}>
           <View style={styles.header}>
-            <Typography variant="h1" style={styles.title}>Water Tanker - Customer</Typography>
-            <Typography variant="body" style={styles.subtitle}>Select how you want to use the app</Typography>
+            <Typography variant="h1" style={styles.title}>
+              Water Tanker - Customer
+            </Typography>
+            <Typography variant="body" style={styles.subtitle}>
+              Select how you want to use the app
+            </Typography>
           </View>
 
           <View style={styles.roleContainer}>
@@ -165,13 +302,13 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
                     {accountType.key === 'individual' ? (
                       <CustomerIcon
                         size={32}
-                        color={selectedAccount === accountType.key ? UI_CONFIG.colors.accent : UI_CONFIG.colors.text}
+                        color={selectedAccount === accountType.key ? colors.accent : colors.text}
                       />
                     ) : (
                       <Ionicons
                         name="business-outline"
                         size={32}
-                        color={selectedAccount === accountType.key ? UI_CONFIG.colors.accent : UI_CONFIG.colors.text}
+                        color={selectedAccount === accountType.key ? colors.accent : colors.text}
                       />
                     )}
                   </View>
@@ -192,7 +329,9 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
               onPressIn={() => setIsButtonPressed(true)}
               onPressOut={() => setIsButtonPressed(false)}
             >
-              <Typography variant="body" style={styles.buttonText}>Continue</Typography>
+              <Typography variant="body" style={styles.buttonText}>
+                Continue
+              </Typography>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -200,135 +339,5 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
-    position: 'relative',
-  },
-  watermarkContainer: {
-    position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
-    opacity: 0.06,
-    zIndex: 0,
-    pointerEvents: 'none',
-  },
-  contentOverlay: {
-    zIndex: 1,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    fontFamily: 'PlayfairDisplay-Regular',
-    color: UI_CONFIG.colors.text,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
-    textAlign: 'center',
-  },
-  roleContainer: {
-    marginBottom: 32,
-  },
-  roleCard: {
-    backgroundColor: UI_CONFIG.colors.surface,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: UI_CONFIG.colors.border,
-    shadowColor: UI_CONFIG.colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  roleCardSelected: {
-    borderColor: UI_CONFIG.colors.accent,
-    backgroundColor: UI_CONFIG.colors.surfaceLight,
-  },
-  roleHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  iconContainer: {
-    marginLeft: 16,
-  },
-  roleInfo: {
-    flex: 1,
-  },
-  roleTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: UI_CONFIG.colors.text,
-    marginBottom: 4,
-  },
-  roleTitleSelected: {
-    color: UI_CONFIG.colors.accent,
-  },
-  roleDescription: {
-    fontSize: 14,
-    color: UI_CONFIG.colors.textSecondary,
-  },
-  roleDescriptionSelected: {
-    color: UI_CONFIG.colors.accentMuted,
-  },
-  button: {
-    backgroundColor: UI_CONFIG.colors.accent,
-    borderRadius: 8,
-    paddingHorizontal: 27,
-    paddingVertical: 11,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: UI_CONFIG.colors.accent,
-    shadowColor: UI_CONFIG.colors.shadow,
-    shadowOffset: {
-      width: 6,
-      height: 6,
-    },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  buttonDisabled: {
-    backgroundColor: UI_CONFIG.colors.disabled,
-    borderColor: UI_CONFIG.colors.disabled,
-    shadowOpacity: 0.3,
-  },
-  buttonPressed: {
-    shadowOffset: {
-      width: 4,
-      height: 4,
-    },
-    shadowRadius: 8,
-    shadowOpacity: 0.5,
-    elevation: 4,
-  },
-  buttonText: {
-    color: UI_CONFIG.colors.textLight,
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  buttonContainer: {
-    gap: 12,
-  },
-});
 
 export default RoleSelectionScreen;

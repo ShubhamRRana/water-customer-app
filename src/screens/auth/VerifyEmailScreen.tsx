@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
 import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { AuthStackParamList } from '../../types/index';
 import { AuthScreenLayout } from '../../components/layouts';
 import { Typography, Button, Card } from '../../components/common';
-import { SUCCESS_MESSAGES, UI_CONFIG } from '../../constants/config';
+import { SUCCESS_MESSAGES } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { AuthService } from '../../services/auth.service';
 
 type VerifyEmailNav = StackNavigationProp<AuthStackParamList, 'VerifyEmail'>;
@@ -16,9 +18,45 @@ interface Props {
   route: VerifyEmailRoute;
 }
 
+function createVerifyEmailStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    card: {
+      marginBottom: 24,
+    },
+    emailHint: {
+      color: colors.accent,
+      marginBottom: 16,
+      fontWeight: '600',
+    },
+    step: {
+      color: colors.text,
+      marginBottom: 12,
+      lineHeight: 22,
+    },
+    primaryCta: {
+      marginTop: 8,
+      marginBottom: 12,
+    },
+    secondaryCta: {
+      marginBottom: 8,
+    },
+    linkRow: {
+      alignItems: 'center',
+      paddingVertical: 8,
+    },
+    linkText: {
+      color: colors.accent,
+      fontWeight: '600',
+      textDecorationLine: 'underline',
+    },
+  });
+}
+
 const VerifyEmailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { email, accountKind } = route.params;
   const [resendLoading, setResendLoading] = useState(false);
+  const colors = useThemeColors();
+  const styles = useMemo(() => createVerifyEmailStyles(colors), [colors]);
 
   const goSignIn = () => {
     if (accountKind === 'society') {
@@ -93,37 +131,5 @@ const VerifyEmailScreen: React.FC<Props> = ({ navigation, route }) => {
     </AuthScreenLayout>
   );
 };
-
-const styles = StyleSheet.create({
-  card: {
-    marginBottom: 24,
-  },
-  emailHint: {
-    color: UI_CONFIG.colors.accent,
-    marginBottom: 16,
-    fontWeight: '600',
-  },
-  step: {
-    color: UI_CONFIG.colors.text,
-    marginBottom: 12,
-    lineHeight: 22,
-  },
-  primaryCta: {
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  secondaryCta: {
-    marginBottom: 8,
-  },
-  linkRow: {
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  linkText: {
-    color: UI_CONFIG.colors.accent,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
-  },
-});
 
 export default VerifyEmailScreen;

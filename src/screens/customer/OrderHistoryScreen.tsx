@@ -23,6 +23,8 @@ import { Booking, BookingStatus } from '../../types';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { PricingUtils } from '../../utils/pricing';
 import { UI_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
 
@@ -33,6 +35,8 @@ interface OrderHistoryScreenProps {
 }
 
 const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createOrderHistoryStyles(colors), [colors]);
   const { user, logout, customerAccountKind } = useAuthStore();
   const {
     data: bookings = [],
@@ -139,12 +143,12 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
 
   const getStatusColor = useCallback((status: BookingStatus) => {
     switch (status) {
-      case 'pending': return UI_CONFIG.colors.warning;
-      case 'accepted': return UI_CONFIG.colors.accent;
-      case 'in_transit': return UI_CONFIG.colors.secondary;
-      case 'delivered': return UI_CONFIG.colors.success;
-      case 'cancelled': return UI_CONFIG.colors.error;
-      default: return UI_CONFIG.colors.textSecondary;
+      case 'pending': return colors.warning;
+      case 'accepted': return colors.accent;
+      case 'in_transit': return colors.secondary;
+      case 'delivered': return colors.success;
+      case 'cancelled': return colors.error;
+      default: return colors.textSecondary;
     }
   }, []);
 
@@ -203,17 +207,17 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color={UI_CONFIG.colors.textSecondary} />
+          <Ionicons name="search" size={20} color={colors.textSecondary} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search orders..."
-            placeholderTextColor={UI_CONFIG.colors.textSecondary}
+            placeholderTextColor={colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color={UI_CONFIG.colors.textSecondary} />
+              <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
@@ -238,7 +242,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
               <Ionicons 
                 name={filter.icon as any} 
                 size={16} 
-                color={selectedFilter === filter.key ? UI_CONFIG.colors.textLight : UI_CONFIG.colors.text} 
+                color={selectedFilter === filter.key ? colors.textLight : colors.text} 
               />
               <Typography variant="caption" style={[
                 styles.filterButtonText,
@@ -280,7 +284,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
                   <Ionicons 
                     name={getStatusIcon(booking.status)} 
                     size={16} 
-                    color={UI_CONFIG.colors.textLight} 
+                    color={colors.textLight} 
                     style={styles.statusIcon}
                   />
                   <Typography variant="caption" style={styles.statusText}>{getStatusText(booking.status)}</Typography>
@@ -289,24 +293,24 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
 
               <View style={styles.orderDetails}>
                 <View style={styles.detailRow}>
-                  <Ionicons name="water" size={16} color={UI_CONFIG.colors.accent} />
+                  <Ionicons name="water" size={16} color={colors.accent} />
                   <Typography variant="body" style={styles.detailText}>
                     {booking.tankerSize}L Tanker
                   </Typography>
                 </View>
                 <View style={styles.detailRow}>
-                  <Ionicons name="cash" size={16} color={UI_CONFIG.colors.warning} />
+                  <Ionicons name="cash" size={16} color={colors.warning} />
                   {booking.totalPrice > 0 ? (
                     <Typography variant="body" style={styles.detailText}>{PricingUtils.formatPrice(booking.totalPrice)}</Typography>
                   ) : (
-                    <Typography variant="body" style={[styles.detailText, { fontStyle: 'italic', color: UI_CONFIG.colors.textSecondary }]}>
+                    <Typography variant="body" style={[styles.detailText, { fontStyle: 'italic', color: colors.textSecondary }]}>
                       To be determined
                     </Typography>
                   )}
                 </View>
                 {booking.status === 'delivered' && booking.deliveredAt && (
                   <View style={styles.detailRow}>
-                    <Ionicons name="checkmark-circle" size={16} color={UI_CONFIG.colors.success} />
+                    <Ionicons name="checkmark-circle" size={16} color={colors.success} />
                     <Typography variant="body" style={styles.detailText}>
                       Delivered: {formatDate(booking.deliveredAt)}
                     </Typography>
@@ -316,7 +320,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
 
               {booking.driverName && (
                 <View style={styles.driverInfo}>
-                  <Ionicons name="person" size={16} color={UI_CONFIG.colors.textLight} />
+                  <Ionicons name="person" size={16} color={colors.textLight} />
                   <Typography variant="body" style={styles.driverText}>Driver: {booking.driverName}</Typography>
                   {booking.driverPhone && (
                     <Typography variant="caption" style={styles.driverPhone}>{booking.driverPhone}</Typography>
@@ -330,7 +334,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
                     style={[styles.actionButton, styles.cancelButton]}
                     onPress={() => handleCancelBooking(booking)}
                   >
-                    <Ionicons name="close-outline" size={16} color={UI_CONFIG.colors.error} />
+                    <Ionicons name="close-outline" size={16} color={colors.error} />
                     <Typography variant="caption" style={[styles.actionText, styles.cancelText]}>Cancel</Typography>
                   </TouchableOpacity>
                 </View>
@@ -343,7 +347,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={UI_CONFIG.colors.accent}
+            tintColor={colors.accent}
           />
         }
         ListEmptyComponent={
@@ -380,26 +384,27 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
   );
 };
 
-const styles = StyleSheet.create({
+function createOrderHistoryStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
+    backgroundColor: colors.background,
   },
   searchContainer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: UI_CONFIG.colors.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
+    borderBottomColor: colors.border,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: UI_CONFIG.colors.background,
+    backgroundColor: colors.background,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -407,13 +412,13 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     marginLeft: 12,
   },
   filterSection: {
-    backgroundColor: UI_CONFIG.colors.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
+    borderBottomColor: colors.border,
     minHeight: 60,
   },
   filterContainer: {
@@ -426,26 +431,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: UI_CONFIG.colors.background,
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: UI_CONFIG.colors.border,
+    borderColor: colors.border,
     marginRight: 12,
   },
   filterButtonActive: {
-    backgroundColor: UI_CONFIG.colors.accent,
-    borderColor: UI_CONFIG.colors.accent,
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   filterButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     marginLeft: 6,
   },
   filterButtonTextActive: {
-    color: UI_CONFIG.colors.textLight,
+    color: colors.textLight,
   },
   countBadge: {
-    backgroundColor: UI_CONFIG.colors.border,
+    backgroundColor: colors.border,
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -454,15 +459,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   countBadgeActive: {
-    backgroundColor: UI_CONFIG.colors.overlayMedium,
+    backgroundColor: colors.overlayMedium,
   },
   countText: {
     fontSize: 12,
     fontWeight: '600',
-    color: UI_CONFIG.colors.textSecondary,
+    color: colors.textSecondary,
   },
   countTextActive: {
-    color: UI_CONFIG.colors.textLight,
+    color: colors.textLight,
   },
   ordersContainer: {
     flex: 1,
@@ -488,7 +493,7 @@ const styles = StyleSheet.create({
   },
   orderDate: {
     fontSize: 14,
-    color: UI_CONFIG.colors.textSecondary,
+    color: colors.textSecondary,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -503,7 +508,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: '600',
-    color: UI_CONFIG.colors.textLight,
+    color: colors.textLight,
   },
   orderDetails: {
     marginBottom: 12,
@@ -515,7 +520,7 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 14,
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     marginLeft: 8,
     flex: 1,
   },
@@ -525,17 +530,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: UI_CONFIG.colors.border,
+    borderTopColor: colors.border,
   },
   driverText: {
     fontSize: 14,
-    color: UI_CONFIG.colors.textLight,
+    color: colors.textLight,
     marginLeft: 8,
     fontWeight: '500',
   },
   driverPhone: {
     fontSize: 14,
-    color: UI_CONFIG.colors.textLight,
+    color: colors.textLight,
     marginLeft: 8,
   },
   orderActions: {
@@ -544,28 +549,29 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: UI_CONFIG.colors.border,
+    borderTopColor: colors.border,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: UI_CONFIG.colors.background,
+    backgroundColor: colors.background,
     borderRadius: 16,
   },
   cancelButton: {
-    backgroundColor: UI_CONFIG.colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
   },
   actionText: {
     fontSize: 12,
     fontWeight: '500',
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     marginLeft: 4,
   },
   cancelText: {
-    color: UI_CONFIG.colors.error,
+    color: colors.error,
   },
-});
+  });
+}
 
 export default OrderHistoryScreen;

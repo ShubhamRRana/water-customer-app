@@ -1,9 +1,11 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode, useMemo } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { errorLogger, ErrorSeverity } from '../../utils/errorLogger';
 import Typography from './Typography';
 import Button from './Button';
 import { UI_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface Props {
   children: ReactNode;
@@ -19,19 +21,120 @@ interface State {
   errorInfo: ErrorInfo | null;
 }
 
-/**
- * ErrorBoundary Component
- * 
- * Catches JavaScript errors anywhere in the child component tree,
- * logs those errors, and displays a fallback UI instead of crashing.
- * 
- * Usage:
- * ```tsx
- * <ErrorBoundary>
- *   <YourComponent />
- * </ErrorBoundary>
- * ```
- */
+function createErrorBoundaryStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.primary,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      padding: 24,
+    },
+    content: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    title: {
+      marginBottom: 16,
+      textAlign: 'center',
+      color: colors.error,
+    },
+    message: {
+      marginBottom: 32,
+      textAlign: 'center',
+      color: colors.textSecondary,
+      paddingHorizontal: 16,
+    },
+    errorDetails: {
+      width: '100%',
+      marginBottom: 24,
+      padding: 16,
+      backgroundColor: colors.background,
+      borderRadius: UI_CONFIG.borderRadius.md,
+      borderWidth: 1,
+      borderColor: colors.error,
+    },
+    errorTitle: {
+      marginBottom: 8,
+      color: colors.error,
+    },
+    errorMessage: {
+      marginBottom: 12,
+      color: colors.text,
+      fontFamily: 'monospace',
+    },
+    stackTrace: {
+      maxHeight: 200,
+      backgroundColor: colors.surface,
+      padding: 8,
+      borderRadius: UI_CONFIG.borderRadius.sm,
+    },
+    stackText: {
+      fontFamily: 'monospace',
+      fontSize: 10,
+      color: colors.textSecondary,
+    },
+    buttonContainer: {
+      width: '100%',
+      maxWidth: 300,
+    },
+    button: {
+      width: '100%',
+    },
+  });
+}
+
+function ErrorBoundaryFallbackUI({
+  error,
+  onReset,
+}: {
+  error: Error | null;
+  onReset: () => void;
+}) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createErrorBoundaryStyles(colors), [colors]);
+
+  return (
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          <Typography variant="h1" style={styles.title}>
+            Oops! Something went wrong
+          </Typography>
+
+          <Typography variant="body" style={styles.message}>
+            {"We're sorry, but something unexpected happened. Don't worry, your data is safe."}
+          </Typography>
+
+          {__DEV__ && error && (
+            <View style={styles.errorDetails}>
+              <Typography variant="h4" style={styles.errorTitle}>
+                Error Details (Development Only)
+              </Typography>
+              <Typography variant="caption" style={styles.errorMessage}>
+                {error.toString()}
+              </Typography>
+              {error.stack && (
+                <ScrollView style={styles.stackTrace}>
+                  <Typography variant="caption" style={styles.stackText}>
+                    {error.stack}
+                  </Typography>
+                </ScrollView>
+              )}
+            </View>
+          )}
+
+          <View style={styles.buttonContainer}>
+            <Button title="Try Again" onPress={onReset} variant="primary" style={styles.button} />
+          </View>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
 class ErrorBoundary extends Component<Props, State> {
   private resetTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -52,23 +155,16 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    // Update state with error info
     this.setState({
       error,
       errorInfo,
     });
 
-    // Log the error
-    errorLogger.critical(
-      'React Error Boundary caught an error',
-      error,
-      {
-        componentStack: errorInfo.componentStack,
-        errorBoundary: true,
-      }
-    );
+    errorLogger.critical('React Error Boundary caught an error', error, {
+      componentStack: errorInfo.componentStack,
+      errorBoundary: true,
+    });
 
-    // Call custom error handler if provided
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
@@ -78,18 +174,14 @@ class ErrorBoundary extends Component<Props, State> {
     const { resetKeys, resetOnPropsChange } = this.props;
     const { hasError } = this.state;
 
-    // Reset error boundary if resetKeys changed
     if (hasError && resetKeys && prevProps.resetKeys) {
-      const hasResetKeyChanged = resetKeys.some(
-        (key, index) => key !== prevProps.resetKeys?.[index]
-      );
+      const hasResetKeyChanged = resetKeys.some((key, index) => key !== prevProps.resetKeys?.[index]);
 
       if (hasResetKeyChanged) {
         this.resetErrorBoundary();
       }
     }
 
-    // Reset on any prop change if enabled
     if (hasError && resetOnPropsChange && prevProps !== this.props) {
       this.resetErrorBoundary();
     }
@@ -117,126 +209,17 @@ class ErrorBoundary extends Component<Props, State> {
 
   render(): ReactNode {
     if (this.state.hasError) {
-      // Use custom fallback if provided
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
-      // Default error UI
       return (
-        <View style={styles.container}>
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.content}>
-              <Typography variant="h1" style={styles.title}>
-                Oops! Something went wrong
-              </Typography>
-
-              <Typography variant="body" style={styles.message}>
-                {
-                  "We're sorry, but something unexpected happened. Don't worry, your data is safe."
-                }
-              </Typography>
-
-              {__DEV__ && this.state.error && (
-                <View style={styles.errorDetails}>
-                  <Typography variant="h4" style={styles.errorTitle}>
-                    Error Details (Development Only)
-                  </Typography>
-                  <Typography variant="caption" style={styles.errorMessage}>
-                    {this.state.error.toString()}
-                  </Typography>
-                  {this.state.error.stack && (
-                    <ScrollView style={styles.stackTrace}>
-                      <Typography variant="caption" style={styles.stackText}>
-                        {this.state.error.stack}
-                      </Typography>
-                    </ScrollView>
-                  )}
-                </View>
-              )}
-
-              <View style={styles.buttonContainer}>
-                <Button
-                  title="Try Again"
-                  onPress={this.resetErrorBoundary}
-                  variant="primary"
-                  style={styles.button}
-                />
-              </View>
-            </View>
-          </ScrollView>
-        </View>
+        <ErrorBoundaryFallbackUI error={this.state.error} onReset={this.resetErrorBoundary} />
       );
     }
 
     return this.props.children;
   }
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: UI_CONFIG.colors.primary,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  content: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    marginBottom: 16,
-    textAlign: 'center',
-    color: UI_CONFIG.colors.error,
-  },
-  message: {
-    marginBottom: 32,
-    textAlign: 'center',
-    color: UI_CONFIG.colors.textSecondary,
-    paddingHorizontal: 16,
-  },
-  errorDetails: {
-    width: '100%',
-    marginBottom: 24,
-    padding: 16,
-    backgroundColor: UI_CONFIG.colors.background,
-    borderRadius: UI_CONFIG.borderRadius.md,
-    borderWidth: 1,
-    borderColor: UI_CONFIG.colors.error,
-  },
-  errorTitle: {
-    marginBottom: 8,
-    color: UI_CONFIG.colors.error,
-  },
-  errorMessage: {
-    marginBottom: 12,
-    color: UI_CONFIG.colors.text,
-    fontFamily: 'monospace',
-  },
-  stackTrace: {
-    maxHeight: 200,
-    backgroundColor: UI_CONFIG.colors.surface,
-    padding: 8,
-    borderRadius: UI_CONFIG.borderRadius.sm,
-  },
-  stackText: {
-    fontFamily: 'monospace',
-    fontSize: 10,
-    color: UI_CONFIG.colors.textSecondary,
-  },
-  buttonContainer: {
-    width: '100%',
-    maxWidth: 300,
-  },
-  button: {
-    width: '100%',
-  },
-});
 
 export default ErrorBoundary;

@@ -26,6 +26,8 @@ import { Address, isAdminUser, isCustomerUser } from '../../types';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
 import { UI_CONFIG, LOCATION_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { handleError } from '../../utils/errorHandler';
 import { createScheduledDate as createScheduledDateFromUtils } from '../../utils/dateUtils';
 
@@ -49,6 +51,8 @@ const getTodayDateString = (): string => {
 };
 
 const BookingScreen: React.FC<BookingScreenProps> = () => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createBookingStyles(colors), [colors]);
   const navigation = useNavigation<BookingScreenNavigationProp>();
   const { user, isLoading: authLoading, initializeAuth, refreshUserProfile } = useAuthStore();
   const createBookingMutation = useCreateBookingMutation();
@@ -449,7 +453,7 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
       >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={UI_CONFIG.colors.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Typography variant="h2" style={styles.title}>Book Water Tanker</Typography>
       </View>
@@ -469,7 +473,7 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
                 </Typography>
               )}
             </View>
-            <Ionicons name="chevron-forward" size={20} color={UI_CONFIG.colors.textSecondary} />
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
           </View>
         </Card>
       </View>
@@ -502,7 +506,7 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
                 </Typography>
               )}
             </View>
-            <Ionicons name="chevron-forward" size={20} color={UI_CONFIG.colors.textSecondary} />
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
           </View>
         </Card>
       </View>
@@ -514,7 +518,7 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
           <TextInput
             style={styles.textArea}
             placeholder="Enter your delivery address..."
-            placeholderTextColor={UI_CONFIG.colors.textSecondary}
+            placeholderTextColor={colors.textSecondary}
             value={deliveryAddress}
             onChangeText={(text) => {
               setDeliveryAddress(text);
@@ -527,9 +531,9 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
           style={styles.savedAddressButton}
           onPress={() => setShowSavedAddressModal(true)}
         >
-          <Ionicons name="location-outline" size={20} color={UI_CONFIG.colors.accent} />
+          <Ionicons name="location-outline" size={20} color={colors.accent} />
           <Typography variant="body" style={styles.savedAddressButtonText}>Select from Saved Addresses</Typography>
-              <Ionicons name="chevron-forward" size={16} color={UI_CONFIG.colors.textSecondary} />
+              <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -587,17 +591,18 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
   );
 };
 
-const styles = StyleSheet.create({
+function createBookingStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
+    backgroundColor: colors.background,
   },
   keyboardAvoid: {
     flex: 1,
   },
   container: {
     flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     flexGrow: 1,
@@ -608,9 +613,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: UI_CONFIG.colors.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
+    borderBottomColor: colors.border,
   },
   backButton: {
     marginRight: 16,
@@ -618,7 +623,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
   },
   section: {
     paddingHorizontal: 20,
@@ -627,7 +632,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     marginBottom: 12,
   },
   selectionCard: {
@@ -647,12 +652,12 @@ const styles = StyleSheet.create({
   selectionLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     marginBottom: 4,
   },
   selectionSubtext: {
     fontSize: 14,
-    color: UI_CONFIG.colors.textSecondary,
+    color: colors.textSecondary,
   },
   inputCard: {
     marginBottom: 8,
@@ -661,7 +666,7 @@ const styles = StyleSheet.create({
   },
   textArea: {
     fontSize: 16,
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     textAlignVertical: 'top',
   },
   bookButton: {
@@ -673,19 +678,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: UI_CONFIG.colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: UI_CONFIG.colors.border,
+    borderColor: colors.border,
     marginTop: 8,
   },
   savedAddressButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: UI_CONFIG.colors.accent,
+    color: colors.accent,
     flex: 1,
     marginLeft: 8,
   },
-});
+  });
+}
 
 export default BookingScreen;

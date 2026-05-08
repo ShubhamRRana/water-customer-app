@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useColorScheme } from 'react-native';
+import { DarkTheme, DefaultTheme, NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
@@ -12,6 +13,7 @@ import MainNavigator from './src/navigation/MainNavigator';
 
 // Store imports
 import { useAuthStore } from './src/store/authStore';
+import { useThemeStore } from './src/store/themeStore';
 
 // Components
 import ErrorBoundary from './src/components/common/ErrorBoundary';
@@ -29,6 +31,10 @@ const App: React.FC = () => {
   const [queryClient] = useState(() => createAppQueryClient());
   const { user, initializeAuth } = useAuthStore();
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
+  const systemScheme = useColorScheme();
+  const setSystemColorScheme = useThemeStore((s) => s.setSystemColorScheme);
+  const resolvedScheme = useThemeStore((s) => s.resolvedScheme);
+  const themeColors = useThemeStore((s) => s.colors);
 
   // Load custom fonts
   const [fontsLoaded] = useFonts({
@@ -41,6 +47,26 @@ const App: React.FC = () => {
       // Error handled by error boundary
     });
   }, [initializeAuth]);
+
+  useEffect(() => {
+    setSystemColorScheme(systemScheme ?? null);
+  }, [systemScheme, setSystemColorScheme]);
+
+  const navigationTheme = useMemo(() => {
+    const base = resolvedScheme === 'dark' ? DarkTheme : DefaultTheme;
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        primary: themeColors.accent,
+        background: themeColors.background,
+        card: themeColors.primary,
+        text: themeColors.text,
+        border: themeColors.border,
+        notification: themeColors.accent,
+      },
+    };
+  }, [resolvedScheme, themeColors]);
 
   // Customer app: only customers may enter. Non-customer users (e.g. admin/driver from session restore) go to Auth.
   const getInitialRouteName = (user: User | null): keyof RootStackParamList => {
@@ -90,8 +116,12 @@ const App: React.FC = () => {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
-          <NavigationContainer ref={navigationRef} onReady={onNavigationReady}>
-            <StatusBar style="light" />
+          <NavigationContainer
+            ref={navigationRef}
+            onReady={onNavigationReady}
+            theme={navigationTheme}
+          >
+            <StatusBar style={resolvedScheme === 'dark' ? 'light' : 'dark'} />
             <Stack.Navigator
               initialRouteName={getInitialRouteName(user)}
               screenOptions={{

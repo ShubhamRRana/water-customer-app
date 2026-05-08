@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,7 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 import Card from '../common/Card';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { Typography } from '../common';
-import { UI_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 interface AgencySelectionModalProps {
   visible: boolean;
@@ -22,6 +23,108 @@ interface AgencySelectionModalProps {
   loading: boolean;
 }
 
+function createAgencyModalStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    modalContainer: {
+      flex: 1,
+      backgroundColor: colors.surface,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    searchContainer: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    searchBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      gap: 12,
+      borderWidth: 2,
+      borderColor: colors.border,
+    },
+    searchBarFocused: {
+      borderColor: colors.accent,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 16,
+      color: colors.text,
+      marginLeft: 0,
+    },
+    modalContent: {
+      flex: 1,
+      paddingHorizontal: 20,
+      paddingTop: 20,
+    },
+    tankerCard: {
+      marginBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    selectedTankerCard: {
+      backgroundColor: colors.surfaceLight,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.accent,
+    },
+    tankerInfo: {
+      flex: 1,
+    },
+    tankerName: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    ownerName: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    emptyState: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 60,
+    },
+    emptyStateText: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    emptyStateSubtext: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: 24,
+    },
+  });
+}
+
 const AgencySelectionModal: React.FC<AgencySelectionModalProps> = ({
   visible,
   onClose,
@@ -30,24 +133,24 @@ const AgencySelectionModal: React.FC<AgencySelectionModalProps> = ({
   onSelectAgency,
   loading,
 }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createAgencyModalStyles(colors), [colors]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
 
-  // Filter agencies based on search query (business name or owner name)
   const filteredAgencies = useMemo(() => {
     if (!searchQuery.trim()) {
       return agencies;
     }
     const query = searchQuery.toLowerCase().trim();
-    return agencies.filter(agency => {
+    return agencies.filter((agency) => {
       const businessName = agency.name?.toLowerCase() || '';
       const ownerName = agency.ownerName?.toLowerCase() || '';
       return businessName.includes(query) || ownerName.includes(query);
     });
   }, [agencies, searchQuery]);
 
-  // Reset search when modal closes
-  React.useEffect(() => {
+  useEffect(() => {
     if (!visible) {
       setSearchQuery('');
     }
@@ -58,20 +161,25 @@ const AgencySelectionModal: React.FC<AgencySelectionModalProps> = ({
       <View style={styles.modalContainer}>
         <View style={styles.modalHeader}>
           <TouchableOpacity onPress={onClose} accessibilityLabel="Close modal" accessibilityRole="button">
-            <Ionicons name="close" size={24} color={UI_CONFIG.colors.accent} />
+            <Ionicons name="close" size={24} color={colors.accent} />
           </TouchableOpacity>
-          <Typography variant="h3" style={styles.modalTitle}>Select Tanker Agency</Typography>
+          <Typography variant="h3" style={styles.modalTitle}>
+            Select Tanker Agency
+          </Typography>
           <View style={{ width: 24 }} />
         </View>
 
-        {/* Search Bar */}
         <View style={styles.searchContainer}>
           <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
-            <Ionicons name="search" size={20} color={searchFocused ? UI_CONFIG.colors.accent : UI_CONFIG.colors.textSecondary} />
+            <Ionicons
+              name="search"
+              size={20}
+              color={searchFocused ? colors.accent : colors.textSecondary}
+            />
             <TextInput
               style={styles.searchInput}
               placeholder="Search by business or owner name..."
-              placeholderTextColor={UI_CONFIG.colors.textSecondary}
+              placeholderTextColor={colors.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
               onFocus={() => setSearchFocused(true)}
@@ -80,7 +188,7 @@ const AgencySelectionModal: React.FC<AgencySelectionModalProps> = ({
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={20} color={UI_CONFIG.colors.textSecondary} />
+                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
@@ -90,7 +198,9 @@ const AgencySelectionModal: React.FC<AgencySelectionModalProps> = ({
           {loading ? (
             <View style={styles.emptyState}>
               <LoadingSpinner />
-              <Typography variant="body" style={styles.emptyStateText}>Loading agencies...</Typography>
+              <Typography variant="body" style={styles.emptyStateText}>
+                Loading agencies...
+              </Typography>
             </View>
           ) : filteredAgencies.length > 0 ? (
             <>
@@ -104,7 +214,9 @@ const AgencySelectionModal: React.FC<AgencySelectionModalProps> = ({
                   onPress={() => onSelectAgency(agency)}
                 >
                   <View style={styles.tankerInfo}>
-                    <Typography variant="body" style={styles.tankerName}>{agency.name}</Typography>
+                    <Typography variant="body" style={styles.tankerName}>
+                      {agency.name}
+                    </Typography>
                     {agency.ownerName && (
                       <Typography variant="caption" style={styles.ownerName}>
                         Owner: {agency.ownerName}
@@ -114,20 +226,20 @@ const AgencySelectionModal: React.FC<AgencySelectionModalProps> = ({
                   <Ionicons
                     name={selectedAgencyId === agency.id ? 'radio-button-on' : 'radio-button-off'}
                     size={24}
-                    color={selectedAgencyId === agency.id ? UI_CONFIG.colors.accent : UI_CONFIG.colors.textSecondary}
+                    color={selectedAgencyId === agency.id ? colors.accent : colors.textSecondary}
                   />
                 </Card>
               ))}
             </>
           ) : (
             <View style={styles.emptyState}>
-              <Ionicons name="business-outline" size={64} color={UI_CONFIG.colors.textSecondary} />
+              <Ionicons name="business-outline" size={64} color={colors.textSecondary} />
               <Typography variant="body" style={styles.emptyStateText}>
                 {searchQuery.trim() ? 'No agencies found' : 'No agencies available'}
               </Typography>
               <Typography variant="caption" style={styles.emptyStateSubtext}>
-                {searchQuery.trim() 
-                  ? 'Try adjusting your search terms' 
+                {searchQuery.trim()
+                  ? 'Try adjusting your search terms'
                   : 'Please contact support if you need assistance'}
               </Typography>
             </View>
@@ -138,105 +250,4 @@ const AgencySelectionModal: React.FC<AgencySelectionModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  modalContainer: {
-    flex: 1,
-    backgroundColor: UI_CONFIG.colors.surface,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: UI_CONFIG.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: UI_CONFIG.colors.text,
-  },
-  searchContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: UI_CONFIG.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: UI_CONFIG.colors.background,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
-    borderWidth: 2,
-    borderColor: UI_CONFIG.colors.border,
-  },
-  searchBarFocused: {
-    borderColor: UI_CONFIG.colors.accent,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: UI_CONFIG.colors.text,
-    marginLeft: 0,
-  },
-  modalContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  tankerCard: {
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  selectedTankerCard: {
-    backgroundColor: UI_CONFIG.colors.surfaceLight,
-    borderWidth: 1,
-    borderColor: UI_CONFIG.colors.borderLight,
-    borderLeftWidth: 4,
-    borderLeftColor: UI_CONFIG.colors.accent,
-  },
-  tankerInfo: {
-    flex: 1,
-  },
-  tankerName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: UI_CONFIG.colors.text,
-    marginBottom: 4,
-  },
-  ownerName: {
-    fontSize: 14,
-    color: UI_CONFIG.colors.textSecondary,
-    marginTop: 2,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyStateText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: UI_CONFIG.colors.textSecondary,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateSubtext: {
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-});
-
 export default AgencySelectionModal;
-

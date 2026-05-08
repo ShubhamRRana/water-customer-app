@@ -25,6 +25,8 @@ import AgencySelectionModal from '../../components/customer/AgencySelectionModal
 import TankerSelectionModal from '../../components/customer/TankerSelectionModal';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { UI_CONFIG, BOOKING_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
 import { StorageService } from '../../services/storage.service';
 import { SocietyTripService } from '../../services/societyTrip.service';
@@ -65,6 +67,8 @@ const parseTankerAmountInput = (text: string): { amount: number | null; error?: 
 };
 
 const AddTripScreen: React.FC = () => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createAddTripStyles(colors), [colors]);
   const navigation = useNavigation<AddTripNavigationProp>();
   const { user } = useAuthStore();
 
@@ -365,7 +369,7 @@ const AddTripScreen: React.FC = () => {
         >
           <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={UI_CONFIG.colors.text} />
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
             <Typography variant="h2" style={styles.title}>Add trip</Typography>
           </View>
@@ -389,14 +393,14 @@ const AddTripScreen: React.FC = () => {
                         accessibilityRole="button"
                         accessibilityLabel="Remove photo"
                       >
-                        <Ionicons name="close-circle" size={26} color={UI_CONFIG.colors.textLight} />
+                        <Ionicons name="close-circle" size={26} color={colors.textLight} />
                       </TouchableOpacity>
                     </View>
                   ))}
                 </ScrollView>
               ) : (
                 <View style={styles.photoPlaceholder}>
-                  <Ionicons name="camera-outline" size={40} color={UI_CONFIG.colors.textSecondary} />
+                  <Ionicons name="camera-outline" size={40} color={colors.textSecondary} />
                   <Typography variant="body" style={styles.photoHint}>
                     Add one or more photos using the options below
                   </Typography>
@@ -412,7 +416,7 @@ const AddTripScreen: React.FC = () => {
                 onPress={onTakeTankerPhoto}
                 activeOpacity={0.85}
               >
-                <Ionicons name="camera" size={20} color={UI_CONFIG.colors.accent} />
+                <Ionicons name="camera" size={20} color={colors.accent} />
                 <Typography variant="body" style={styles.photoActionLabel}>Add photo</Typography>
               </TouchableOpacity>
               <TouchableOpacity
@@ -420,7 +424,7 @@ const AddTripScreen: React.FC = () => {
                 onPress={onUploadTankerPhoto}
                 activeOpacity={0.85}
               >
-                <Ionicons name="images-outline" size={20} color={UI_CONFIG.colors.accent} />
+                <Ionicons name="images-outline" size={20} color={colors.accent} />
                 <Typography variant="body" style={styles.photoActionLabel}>Upload from device</Typography>
               </TouchableOpacity>
             </View>
@@ -440,7 +444,7 @@ const AddTripScreen: React.FC = () => {
                     </Typography>
                   ) : null}
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={UI_CONFIG.colors.textSecondary} />
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
               </View>
             </Card>
           </View>
@@ -460,7 +464,7 @@ const AddTripScreen: React.FC = () => {
                     </Typography>
                   ) : null}
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={UI_CONFIG.colors.textSecondary} />
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
               </View>
             </Card>
           </View>
@@ -471,7 +475,7 @@ const AddTripScreen: React.FC = () => {
               <TextInput
                 style={styles.amountInput}
                 placeholder="e.g. 1200 (₹)"
-                placeholderTextColor={UI_CONFIG.colors.textSecondary}
+                placeholderTextColor={colors.textSecondary}
                 value={tankerAmountText}
                 onChangeText={setTankerAmountText}
                 keyboardType="number-pad"
@@ -527,7 +531,7 @@ const AddTripScreen: React.FC = () => {
             <View style={styles.fallbackModalContainer}>
               <View style={styles.fallbackModalHeader}>
                 <TouchableOpacity onPress={() => setShowSizeFallbackModal(false)} accessibilityRole="button">
-                  <Ionicons name="close" size={24} color={UI_CONFIG.colors.accent} />
+                  <Ionicons name="close" size={24} color={colors.accent} />
                 </TouchableOpacity>
                 <Typography variant="h3" style={styles.fallbackModalTitle}>
                   Select tanker size
@@ -561,8 +565,8 @@ const AddTripScreen: React.FC = () => {
                         size={24}
                         color={
                           fallbackTankerLiters === opt.size
-                            ? UI_CONFIG.colors.accent
-                            : UI_CONFIG.colors.textSecondary
+                            ? colors.accent
+                            : colors.textSecondary
                         }
                       />
                     </View>
@@ -577,10 +581,11 @@ const AddTripScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+function createAddTripStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
+    backgroundColor: colors.background,
   },
   keyboardAvoid: {
     flex: 1,
@@ -630,7 +635,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 10,
-    backgroundColor: UI_CONFIG.colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
   },
   photoRemoveBtn: {
     position: 'absolute',
@@ -641,7 +646,7 @@ const styles = StyleSheet.create({
   },
   photoCountHint: {
     marginTop: 8,
-    color: UI_CONFIG.colors.textSecondary,
+    color: colors.textSecondary,
   },
   photoPlaceholder: {
     minHeight: 180,
@@ -651,7 +656,7 @@ const styles = StyleSheet.create({
   },
   photoHint: {
     marginTop: 8,
-    color: UI_CONFIG.colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   photoActions: {
@@ -669,13 +674,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: UI_CONFIG.colors.border,
-    backgroundColor: UI_CONFIG.colors.surface,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   photoActionLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     flexShrink: 1,
   },
   inputCard: {
@@ -687,7 +692,7 @@ const styles = StyleSheet.create({
   },
   amountInput: {
     fontSize: 16,
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
   },
   selectionCard: {
     marginBottom: 8,
@@ -706,16 +711,16 @@ const styles = StyleSheet.create({
   selectionLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     marginBottom: 4,
   },
   selectionSubtext: {
     fontSize: 14,
-    color: UI_CONFIG.colors.textSecondary,
+    color: colors.textSecondary,
   },
   fallbackModalContainer: {
     flex: 1,
-    backgroundColor: UI_CONFIG.colors.surface,
+    backgroundColor: colors.surface,
   },
   fallbackModalHeader: {
     flexDirection: 'row',
@@ -724,16 +729,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
+    borderBottomColor: colors.border,
   },
   fallbackModalTitle: {
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
   },
   fallbackHint: {
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 8,
-    color: UI_CONFIG.colors.textSecondary,
+    color: colors.textSecondary,
   },
   fallbackScroll: {
     flex: 1,
@@ -746,16 +751,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   fallbackSizeCardSelected: {
-    backgroundColor: UI_CONFIG.colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     borderWidth: 1,
-    borderColor: UI_CONFIG.colors.borderLight,
+    borderColor: colors.borderLight,
     borderLeftWidth: 4,
-    borderLeftColor: UI_CONFIG.colors.accent,
+    borderLeftColor: colors.accent,
   },
   submitButton: {
     marginHorizontal: 16,
     marginTop: 8,
   },
-});
+  });
+}
 
 export default AddTripScreen;

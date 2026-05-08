@@ -11,6 +11,8 @@ import {
   PRICING_CONFIG,
   LOCATION_CONFIG,
   UI_CONFIG,
+  DARK_THEME_COLORS,
+  LIGHT_THEME_COLORS,
   VALIDATION_CONFIG,
   STORAGE_KEYS,
   ERROR_MESSAGES,
@@ -211,12 +213,21 @@ describe('Configuration Constants', () => {
       expect(colors).toHaveProperty('error');
     });
 
-    it('should have valid color format (hex codes)', () => {
-      Object.entries(UI_CONFIG.colors).forEach(([key, value]) => {
+    it('should have valid color format (hex, rgba, or named)', () => {
+      const isValidColorString = (value: string) =>
+        /^#[0-9A-Fa-f]{6}$/.test(value) ||
+        /^rgba?\([^)]+\)$/.test(value) ||
+        /^[a-zA-Z]+$/.test(value);
+
+      Object.entries(UI_CONFIG.colors).forEach(([, value]) => {
         if (typeof value === 'string') {
-          expect(value).toMatch(/^#[0-9A-Fa-f]{6}$|^[a-zA-Z]+$/);
+          expect(isValidColorString(value)).toBe(true);
         }
       });
+    });
+
+    it('DARK_THEME_COLORS and LIGHT_THEME_COLORS expose the same keys', () => {
+      expect(Object.keys(DARK_THEME_COLORS).sort()).toEqual(Object.keys(LIGHT_THEME_COLORS).sort());
     });
 
     it('should have valid spacing values', () => {

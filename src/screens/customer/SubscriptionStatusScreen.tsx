@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -20,6 +20,8 @@ import type { UserSubscription, SubscriptionPlan } from '../../types/subscriptio
 import { navigateCustomerMenuRoute } from '../../navigation/customerMenuNavigation';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { UI_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { errorLogger } from '../../utils/errorLogger';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 
@@ -36,6 +38,8 @@ function daysRemaining(end: Date | null): number | null {
 }
 
 const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createSubscriptionStatusStyles(colors), [colors]);
   const { user, logout, customerAccountKind } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -109,13 +113,13 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn} accessibilityLabel="Go back">
-          <Ionicons name="chevron-back" size={28} color={UI_CONFIG.colors.accent} />
+          <Ionicons name="chevron-back" size={28} color={colors.accent} />
         </TouchableOpacity>
         <Typography variant="h2" style={styles.headerTitle}>
           My subscription
         </Typography>
         <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.iconBtn} accessibilityLabel="Open menu">
-          <Ionicons name="menu" size={26} color={UI_CONFIG.colors.accent} />
+          <Ionicons name="menu" size={26} color={colors.accent} />
         </TouchableOpacity>
       </View>
 
@@ -125,7 +129,7 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
         <ScrollView
           contentContainerStyle={styles.scroll}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={UI_CONFIG.colors.accent} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
           }
         >
           <Card padding="large" style={styles.card}>
@@ -140,14 +144,14 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
             ) : null}
             {isActive && remain !== null ? (
               <View style={styles.row}>
-                <Ionicons name="time-outline" size={22} color={UI_CONFIG.colors.accent} />
+                <Ionicons name="time-outline" size={22} color={colors.accent} />
                 <Typography variant="body" style={styles.rowText}>
                   {remain} day{remain === 1 ? '' : 's'} remaining
                 </Typography>
               </View>
             ) : null}
             {sub?.startDate && sub?.endDate ? (
-              <Typography variant="caption" style={{ color: UI_CONFIG.colors.textSecondary, marginTop: 8 }}>
+              <Typography variant="caption" style={{ color: colors.textSecondary, marginTop: 8 }}>
                 {sub.startDate.toLocaleDateString()} — {sub.endDate.toLocaleDateString()}
               </Typography>
             ) : null}
@@ -166,7 +170,7 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
           ) : null}
 
           {!sub ? (
-            <Typography variant="body" style={{ color: UI_CONFIG.colors.textSecondary, textAlign: 'center' }}>
+            <Typography variant="body" style={{ color: colors.textSecondary, textAlign: 'center' }}>
               You do not have a subscription yet. Browse plans to get started.
             </Typography>
           ) : null}
@@ -185,8 +189,9 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: UI_CONFIG.colors.primary },
+function createSubscriptionStatusStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.primary },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -194,17 +199,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: UI_CONFIG.spacing.md,
     paddingVertical: UI_CONFIG.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
+    borderBottomColor: colors.border,
   },
   iconBtn: { padding: UI_CONFIG.spacing.xs },
   headerTitle: { flex: 1, textAlign: 'center' },
   scroll: { padding: UI_CONFIG.spacing.md, paddingBottom: UI_CONFIG.spacing.xl },
   card: { marginBottom: UI_CONFIG.spacing.md },
-  label: { color: UI_CONFIG.colors.textSecondary, marginBottom: 4 },
-  planName: { marginTop: 8, color: UI_CONFIG.colors.textSecondary },
+  label: { color: colors.textSecondary, marginBottom: 4 },
+  planName: { marginTop: 8, color: colors.textSecondary },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
   rowText: { flex: 1 },
   btn: { marginBottom: UI_CONFIG.spacing.sm },
-});
+  });
+}
 
 export default SubscriptionStatusScreen;

@@ -18,6 +18,8 @@ import { useAuthStore } from '../../store/authStore';
 import { SubscriptionService } from '../../services/subscription.service';
 import type { SubscriptionPlan } from '../../types/subscription.types';
 import { UI_CONFIG, PRICING_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { errorLogger } from '../../utils/errorLogger';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import { navigateCustomerMenuRoute } from '../../navigation/customerMenuNavigation';
@@ -35,6 +37,8 @@ function buildOrderId(userId: string): string {
 }
 
 const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createSubscriptionPlansStyles(colors), [colors]);
   const { user, logout, customerAccountKind } = useAuthStore();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,13 +128,13 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityLabel="Go back">
-          <Ionicons name="chevron-back" size={28} color={UI_CONFIG.colors.accent} />
+          <Ionicons name="chevron-back" size={28} color={colors.accent} />
         </TouchableOpacity>
         <Typography variant="h2" style={styles.headerTitle}>
           Subscription plans
         </Typography>
         <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.menuBtn} accessibilityLabel="Open menu">
-          <Ionicons name="menu" size={26} color={UI_CONFIG.colors.accent} />
+          <Ionicons name="menu" size={26} color={colors.accent} />
         </TouchableOpacity>
       </View>
 
@@ -139,9 +143,9 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
       ) : (
         <ScrollView
           contentContainerStyle={styles.scroll}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={UI_CONFIG.colors.accent} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
         >
-          <Typography variant="body" style={[styles.intro, { color: UI_CONFIG.colors.textSecondary }]}>
+          <Typography variant="body" style={[styles.intro, { color: colors.textSecondary }]}>
             Choose a plan to keep booking water deliveries. Secure payment via PhonePe.
           </Typography>
 
@@ -161,7 +165,7 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
                   ) : null}
                 </View>
                 {plan.description ? (
-                  <Typography variant="body" style={[styles.desc, { color: UI_CONFIG.colors.textSecondary }]}>
+                  <Typography variant="body" style={[styles.desc, { color: colors.textSecondary }]}>
                     {plan.description}
                   </Typography>
                 ) : null}
@@ -171,7 +175,7 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
                 <View style={styles.features}>
                   {plan.features.map((f) => (
                     <View key={f} style={styles.featureRow}>
-                      <Ionicons name="checkmark-circle" size={18} color={UI_CONFIG.colors.accent} />
+                      <Ionicons name="checkmark-circle" size={18} color={colors.accent} />
                       <Typography variant="body" style={styles.featureText}>
                         {f}
                       </Typography>
@@ -202,8 +206,9 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: UI_CONFIG.colors.primary },
+function createSubscriptionPlansStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.primary },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -211,7 +216,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: UI_CONFIG.spacing.md,
     paddingVertical: UI_CONFIG.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
+    borderBottomColor: colors.border,
   },
   backBtn: { padding: UI_CONFIG.spacing.xs },
   menuBtn: { padding: UI_CONFIG.spacing.xs },
@@ -221,17 +226,18 @@ const styles = StyleSheet.create({
   card: { marginBottom: UI_CONFIG.spacing.md },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 },
   badge: {
-    backgroundColor: UI_CONFIG.colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
   },
-  badgeText: { color: UI_CONFIG.colors.accent },
+  badgeText: { color: colors.accent },
   desc: { marginTop: UI_CONFIG.spacing.xs, marginBottom: UI_CONFIG.spacing.sm },
   price: { marginVertical: UI_CONFIG.spacing.sm },
   features: { marginBottom: UI_CONFIG.spacing.md },
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   featureText: { flex: 1 },
-});
+  });
+}
 
 export default SubscriptionPlansScreen;

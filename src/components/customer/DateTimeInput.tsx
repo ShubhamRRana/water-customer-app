@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,7 +11,8 @@ import DateTimePicker, { type DateTimePickerEvent } from '@react-native-communit
 import Card from '../common/Card';
 import { Typography } from '../common';
 import { Ionicons } from '@expo/vector-icons';
-import { UI_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { parseDateString, parseTimeString } from '../../utils/dateUtils';
 
 interface DateTimeInputProps {
@@ -79,6 +80,73 @@ function getInitialTime(timeStr: string, period: 'AM' | 'PM'): Date {
   return base;
 }
 
+function createDateTimeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    dateTimeContainer: {
+      marginBottom: 8,
+    },
+    dateTimeRow: {
+      flexDirection: 'column',
+      gap: 12,
+    },
+    dateTimeInputContainer: {
+      width: '100%',
+    },
+    inputCard: {
+      marginBottom: 8,
+      minHeight: 53,
+      justifyContent: 'center',
+    },
+    inputCardError: {
+      borderColor: colors.error,
+      borderWidth: 1,
+    },
+    pickerCard: {
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+    },
+    pickerContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    pickerText: {
+      flex: 1,
+      fontSize: 16,
+      color: colors.text,
+    },
+    errorText: {
+      fontSize: 12,
+      color: colors.error,
+      marginTop: 4,
+      marginLeft: 4,
+    },
+    modalOverlay: {
+      flex: 1,
+      justifyContent: 'flex-end',
+      backgroundColor: colors.overlayDark,
+    },
+    modalContent: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      paddingBottom: 34,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    modalDone: {
+      color: colors.accent,
+      fontWeight: '600',
+    },
+  });
+}
+
 const DateTimeInput: React.FC<DateTimeInputProps> = ({
   date,
   time,
@@ -88,6 +156,8 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({
   onTimeChange,
   onTimePeriodChange,
 }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createDateTimeStyles(colors), [colors]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [tempDate, setTempDate] = useState<Date>(() => getInitialDate(date));
@@ -148,11 +218,11 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({
           >
             <Card style={[styles.inputCard, styles.pickerCard, dateError && styles.inputCardError]}>
               <View style={styles.pickerContent}>
-                <Ionicons name="calendar-outline" size={20} color={UI_CONFIG.colors.textSecondary} />
+                <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
                 <Typography variant="body" style={styles.pickerText}>
                   {date || 'Tap to select date'}
                 </Typography>
-                <Ionicons name="chevron-down" size={18} color={UI_CONFIG.colors.textSecondary} />
+                <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
               </View>
             </Card>
           </TouchableOpacity>
@@ -169,11 +239,11 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({
           >
             <Card style={[styles.inputCard, styles.pickerCard]}>
               <View style={styles.pickerContent}>
-                <Ionicons name="time-outline" size={20} color={UI_CONFIG.colors.textSecondary} />
+                <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
                 <Typography variant="body" style={styles.pickerText}>
                   {time ? `${time} ${timePeriod}` : 'Tap to select time'}
                 </Typography>
-                <Ionicons name="chevron-down" size={18} color={UI_CONFIG.colors.textSecondary} />
+                <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
               </View>
             </Card>
           </TouchableOpacity>
@@ -246,70 +316,5 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  dateTimeContainer: {
-    marginBottom: 8,
-  },
-  dateTimeRow: {
-    flexDirection: 'column',
-    gap: 12,
-  },
-  dateTimeInputContainer: {
-    width: '100%',
-  },
-  inputCard: {
-    marginBottom: 8,
-    minHeight: 53,
-    justifyContent: 'center',
-  },
-  inputCardError: {
-    borderColor: UI_CONFIG.colors.error,
-    borderWidth: 1,
-  },
-  pickerCard: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  pickerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  pickerText: {
-    flex: 1,
-    fontSize: 16,
-    color: UI_CONFIG.colors.text,
-  },
-  errorText: {
-    fontSize: 12,
-    color: UI_CONFIG.colors.error,
-    marginTop: 4,
-    marginLeft: 4,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  modalContent: {
-    backgroundColor: UI_CONFIG.colors.surface,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingBottom: 34,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
-  },
-  modalDone: {
-    color: UI_CONFIG.colors.accent,
-    fontWeight: '600',
-  },
-});
 
 export default DateTimeInput;

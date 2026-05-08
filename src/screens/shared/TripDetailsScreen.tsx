@@ -27,6 +27,8 @@ import AppScreenHeader, {
 import { SocietyTrip } from '../../types';
 import { societyPaymentPeriodKey, type AppStackParamList } from '../../navigation/rootNavigation';
 import { BOOKING_CONFIG, UI_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
 import { PricingUtils } from '../../utils/pricing';
@@ -62,6 +64,8 @@ function filterTripsByPeriod(
 }
 
 const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createTripDetailsStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const { user, logout, customerAccountKind } = useAuthStore();
   const [trips, setTrips] = useState<SocietyTrip[]>([]);
@@ -549,11 +553,11 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
               <Typography variant="caption" style={styles.summaryHeading}>
                 Trips by tanker size
               </Typography>
-              <Ionicons name="chevron-forward" size={20} color={UI_CONFIG.colors.textSecondary} />
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </View>
             {paymentCompleteForCurrentPeriod ? (
               <View style={styles.paymentCompleteInline}>
-                <Ionicons name="checkmark-circle" size={18} color={UI_CONFIG.colors.success} />
+                <Ionicons name="checkmark-circle" size={18} color={colors.success} />
                 <Typography variant="caption" style={styles.paymentCompleteInlineText}>
                   Payment Complete
                 </Typography>
@@ -567,7 +571,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
           keyExtractor={(item) => item.id}
           contentContainerStyle={filteredTrips.length === 0 ? styles.emptyList : styles.listContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={UI_CONFIG.colors.accent} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
           }
           ListEmptyComponent={
             <Card style={styles.emptyState}>
@@ -604,7 +608,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
                     >
                       <Image source={{ uri: url }} style={styles.thumb} resizeMode="cover" />
                       <View style={styles.thumbHint}>
-                        <Ionicons name="expand-outline" size={14} color={UI_CONFIG.colors.textLight} />
+                        <Ionicons name="expand-outline" size={14} color={colors.textLight} />
                       </View>
                     </TouchableOpacity>
                   ))
@@ -642,7 +646,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
                 accessibilityRole="button"
                 accessibilityLabel="Delete trip"
               >
-                <Ionicons name="trash-outline" size={22} color={UI_CONFIG.colors.error} />
+                <Ionicons name="trash-outline" size={22} color={colors.error} />
               </TouchableOpacity>
             ) : null;
 
@@ -656,7 +660,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
                 <Ionicons
                   name={isSelected ? 'checkbox' : 'square-outline'}
                   size={24}
-                  color={isSelected ? UI_CONFIG.colors.accent : UI_CONFIG.colors.textSecondary}
+                  color={isSelected ? colors.accent : colors.textSecondary}
                 />
               </TouchableOpacity>
             ) : null;
@@ -694,7 +698,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
               disabled={deleting}
             >
               {deleting ? (
-                <ActivityIndicator color={UI_CONFIG.colors.textLight} />
+                <ActivityIndicator color={colors.textLight} />
               ) : (
                 <Typography variant="body" style={styles.selectionDeleteText}>
                   Delete {selectedIds.length} {selectedIds.length === 1 ? 'trip' : 'trips'}
@@ -739,7 +743,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
                 accessibilityRole="button"
                 accessibilityLabel="Close breakdown"
               >
-                <Ionicons name="close" size={26} color={UI_CONFIG.colors.text} />
+                <Ionicons name="close" size={26} color={colors.text} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.breakdownModalScroll} showsVerticalScrollIndicator={false}>
@@ -787,7 +791,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
             {paymentCompleteForCurrentPeriod ? (
               <View style={styles.settlePaymentFooter}>
                 <View style={styles.paymentCompleteBanner}>
-                  <Ionicons name="checkmark-circle" size={22} color={UI_CONFIG.colors.success} />
+                  <Ionicons name="checkmark-circle" size={22} color={colors.success} />
                   <Typography variant="body" style={styles.paymentCompleteBannerText}>
                     Payment Complete
                   </Typography>
@@ -831,7 +835,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
             accessibilityRole="button"
             accessibilityLabel="Close photo"
           >
-            <Ionicons name="close" size={28} color={UI_CONFIG.colors.textLight} />
+            <Ionicons name="close" size={28} color={colors.textLight} />
           </TouchableOpacity>
         </Pressable>
       </Modal>
@@ -839,14 +843,15 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
   );
 };
 
-const styles = StyleSheet.create({
+function createTripDetailsStyles(colors: ThemeColors) {
+  return StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
+    backgroundColor: colors.background,
   },
   headerAction: {
     minWidth: 64,
@@ -856,7 +861,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerActionText: {
-    color: UI_CONFIG.colors.accent,
+    color: colors.accent,
     fontWeight: '600',
   },
   periodTypeToggle: {
@@ -877,11 +882,11 @@ const styles = StyleSheet.create({
   glassRadioGroup: {
     position: 'relative',
     flexDirection: 'row',
-    backgroundColor: UI_CONFIG.colors.overlaySubtle,
+    backgroundColor: colors.overlaySubtle,
     borderRadius: 16,
     overflow: 'hidden',
     alignSelf: 'center',
-    shadowColor: UI_CONFIG.colors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 4,
@@ -904,10 +909,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0.3,
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
   },
   glassRadioLabelActive: {
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
   },
   glassGlider: {
     position: 'absolute',
@@ -916,8 +921,8 @@ const styles = StyleSheet.create({
     left: 0,
     borderRadius: 16,
     zIndex: 1,
-    backgroundColor: UI_CONFIG.colors.accent,
-    shadowColor: UI_CONFIG.colors.accent,
+    backgroundColor: colors.accent,
+    shadowColor: colors.accent,
     shadowOffset: {
       width: 0,
       height: 0,
@@ -942,7 +947,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   summaryHeading: {
-    color: UI_CONFIG.colors.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -955,14 +960,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   paymentCompleteInlineText: {
-    color: UI_CONFIG.colors.success,
+    color: colors.success,
     fontWeight: '700',
   },
   settlePaymentFooter: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: UI_CONFIG.colors.border,
+    borderTopColor: colors.border,
   },
   settlePaymentButton: {
     alignSelf: 'stretch',
@@ -975,7 +980,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   paymentCompleteBannerText: {
-    color: UI_CONFIG.colors.success,
+    color: colors.success,
     fontWeight: '700',
   },
   breakdownModalRoot: {
@@ -987,7 +992,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   breakdownModalSheet: {
-    backgroundColor: UI_CONFIG.colors.surface,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     paddingHorizontal: 16,
@@ -1003,7 +1008,7 @@ const styles = StyleSheet.create({
   },
   breakdownModalTitle: {
     flex: 1,
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     fontWeight: '700',
     marginRight: 12,
   },
@@ -1015,7 +1020,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: UI_CONFIG.colors.border,
+    borderTopColor: colors.border,
   },
   /** Column wrappers: `Text` + flex + textAlign is unreliable when font weight differs row-to-row. */
   summaryColLeft: {
@@ -1037,15 +1042,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   summaryCellLeft: {
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     fontWeight: '600',
   },
   summaryCellCenter: {
-    color: UI_CONFIG.colors.accent,
+    color: colors.accent,
     fontWeight: '600',
   },
   summaryCellRight: {
-    color: UI_CONFIG.colors.textSecondary,
+    color: colors.textSecondary,
   },
   summaryTotalRow: {
     marginTop: 4,
@@ -1069,7 +1074,7 @@ const styles = StyleSheet.create({
   },
   tripCardSelected: {
     borderWidth: 1,
-    borderColor: UI_CONFIG.colors.accent,
+    borderColor: colors.accent,
   },
   tripRow: {
     flexDirection: 'row',
@@ -1114,7 +1119,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 10,
-    backgroundColor: UI_CONFIG.colors.surfaceLight,
+    backgroundColor: colors.surfaceLight,
   },
   thumbEmpty: {
     opacity: 0.35,
@@ -1138,11 +1143,11 @@ const styles = StyleSheet.create({
   },
   agencyName: {
     fontWeight: '600',
-    color: UI_CONFIG.colors.text,
+    color: colors.text,
     marginBottom: 6,
   },
   meta: {
-    color: UI_CONFIG.colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   emptyState: {
@@ -1167,12 +1172,12 @@ const styles = StyleSheet.create({
   selectionBar: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    backgroundColor: UI_CONFIG.colors.surface,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: UI_CONFIG.colors.border,
+    borderTopColor: colors.border,
   },
   selectionDeleteBtn: {
-    backgroundColor: UI_CONFIG.colors.error,
+    backgroundColor: colors.error,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -1183,9 +1188,10 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   selectionDeleteText: {
-    color: UI_CONFIG.colors.textLight,
+    color: colors.textLight,
     fontWeight: '700',
   },
-});
+  });
+}
 
 export default TripDetailsScreen;

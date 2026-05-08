@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, TouchableOpacity, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../common';
 import { UI_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 const headerTokens = UI_CONFIG.appScreenHeader;
 
@@ -14,19 +16,57 @@ export interface AppScreenHeaderProps {
   left: AppScreenHeaderLeft;
   title: React.ReactNode;
   subtitle?: React.ReactNode;
-  /** Subtitle line above title (e.g. greeting then “Hi, Name”) */
   subtitleFirst?: boolean;
-  /** Trailing control or {@link AppScreenHeaderTrailingSpacer} to balance layout */
   right?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }
 
 const ICON_SIZE = 24;
 
-/** Reserve width on the right when there is no action so the title block stays aligned. */
 export const AppScreenHeaderTrailingSpacer: React.FC = () => (
-  <View style={styles.trailingSpacer} />
+  <View style={{ minWidth: headerTokens.trailingMinWidth }} />
 );
+
+function createHeaderStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: headerTokens.paddingHorizontal,
+      paddingTop: headerTokens.paddingTop,
+      paddingBottom: headerTokens.paddingBottom,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    leftButton: {
+      padding: headerTokens.leftButtonPadding,
+      marginRight: headerTokens.leftButtonMarginRight,
+    },
+    headerTextContainer: {
+      flex: 1,
+    },
+    title: {
+      fontWeight: '700',
+      color: colors.text,
+    },
+    titleWithSubtitleBelow: {
+      marginBottom: UI_CONFIG.spacing.xs,
+    },
+    titleAfterSubtitle: {
+      fontWeight: '700',
+      color: colors.text,
+    },
+    subtitle: {
+      color: colors.textSecondary,
+      marginTop: UI_CONFIG.spacing.xs,
+    },
+    subtitleFirstLine: {
+      color: colors.textSecondary,
+      marginBottom: UI_CONFIG.spacing.xs,
+    },
+  });
+}
 
 const AppScreenHeader: React.FC<AppScreenHeaderProps> = ({
   left,
@@ -36,6 +76,9 @@ const AppScreenHeader: React.FC<AppScreenHeaderProps> = ({
   right,
   style,
 }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createHeaderStyles(colors), [colors]);
+
   const renderLeft = () => {
     if (left.type === 'menu') {
       return (
@@ -46,7 +89,7 @@ const AppScreenHeader: React.FC<AppScreenHeaderProps> = ({
           accessibilityRole="button"
           accessibilityLabel={left.accessibilityLabel ?? 'Open menu'}
         >
-          <Ionicons name="menu" size={ICON_SIZE} color={UI_CONFIG.colors.text} />
+          <Ionicons name="menu" size={ICON_SIZE} color={colors.text} />
         </TouchableOpacity>
       );
     }
@@ -58,7 +101,7 @@ const AppScreenHeader: React.FC<AppScreenHeaderProps> = ({
         accessibilityRole="button"
         accessibilityLabel={left.accessibilityLabel ?? 'Go back'}
       >
-        <Ionicons name="chevron-back" size={ICON_SIZE} color={UI_CONFIG.colors.text} />
+        <Ionicons name="chevron-back" size={ICON_SIZE} color={colors.text} />
       </TouchableOpacity>
     );
   };
@@ -103,47 +146,5 @@ const AppScreenHeader: React.FC<AppScreenHeaderProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: headerTokens.paddingHorizontal,
-    paddingTop: headerTokens.paddingTop,
-    paddingBottom: headerTokens.paddingBottom,
-    backgroundColor: UI_CONFIG.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
-  },
-  leftButton: {
-    padding: headerTokens.leftButtonPadding,
-    marginRight: headerTokens.leftButtonMarginRight,
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
-  title: {
-    fontWeight: '700',
-    color: UI_CONFIG.colors.text,
-  },
-  titleWithSubtitleBelow: {
-    marginBottom: UI_CONFIG.spacing.xs,
-  },
-  titleAfterSubtitle: {
-    fontWeight: '700',
-    color: UI_CONFIG.colors.text,
-  },
-  subtitle: {
-    color: UI_CONFIG.colors.textSecondary,
-    marginTop: UI_CONFIG.spacing.xs,
-  },
-  subtitleFirstLine: {
-    color: UI_CONFIG.colors.textSecondary,
-    marginBottom: UI_CONFIG.spacing.xs,
-  },
-  trailingSpacer: {
-    minWidth: headerTokens.trailingMinWidth,
-  },
-});
 
 export default AppScreenHeader;

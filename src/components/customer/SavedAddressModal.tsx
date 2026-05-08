@@ -1,17 +1,12 @@
-import React from 'react';
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Modal,
-} from 'react-native';
+import React, { useMemo } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Card from '../common/Card';
 import { Typography } from '../common';
 import { Address } from '../../types';
-import { UI_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
 
 type SavedAddressModalNavigationProp = StackNavigationProp<AppStackParamList>;
@@ -24,6 +19,108 @@ interface SavedAddressModalProps {
   navigation: SavedAddressModalNavigationProp;
 }
 
+function createSavedAddressModalStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    modalContainer: {
+      flex: 1,
+      backgroundColor: colors.surface,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    modalContent: {
+      flex: 1,
+      paddingHorizontal: 20,
+      paddingTop: 20,
+    },
+    addressCard: {
+      marginBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    addressInfo: {
+      flex: 1,
+      marginRight: 12,
+    },
+    addressTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    addressTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      flex: 1,
+    },
+    defaultBadge: {
+      backgroundColor: colors.success,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 4,
+      marginLeft: 8,
+    },
+    defaultText: {
+      fontSize: 10,
+      fontWeight: 'bold',
+      color: colors.textLight,
+    },
+    addressDetails: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginBottom: 4,
+    },
+    landmark: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontStyle: 'italic',
+    },
+    emptyState: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 60,
+    },
+    emptyStateText: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    emptyStateSubtext: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: 24,
+    },
+    emptyStateButton: {
+      paddingHorizontal: 32,
+      paddingVertical: 12,
+      backgroundColor: colors.accent,
+      borderRadius: 8,
+    },
+    emptyStateButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textLight,
+    },
+  });
+}
+
 const SavedAddressModal: React.FC<SavedAddressModalProps> = ({
   visible,
   onClose,
@@ -31,14 +128,19 @@ const SavedAddressModal: React.FC<SavedAddressModalProps> = ({
   onSelectAddress,
   navigation,
 }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createSavedAddressModalStyles(colors), [colors]);
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <View style={styles.modalContainer}>
         <View style={styles.modalHeader}>
           <TouchableOpacity onPress={onClose} accessibilityLabel="Close modal" accessibilityRole="button">
-            <Ionicons name="close" size={24} color={UI_CONFIG.colors.accent} />
+            <Ionicons name="close" size={24} color={colors.accent} />
           </TouchableOpacity>
-          <Typography variant="h3" style={styles.modalTitle}>Select Saved Address</Typography>
+          <Typography variant="h3" style={styles.modalTitle}>
+            Select Saved Address
+          </Typography>
           <TouchableOpacity
             onPress={() => {
               onClose();
@@ -47,7 +149,7 @@ const SavedAddressModal: React.FC<SavedAddressModalProps> = ({
             accessibilityLabel="Add new address"
             accessibilityRole="button"
           >
-            <Ionicons name="add" size={24} color={UI_CONFIG.colors.accent} />
+            <Ionicons name="add" size={24} color={colors.accent} />
           </TouchableOpacity>
         </View>
 
@@ -63,22 +165,30 @@ const SavedAddressModal: React.FC<SavedAddressModalProps> = ({
               >
                 <View style={styles.addressInfo}>
                   <View style={styles.addressTitleRow}>
-                    <Typography variant="body" style={styles.addressTitle}>{address.address}</Typography>
+                    <Typography variant="body" style={styles.addressTitle}>
+                      {address.address}
+                    </Typography>
                     {address.isDefault && (
                       <View style={styles.defaultBadge}>
-                        <Typography variant="caption" style={styles.defaultText}>DEFAULT</Typography>
+                        <Typography variant="caption" style={styles.defaultText}>
+                          DEFAULT
+                        </Typography>
                       </View>
                     )}
                   </View>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={UI_CONFIG.colors.textSecondary} />
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
               </Card>
             ))
           ) : (
             <View style={styles.emptyState}>
-              <Ionicons name="location-outline" size={64} color={UI_CONFIG.colors.textSecondary} />
-              <Typography variant="body" style={styles.emptyStateText}>No saved addresses</Typography>
-              <Typography variant="caption" style={styles.emptyStateSubtext}>Add your first address to get started</Typography>
+              <Ionicons name="location-outline" size={64} color={colors.textSecondary} />
+              <Typography variant="body" style={styles.emptyStateText}>
+                No saved addresses
+              </Typography>
+              <Typography variant="caption" style={styles.emptyStateSubtext}>
+                Add your first address to get started
+              </Typography>
               <TouchableOpacity
                 style={styles.emptyStateButton}
                 onPress={() => {
@@ -86,7 +196,9 @@ const SavedAddressModal: React.FC<SavedAddressModalProps> = ({
                   navigation.navigate('SavedAddresses');
                 }}
               >
-                <Typography variant="body" style={styles.emptyStateButtonText}>Add Address</Typography>
+                <Typography variant="body" style={styles.emptyStateButtonText}>
+                  Add Address
+                </Typography>
               </TouchableOpacity>
             </View>
           )}
@@ -96,105 +208,4 @@ const SavedAddressModal: React.FC<SavedAddressModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  modalContainer: {
-    flex: 1,
-    backgroundColor: UI_CONFIG.colors.surface,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: UI_CONFIG.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: UI_CONFIG.colors.text,
-  },
-  modalContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  addressCard: {
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  addressInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  addressTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  addressTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: UI_CONFIG.colors.text,
-    flex: 1,
-  },
-  defaultBadge: {
-    backgroundColor: UI_CONFIG.colors.success,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 8,
-  },
-  defaultText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: UI_CONFIG.colors.textLight,
-  },
-  addressDetails: {
-    fontSize: 14,
-    color: UI_CONFIG.colors.textSecondary,
-    marginBottom: 4,
-  },
-  landmark: {
-    fontSize: 14,
-    color: UI_CONFIG.colors.textSecondary,
-    fontStyle: 'italic',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyStateText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: UI_CONFIG.colors.textSecondary,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateSubtext: {
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  emptyStateButton: {
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    backgroundColor: UI_CONFIG.colors.accent,
-    borderRadius: 8,
-  },
-  emptyStateButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: UI_CONFIG.colors.textLight,
-  },
-});
-
 export default SavedAddressModal;
-

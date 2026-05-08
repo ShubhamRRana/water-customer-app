@@ -1,16 +1,11 @@
-import React from 'react';
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Modal,
-} from 'react-native';
+import React, { useMemo } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../common/Card';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { Typography } from '../common';
-import { UI_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { PricingUtils } from '../../utils/pricing';
 
 interface TankerSelectionModalProps {
@@ -33,6 +28,80 @@ interface TankerSelectionModalProps {
   selectedAgency: { id: string; name: string; ownerName?: string } | null;
 }
 
+function createTankerModalStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    modalContainer: {
+      flex: 1,
+      backgroundColor: colors.surface,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    modalContent: {
+      flex: 1,
+      paddingHorizontal: 20,
+      paddingTop: 20,
+    },
+    tankerCard: {
+      marginBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    selectedTankerCard: {
+      backgroundColor: colors.surfaceLight,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.accent,
+    },
+    tankerInfo: {
+      flex: 1,
+    },
+    tankerName: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    tankerPrice: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    emptyState: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 60,
+    },
+    emptyStateText: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    emptyStateSubtext: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: 24,
+    },
+  });
+}
+
 const TankerSelectionModal: React.FC<TankerSelectionModalProps> = ({
   visible,
   onClose,
@@ -42,6 +111,9 @@ const TankerSelectionModal: React.FC<TankerSelectionModalProps> = ({
   loading,
   selectedAgency,
 }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createTankerModalStyles(colors), [colors]);
+
   const handleVehicleSelection = (vehicle: {
     id: string;
     vehicleCapacity: number;
@@ -61,9 +133,11 @@ const TankerSelectionModal: React.FC<TankerSelectionModalProps> = ({
       <View style={styles.modalContainer}>
         <View style={styles.modalHeader}>
           <TouchableOpacity onPress={onClose} accessibilityLabel="Close modal" accessibilityRole="button">
-            <Ionicons name="close" size={24} color={UI_CONFIG.colors.accent} />
+            <Ionicons name="close" size={24} color={colors.accent} />
           </TouchableOpacity>
-          <Typography variant="h3" style={styles.modalTitle}>Select Vehicle</Typography>
+          <Typography variant="h3" style={styles.modalTitle}>
+            Select Vehicle
+          </Typography>
           <View style={{ width: 24 }} />
         </View>
 
@@ -71,7 +145,9 @@ const TankerSelectionModal: React.FC<TankerSelectionModalProps> = ({
           {loading ? (
             <View style={styles.emptyState}>
               <LoadingSpinner />
-              <Typography variant="body" style={styles.emptyStateText}>Loading vehicles...</Typography>
+              <Typography variant="body" style={styles.emptyStateText}>
+                Loading vehicles...
+              </Typography>
             </View>
           ) : vehicles.length > 0 ? (
             <>
@@ -93,17 +169,19 @@ const TankerSelectionModal: React.FC<TankerSelectionModalProps> = ({
                     </Typography>
                   </View>
                   <Ionicons
-                    name={selectedVehicleId === vehicle.id ? "radio-button-on" : "radio-button-off"}
+                    name={selectedVehicleId === vehicle.id ? 'radio-button-on' : 'radio-button-off'}
                     size={24}
-                    color={selectedVehicleId === vehicle.id ? UI_CONFIG.colors.accent : UI_CONFIG.colors.textSecondary}
+                    color={selectedVehicleId === vehicle.id ? colors.accent : colors.textSecondary}
                   />
                 </Card>
               ))}
             </>
           ) : (
             <View style={styles.emptyState}>
-              <Ionicons name="car-outline" size={64} color={UI_CONFIG.colors.textSecondary} />
-              <Typography variant="body" style={styles.emptyStateText}>No vehicles available</Typography>
+              <Ionicons name="car-outline" size={64} color={colors.textSecondary} />
+              <Typography variant="body" style={styles.emptyStateText}>
+                No vehicles available
+              </Typography>
               <Typography variant="caption" style={styles.emptyStateSubtext}>
                 {selectedAgency ? 'This agency has no vehicles yet' : 'Please select an agency first'}
               </Typography>
@@ -115,77 +193,4 @@ const TankerSelectionModal: React.FC<TankerSelectionModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  modalContainer: {
-    flex: 1,
-    backgroundColor: UI_CONFIG.colors.surface,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: UI_CONFIG.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: UI_CONFIG.colors.text,
-  },
-  modalContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  tankerCard: {
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  selectedTankerCard: {
-    backgroundColor: UI_CONFIG.colors.surfaceLight,
-    borderWidth: 1,
-    borderColor: UI_CONFIG.colors.borderLight,
-    borderLeftWidth: 4,
-    borderLeftColor: UI_CONFIG.colors.accent,
-  },
-  tankerInfo: {
-    flex: 1,
-  },
-  tankerName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: UI_CONFIG.colors.text,
-    marginBottom: 4,
-  },
-  tankerPrice: {
-    fontSize: 14,
-    color: UI_CONFIG.colors.textSecondary,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyStateText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: UI_CONFIG.colors.textSecondary,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateSubtext: {
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-});
-
 export default TankerSelectionModal;
-

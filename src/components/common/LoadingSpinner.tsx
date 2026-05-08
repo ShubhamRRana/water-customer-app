@@ -1,10 +1,7 @@
-import React from 'react';
-import {
-  View,
-  StyleSheet,
-  ActivityIndicator,
-} from 'react-native';
+import React, { useMemo } from 'react';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { UI_CONFIG } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import Typography from './Typography';
 
 interface LoadingSpinnerProps {
@@ -13,32 +10,38 @@ interface LoadingSpinnerProps {
   text?: string;
 }
 
-const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
-  size = 'large',
-  color = UI_CONFIG.colors.accent,
-  text,
-}) => {
+const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ size = 'large', color, text }) => {
+  const colors = useThemeColors();
+  const resolvedColor = color ?? colors.accent;
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 24,
+        },
+        text: {
+          marginTop: 16,
+          fontSize: 16,
+          color: colors.textSecondary,
+          textAlign: 'center',
+        },
+      }),
+    [colors]
+  );
+
   return (
     <View style={styles.container}>
-      <ActivityIndicator size={size} color={color} />
-      {text && <Typography variant="body" style={styles.text}>{text}</Typography>}
+      <ActivityIndicator size={size} color={resolvedColor} />
+      {text ? (
+        <Typography variant="body" style={styles.text}>
+          {text}
+        </Typography>
+      ) : null}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  text: {
-    marginTop: 16,
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
-    textAlign: 'center',
-  },
-});
 
 export default LoadingSpinner;

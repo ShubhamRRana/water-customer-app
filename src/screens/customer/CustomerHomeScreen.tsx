@@ -1,10 +1,10 @@
-import React, { useState, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Alert, 
-  ScrollView, 
+import React, { useMemo, useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  ScrollView,
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
@@ -23,18 +23,193 @@ import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDraw
 import AppScreenHeader from '../../components/layouts/AppScreenHeader';
 import { BookingStatus } from '../../types';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
-import { UI_CONFIG, SUCCESS_MESSAGES } from '../../constants/config';
+import { SUCCESS_MESSAGES } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { PricingUtils } from '../../utils/pricing';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
 
 type CustomerHomeScreenNavigationProp = StackNavigationProp<AppStackParamList, 'Home'>;
 
-interface CustomerHomeScreenProps {
+interface CustomerHomeScreenProps {}
+
+function createCustomerHomeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    section: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+    },
+    sectionTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 16,
+    },
+    quickActions: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    actionCard: {
+      flex: 1,
+      marginHorizontal: 4,
+      alignItems: 'center',
+      paddingVertical: 20,
+    },
+    actionContent: {
+      alignItems: 'center',
+    },
+    actionText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+      marginTop: 8,
+      textAlign: 'center',
+    },
+    orderCard: {
+      marginBottom: 12,
+      padding: 16,
+    },
+    orderFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 12,
+    },
+    orderInfo: {
+      flex: 1,
+    },
+    orderId: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    orderDate: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    statusBadge: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+    },
+    statusText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.textLight,
+    },
+    orderDetails: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    tankerSize: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.text,
+    },
+    orderPrice: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: colors.accent,
+    },
+    addressRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    deliveryAddress: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginLeft: 8,
+      flex: 1,
+    },
+    profileAddressRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 6,
+    },
+    profileAddress: {
+      fontSize: 12,
+      color: colors.accent,
+      marginLeft: 8,
+      flex: 1,
+      fontStyle: 'italic',
+    },
+    deliveredDate: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+    emptyState: {
+      overflow: 'hidden',
+    },
+    errorContainer: {
+      margin: 20,
+      padding: 16,
+      backgroundColor: colors.surfaceLight,
+      borderRadius: 8,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.error,
+    },
+    errorText: {
+      fontSize: 14,
+      color: colors.error,
+      textAlign: 'center',
+    },
+    welcomeBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginHorizontal: 20,
+      marginTop: 8,
+      marginBottom: 4,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      backgroundColor: colors.surfaceLight,
+      borderRadius: 10,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.success,
+    },
+    welcomeBannerText: {
+      flex: 1,
+      color: colors.text,
+      lineHeight: 22,
+      paddingRight: 8,
+    },
+  });
+}
+
+function getStatusColor(status: BookingStatus, colors: ThemeColors) {
+  switch (status) {
+    case 'pending':
+      return colors.warning;
+    case 'accepted':
+      return colors.accent;
+    case 'in_transit':
+      return colors.secondary;
+    case 'delivered':
+      return colors.success;
+    case 'cancelled':
+      return colors.error;
+    default:
+      return colors.textSecondary;
+  }
 }
 
 const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
   const navigation = useNavigation<CustomerHomeScreenNavigationProp>();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createCustomerHomeStyles(colors), [colors]);
   const { user, logout, customerAccountKind, showPostRegisterWelcome, dismissPostRegisterWelcome } = useAuthStore();
   const {
     data: bookings = [],
@@ -65,7 +240,6 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
 
   const handleMenuNavigate = (route: CustomerMenuRoute) => {
     if (route === 'Home') {
-      // Already on Home, just close menu
       return;
     }
     try {
@@ -95,25 +269,20 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
     }
   };
 
-  const getStatusColor = (status: BookingStatus) => {
-    switch (status) {
-      case 'pending': return UI_CONFIG.colors.warning;
-      case 'accepted': return UI_CONFIG.colors.accent;
-      case 'in_transit': return UI_CONFIG.colors.secondary;
-      case 'delivered': return UI_CONFIG.colors.success;
-      case 'cancelled': return UI_CONFIG.colors.error;
-      default: return UI_CONFIG.colors.textSecondary;
-    }
-  };
-
   const getStatusText = (status: BookingStatus) => {
     switch (status) {
-      case 'pending': return 'Pending';
-      case 'accepted': return 'Accepted';
-      case 'in_transit': return 'In Transit';
-      case 'delivered': return 'Delivered';
-      case 'cancelled': return 'Cancelled';
-      default: return 'Unknown';
+      case 'pending':
+        return 'Pending';
+      case 'accepted':
+        return 'Accepted';
+      case 'in_transit':
+        return 'In Transit';
+      case 'delivered':
+        return 'Delivered';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return 'Unknown';
     }
   };
 
@@ -122,14 +291,13 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
       try {
         const dateA = typeof a.createdAt === 'string' ? new Date(a.createdAt) : new Date(a.createdAt);
         const dateB = typeof b.createdAt === 'string' ? new Date(b.createdAt) : new Date(b.createdAt);
-        
-        // Handle invalid dates by putting them at the end
+
         if (isNaN(dateA.getTime())) return 1;
         if (isNaN(dateB.getTime())) return -1;
-        
+
         return dateB.getTime() - dateA.getTime();
       } catch (error) {
-                return 0;
+        return 0;
       }
     })
     .slice(0, 10);
@@ -152,140 +320,160 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView 
+      <ScrollView
         style={styles.container}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
+          />
         }
       >
-      <AppScreenHeader
-        left={{ type: 'menu', onPress: () => setMenuVisible(true) }}
-        subtitle={`Good ${getGreeting()},`}
-        title={`Hi, ${user?.name || 'User'}`}
-        subtitleFirst
-      />
+        <AppScreenHeader
+          left={{ type: 'menu', onPress: () => setMenuVisible(true) }}
+          subtitle={`Good ${getGreeting()},`}
+          title={`Hi, ${user?.name || 'User'}`}
+          subtitleFirst
+        />
 
-      {showPostRegisterWelcome ? (
-        <View style={styles.welcomeBanner}>
-          <Typography variant="body" style={styles.welcomeBannerText}>
-            {SUCCESS_MESSAGES.auth.welcomeAfterRegister}
-          </Typography>
-          <TouchableOpacity
-            onPress={dismissPostRegisterWelcome}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            accessibilityLabel="Dismiss welcome message"
-          >
-            <Ionicons name="close" size={22} color={UI_CONFIG.colors.text} />
-          </TouchableOpacity>
-        </View>
-      ) : null}
-
-      {/* Quick Actions */}
-      <View style={styles.section}>
-        <Typography variant="h3" style={styles.sectionTitle}>Quick Actions</Typography>
-        {customerAccountKind === 'society' ? (
-          <View style={styles.quickActions}>
-            <Card style={styles.actionCard} onPress={handleAddTrip}>
-              <View style={styles.actionContent}>
-                <Ionicons name="car-sport" size={32} color={UI_CONFIG.colors.secondary} />
-                <Typography variant="body" style={styles.actionText}>Add trip</Typography>
-              </View>
-            </Card>
-            <Card style={styles.actionCard} onPress={handleBookTanker}>
-              <View style={styles.actionContent}>
-                <Ionicons name="calendar" size={32} color={UI_CONFIG.colors.accent} />
-                <Typography variant="body" style={styles.actionText}>Create booking</Typography>
-              </View>
-            </Card>
-          </View>
-        ) : (
-          <View style={styles.quickActions}>
-            <Card style={styles.actionCard} onPress={handleBookTanker}>
-              <View style={styles.actionContent}>
-                <Ionicons name="add-circle" size={32} color={UI_CONFIG.colors.accent} />
-                <Typography variant="body" style={styles.actionText}>Book Tanker</Typography>
-              </View>
-            </Card>
-            <Card style={styles.actionCard} onPress={() => navigation.navigate('SavedAddresses')}>
-              <View style={styles.actionContent}>
-                <Ionicons name="location" size={32} color={UI_CONFIG.colors.success} />
-                <Typography variant="body" style={styles.actionText}>Saved Addresses</Typography>
-              </View>
-            </Card>
-          </View>
-        )}
-      </View>
-
-      {/* Recent Orders */}
-      <View style={styles.section}>
-        <Typography variant="h3" style={styles.sectionTitle}>Recent Orders</Typography>
-        {recentBookings.length > 0 ? (
-          recentBookings.map((booking) => (
-            <Card 
-              key={booking.id} 
-              style={styles.orderCard}
+        {showPostRegisterWelcome ? (
+          <View style={styles.welcomeBanner}>
+            <Typography variant="body" style={styles.welcomeBannerText}>
+              {SUCCESS_MESSAGES.auth.welcomeAfterRegister}
+            </Typography>
+            <TouchableOpacity
+              onPress={dismissPostRegisterWelcome}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              accessibilityLabel="Dismiss welcome message"
             >
-              <View style={styles.orderDetails}>
-                <Typography variant="body" style={styles.tankerSize}>
-                  {booking.tankerSize}L Tanker
-                </Typography>
-                {booking.totalPrice > 0 ? (
-                  <Typography variant="body" style={styles.orderPrice}>{formatPrice(booking.totalPrice)}</Typography>
-                ) : (
-                  <Typography variant="body" style={[styles.orderPrice, { fontStyle: 'italic', color: UI_CONFIG.colors.textSecondary }]}>
-                    To be determined
+              <Ionicons name="close" size={22} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        <View style={styles.section}>
+          <Typography variant="h3" style={styles.sectionTitle}>
+            Quick Actions
+          </Typography>
+          {customerAccountKind === 'society' ? (
+            <View style={styles.quickActions}>
+              <Card style={styles.actionCard} onPress={handleAddTrip}>
+                <View style={styles.actionContent}>
+                  <Ionicons name="car-sport" size={32} color={colors.secondary} />
+                  <Typography variant="body" style={styles.actionText}>
+                    Add trip
                   </Typography>
-                )}
-              </View>
-              <View style={styles.addressRow}>
-                <Ionicons name="location" size={16} color={UI_CONFIG.colors.success} />
-                <Typography variant="caption" style={styles.deliveryAddress}>
-                  {booking.deliveryAddress.address}
-                </Typography>
-              </View>
-              {user && isCustomerUser(user) && user.savedAddresses && user.savedAddresses.length > 0 && (() => {
-                const defaultAddress = user.savedAddresses.find(addr => addr.isDefault) || user.savedAddresses[0];
-                return defaultAddress && defaultAddress.address !== booking.deliveryAddress.address ? (
-                  <View style={styles.profileAddressRow}>
-                    <Ionicons name="home" size={16} color={UI_CONFIG.colors.accent} />
-                    <Typography variant="caption" style={styles.profileAddress}>
-                      Profile: {defaultAddress.address}
+                </View>
+              </Card>
+              <Card style={styles.actionCard} onPress={handleBookTanker}>
+                <View style={styles.actionContent}>
+                  <Ionicons name="calendar" size={32} color={colors.accent} />
+                  <Typography variant="body" style={styles.actionText}>
+                    Create booking
+                  </Typography>
+                </View>
+              </Card>
+            </View>
+          ) : (
+            <View style={styles.quickActions}>
+              <Card style={styles.actionCard} onPress={handleBookTanker}>
+                <View style={styles.actionContent}>
+                  <Ionicons name="add-circle" size={32} color={colors.accent} />
+                  <Typography variant="body" style={styles.actionText}>
+                    Book Tanker
+                  </Typography>
+                </View>
+              </Card>
+              <Card style={styles.actionCard} onPress={() => navigation.navigate('SavedAddresses')}>
+                <View style={styles.actionContent}>
+                  <Ionicons name="location" size={32} color={colors.success} />
+                  <Typography variant="body" style={styles.actionText}>
+                    Saved Addresses
+                  </Typography>
+                </View>
+              </Card>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Typography variant="h3" style={styles.sectionTitle}>
+            Recent Orders
+          </Typography>
+          {recentBookings.length > 0 ? (
+            recentBookings.map((booking) => (
+              <Card key={booking.id} style={styles.orderCard}>
+                <View style={styles.orderDetails}>
+                  <Typography variant="body" style={styles.tankerSize}>
+                    {booking.tankerSize}L Tanker
+                  </Typography>
+                  {booking.totalPrice > 0 ? (
+                    <Typography variant="body" style={styles.orderPrice}>
+                      {formatPrice(booking.totalPrice)}
+                    </Typography>
+                  ) : (
+                    <Typography
+                      variant="body"
+                      style={[styles.orderPrice, { fontStyle: 'italic', color: colors.textSecondary }]}
+                    >
+                      To be determined
+                    </Typography>
+                  )}
+                </View>
+                <View style={styles.addressRow}>
+                  <Ionicons name="location" size={16} color={colors.success} />
+                  <Typography variant="caption" style={styles.deliveryAddress}>
+                    {booking.deliveryAddress.address}
+                  </Typography>
+                </View>
+                {user &&
+                isCustomerUser(user) &&
+                user.savedAddresses &&
+                user.savedAddresses.length > 0 &&
+                (() => {
+                  const defaultAddress = user.savedAddresses.find((addr) => addr.isDefault) || user.savedAddresses[0];
+                  return defaultAddress && defaultAddress.address !== booking.deliveryAddress.address ? (
+                    <View style={styles.profileAddressRow}>
+                      <Ionicons name="home" size={16} color={colors.accent} />
+                      <Typography variant="caption" style={styles.profileAddress}>
+                        Profile: {defaultAddress.address}
+                      </Typography>
+                    </View>
+                  ) : null;
+                })()}
+                <View style={styles.orderFooter}>
+                  <Typography variant="caption" style={styles.deliveredDate}>
+                    {booking.status === 'delivered' && booking.deliveredAt
+                      ? `Delivered: ${formatDate(booking.deliveredAt)}`
+                      : `Delivery Date: ${formatDate(booking.scheduledFor || booking.createdAt)}`}
+                  </Typography>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status, colors) }]}>
+                    <Typography variant="caption" style={styles.statusText}>
+                      {getStatusText(booking.status)}
                     </Typography>
                   </View>
-                ) : null;
-              })()}
-              <View style={styles.orderFooter}>
-                <Typography variant="caption" style={styles.deliveredDate}>
-                  {booking.status === 'delivered' && booking.deliveredAt 
-                    ? `Delivered: ${formatDate(booking.deliveredAt)}` 
-                    : `Delivery Date: ${formatDate(booking.scheduledFor || booking.createdAt)}`}
-                </Typography>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
-                  <Typography variant="caption" style={styles.statusText}>{getStatusText(booking.status)}</Typography>
                 </View>
-              </View>
+              </Card>
+            ))
+          ) : (
+            <Card style={styles.emptyState}>
+              <ScreenEmpty
+                compact
+                icon="receipt-outline"
+                title="No orders yet"
+                message="Book your first tanker to get started"
+              />
             </Card>
-          ))
-        ) : (
-          <Card style={styles.emptyState}>
-            <ScreenEmpty
-              compact
-              icon="receipt-outline"
-              title="No orders yet"
-              message="Book your first tanker to get started"
-            />
-          </Card>
-        )}
-      </View>
-
-      {/* Error Messages */}
-      {bookingError && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>
-            {bookingError}
-          </Text>
+          )}
         </View>
-      )}
+
+        {bookingError && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{bookingError}</Text>
+          </View>
+        )}
       </ScrollView>
       <CustomerMenuDrawer
         visible={menuVisible}
@@ -305,158 +493,5 @@ const getGreeting = () => {
   if (hour < 17) return 'Afternoon';
   return 'Evening';
 };
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
-  },
-  section: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: UI_CONFIG.colors.text,
-    marginBottom: 16,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  actionCard: {
-    flex: 1,
-    marginHorizontal: 4,
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  actionContent: {
-    alignItems: 'center',
-  },
-  actionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: UI_CONFIG.colors.text,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  orderCard: {
-    marginBottom: 12,
-    padding: 16,
-  },
-  orderFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  orderInfo: {
-    flex: 1,
-  },
-  orderId: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: UI_CONFIG.colors.text,
-    marginBottom: 4,
-  },
-  orderDate: {
-    fontSize: 14,
-    color: UI_CONFIG.colors.textSecondary,
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: UI_CONFIG.colors.textLight,
-  },
-  orderDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  tankerSize: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: UI_CONFIG.colors.text,
-  },
-  orderPrice: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: UI_CONFIG.colors.accent,
-  },
-  addressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  deliveryAddress: {
-    fontSize: 14,
-    color: UI_CONFIG.colors.textSecondary,
-    marginLeft: 8,
-    flex: 1,
-  },
-  profileAddressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  profileAddress: {
-    fontSize: 12,
-    color: UI_CONFIG.colors.accent,
-    marginLeft: 8,
-    flex: 1,
-    fontStyle: 'italic',
-  },
-  deliveredDate: {
-    fontSize: 12,
-    color: UI_CONFIG.colors.textSecondary,
-    fontWeight: '500',
-  },
-  emptyState: {
-    overflow: 'hidden',
-  },
-  errorContainer: {
-    margin: 20,
-    padding: 16,
-    backgroundColor: UI_CONFIG.colors.surfaceLight,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: UI_CONFIG.colors.error,
-  },
-  errorText: {
-    fontSize: 14,
-    color: UI_CONFIG.colors.error,
-    textAlign: 'center',
-  },
-  welcomeBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 20,
-    marginTop: 8,
-    marginBottom: 4,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    backgroundColor: UI_CONFIG.colors.surfaceLight,
-    borderRadius: 10,
-    borderLeftWidth: 4,
-    borderLeftColor: UI_CONFIG.colors.success,
-  },
-  welcomeBannerText: {
-    flex: 1,
-    color: UI_CONFIG.colors.text,
-    lineHeight: 22,
-    paddingRight: 8,
-  },
-});
 
 export default CustomerHomeScreen;

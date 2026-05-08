@@ -1,12 +1,10 @@
-import React from 'react';
-import {
-  View,
-  StyleSheet,
-} from 'react-native';
+import React, { useMemo } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../common/Card';
 import { Typography } from '../common';
-import { UI_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { PricingUtils } from '../../utils/pricing';
 
 interface DeliverySummaryProps {
@@ -21,6 +19,71 @@ interface DeliverySummaryProps {
   address?: string;
 }
 
+function createDeliverySummaryStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    section: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 12,
+    },
+    summaryCard: {
+      marginBottom: 8,
+    },
+    summaryRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    addressRow: {
+      borderBottomWidth: 0,
+      flexDirection: 'column',
+      alignItems: 'flex-start',
+    },
+    summaryLabelContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    summaryLabel: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      marginLeft: 8,
+    },
+    summaryValue: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.text,
+      flex: 1,
+      textAlign: 'right',
+    },
+    amountValue: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: colors.accent,
+    },
+    addressValue: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.text,
+      marginTop: 8,
+      textAlign: 'left',
+      width: '100%',
+    },
+    pendingText: {
+      fontStyle: 'italic',
+      color: colors.textSecondary,
+    },
+  });
+}
+
 const DeliverySummary: React.FC<DeliverySummaryProps> = ({
   agencyName,
   quantity,
@@ -32,6 +95,9 @@ const DeliverySummary: React.FC<DeliverySummaryProps> = ({
   timePeriod,
   address,
 }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createDeliverySummaryStyles(colors), [colors]);
+
   const formatDateTime = () => {
     if (!date || !time) return 'Not set';
     return `${date} at ${time} ${timePeriod || 'PM'}`;
@@ -39,23 +105,31 @@ const DeliverySummary: React.FC<DeliverySummaryProps> = ({
 
   return (
     <View style={styles.section}>
-      <Typography variant="h3" style={styles.sectionTitle}>Delivery Information</Typography>
+      <Typography variant="h3" style={styles.sectionTitle}>
+        Delivery Information
+      </Typography>
       <Card style={styles.summaryCard}>
         {agencyName ? (
           <View style={styles.summaryRow}>
             <View style={styles.summaryLabelContainer}>
-              <Ionicons name="business-outline" size={18} color={UI_CONFIG.colors.textSecondary} />
-              <Typography variant="body" style={styles.summaryLabel}>Agency</Typography>
+              <Ionicons name="business-outline" size={18} color={colors.textSecondary} />
+              <Typography variant="body" style={styles.summaryLabel}>
+                Agency
+              </Typography>
             </View>
-            <Typography variant="body" style={styles.summaryValue}>{agencyName}</Typography>
+            <Typography variant="body" style={styles.summaryValue}>
+              {agencyName}
+            </Typography>
           </View>
         ) : null}
-        
-        {(vehicleCapacity !== undefined && vehicleCapacity !== null && vehicleCapacity > 0) ? (
+
+        {vehicleCapacity !== undefined && vehicleCapacity !== null && vehicleCapacity > 0 ? (
           <View style={styles.summaryRow}>
             <View style={styles.summaryLabelContainer}>
-              <Ionicons name="water-outline" size={18} color={UI_CONFIG.colors.textSecondary} />
-              <Typography variant="body" style={styles.summaryLabel}>Tanker Capacity</Typography>
+              <Ionicons name="water-outline" size={18} color={colors.textSecondary} />
+              <Typography variant="body" style={styles.summaryLabel}>
+                Tanker Capacity
+              </Typography>
             </View>
             <Typography variant="body" style={styles.summaryValue}>{`${vehicleCapacity}L`}</Typography>
           </View>
@@ -64,25 +138,33 @@ const DeliverySummary: React.FC<DeliverySummaryProps> = ({
         {vehicleNumber ? (
           <View style={styles.summaryRow}>
             <View style={styles.summaryLabelContainer}>
-              <Ionicons name="car-outline" size={18} color={UI_CONFIG.colors.textSecondary} />
-              <Typography variant="body" style={styles.summaryLabel}>Vehicle Number</Typography>
+              <Ionicons name="car-outline" size={18} color={colors.textSecondary} />
+              <Typography variant="body" style={styles.summaryLabel}>
+                Vehicle Number
+              </Typography>
             </View>
-            <Typography variant="body" style={styles.summaryValue}>{vehicleNumber}</Typography>
+            <Typography variant="body" style={styles.summaryValue}>
+              {vehicleNumber}
+            </Typography>
           </View>
         ) : null}
 
         <View style={styles.summaryRow}>
           <View style={styles.summaryLabelContainer}>
-            <Ionicons name="cube-outline" size={18} color={UI_CONFIG.colors.textSecondary} />
-            <Typography variant="body" style={styles.summaryLabel}>Quantity</Typography>
+            <Ionicons name="cube-outline" size={18} color={colors.textSecondary} />
+            <Typography variant="body" style={styles.summaryLabel}>
+              Quantity
+            </Typography>
           </View>
           <Typography variant="body" style={styles.summaryValue}>{`${quantity} tanker${quantity !== 1 ? 's' : ''}`}</Typography>
         </View>
 
         <View style={styles.summaryRow}>
           <View style={styles.summaryLabelContainer}>
-            <Ionicons name="cash-outline" size={18} color={UI_CONFIG.colors.textSecondary} />
-            <Typography variant="body" style={styles.summaryLabel}>Total Amount</Typography>
+            <Ionicons name="cash-outline" size={18} color={colors.textSecondary} />
+            <Typography variant="body" style={styles.summaryLabel}>
+              Total Amount
+            </Typography>
           </View>
           {amount > 0 ? (
             <Typography variant="body" style={[styles.summaryValue, styles.amountValue]}>
@@ -95,23 +177,31 @@ const DeliverySummary: React.FC<DeliverySummaryProps> = ({
           )}
         </View>
 
-        {(date || time) ? (
+        {date || time ? (
           <View style={styles.summaryRow}>
             <View style={styles.summaryLabelContainer}>
-              <Ionicons name="time-outline" size={18} color={UI_CONFIG.colors.textSecondary} />
-              <Typography variant="body" style={styles.summaryLabel}>Delivery Date & Time</Typography>
+              <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
+              <Typography variant="body" style={styles.summaryLabel}>
+                Delivery Date & Time
+              </Typography>
             </View>
-            <Typography variant="body" style={styles.summaryValue}>{formatDateTime()}</Typography>
+            <Typography variant="body" style={styles.summaryValue}>
+              {formatDateTime()}
+            </Typography>
           </View>
         ) : null}
 
         {address ? (
           <View style={[styles.summaryRow, styles.addressRow]}>
             <View style={styles.summaryLabelContainer}>
-              <Ionicons name="location-outline" size={18} color={UI_CONFIG.colors.textSecondary} />
-              <Typography variant="body" style={styles.summaryLabel}>Delivery Address</Typography>
+              <Ionicons name="location-outline" size={18} color={colors.textSecondary} />
+              <Typography variant="body" style={styles.summaryLabel}>
+                Delivery Address
+              </Typography>
             </View>
-            <Typography variant="body" style={styles.addressValue}>{address}</Typography>
+            <Typography variant="body" style={styles.addressValue}>
+              {address}
+            </Typography>
           </View>
         ) : null}
       </Card>
@@ -119,68 +209,4 @@ const DeliverySummary: React.FC<DeliverySummaryProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  section: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: UI_CONFIG.colors.text,
-    marginBottom: 12,
-  },
-  summaryCard: {
-    marginBottom: 8,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
-  },
-  addressRow: {
-    borderBottomWidth: 0,
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-  },
-  summaryLabelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  summaryLabel: {
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
-    marginLeft: 8,
-  },
-  summaryValue: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: UI_CONFIG.colors.text,
-    flex: 1,
-    textAlign: 'right',
-  },
-  amountValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: UI_CONFIG.colors.accent,
-  },
-  addressValue: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: UI_CONFIG.colors.text,
-    marginTop: 8,
-    textAlign: 'left',
-    width: '100%',
-  },
-  pendingText: {
-    fontStyle: 'italic',
-    color: UI_CONFIG.colors.textSecondary,
-  },
-});
-
 export default DeliverySummary;
-

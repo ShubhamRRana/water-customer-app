@@ -12,15 +12,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '../common';
 import { UI_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 export interface AuthScreenLayoutProps {
-  /** Ionicons glyph name for scattered watermark icons */
   watermarkIcon: React.ComponentProps<typeof Ionicons>['name'];
   title: string;
   subtitle: string;
   backLabel: string;
   onBack: () => void;
-  /** Fixed caption pinned above safe-area bottom (e.g. reset-password notice) */
   bottomNotice?: string;
   children: React.ReactNode;
 }
@@ -71,10 +71,77 @@ function useWatermarkPositions() {
   }, [screenWidth, screenHeight]);
 }
 
-/**
- * Shared shell for auth flows: safe area, keyboard avoidance, optional watermark,
- * scroll region with back row + title/subtitle, and optional bottom notice.
- */
+function createAuthLayoutStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      position: 'relative',
+    },
+    scrollContainer: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      padding: 24,
+      paddingBottom: 96,
+      zIndex: 1,
+    },
+    backRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      marginBottom: 16,
+    },
+    backLabel: {
+      color: colors.accent,
+      fontWeight: '600',
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: 32,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      fontFamily: 'PlayfairDisplay-Regular',
+      color: colors.text,
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+      paddingHorizontal: 8,
+    },
+    watermarkContainer: {
+      position: 'absolute',
+      justifyContent: 'center',
+      alignItems: 'center',
+      opacity: 0.06,
+      zIndex: 0,
+      pointerEvents: 'none',
+    },
+    bottomNoticeWrapper: {
+      position: 'absolute',
+      left: 16,
+      right: 16,
+      bottom: 16,
+      zIndex: 2,
+      alignItems: 'center',
+    },
+    bottomNoticeText: {
+      textAlign: 'center',
+      color: colors.textSecondary,
+      lineHeight: 18,
+    },
+  });
+}
+
 const AuthScreenLayout: React.FC<AuthScreenLayoutProps> = ({
   watermarkIcon,
   title,
@@ -85,6 +152,8 @@ const AuthScreenLayout: React.FC<AuthScreenLayoutProps> = ({
   children,
 }) => {
   const watermarkPositions = useWatermarkPositions();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createAuthLayoutStyles(colors), [colors]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -103,7 +172,7 @@ const AuthScreenLayout: React.FC<AuthScreenLayoutProps> = ({
               },
             ]}
           >
-            <Ionicons name={watermarkIcon} size={50} color={UI_CONFIG.colors.textSecondary} />
+            <Ionicons name={watermarkIcon} size={50} color={colors.textSecondary} />
           </View>
         ))}
 
@@ -116,7 +185,7 @@ const AuthScreenLayout: React.FC<AuthScreenLayoutProps> = ({
             onPress={onBack}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <Ionicons name="chevron-back" size={24} color={UI_CONFIG.colors.accent} />
+            <Ionicons name="chevron-back" size={24} color={colors.accent} />
             <Typography variant="body" style={styles.backLabel}>
               {backLabel}
             </Typography>
@@ -145,74 +214,5 @@ const AuthScreenLayout: React.FC<AuthScreenLayoutProps> = ({
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
-    position: 'relative',
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-    paddingBottom: 96,
-    zIndex: 1,
-  },
-  backRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    marginBottom: 16,
-  },
-  backLabel: {
-    color: UI_CONFIG.colors.accent,
-    fontWeight: '600',
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    fontFamily: 'PlayfairDisplay-Regular',
-    color: UI_CONFIG.colors.text,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 8,
-  },
-  watermarkContainer: {
-    position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
-    opacity: 0.06,
-    zIndex: 0,
-    pointerEvents: 'none',
-  },
-  bottomNoticeWrapper: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 16,
-    zIndex: 2,
-    alignItems: 'center',
-  },
-  bottomNoticeText: {
-    textAlign: 'center',
-    color: UI_CONFIG.colors.textSecondary,
-    lineHeight: 18,
-  },
-});
 
 export default AuthScreenLayout;

@@ -58,6 +58,80 @@ export const LOCATION_CONFIG = {
   averageSpeed: 30, // km/h for delivery time calculation
 };
 
+/** User-selectable theme; `system` follows the OS appearance. */
+export type ThemePreference = 'light' | 'dark' | 'system';
+
+/** Gold palette — dark & refined */
+export const DARK_THEME_COLORS = {
+  primary: '#1a1d24',
+  background: '#1a1d24',
+  surface: '#252a33',
+  surfaceLight: '#2f3540',
+  secondary: '#3d4552',
+  accent: '#ffc300',
+  accentMuted: '#a08b4a',
+  text: '#f0f2f5',
+  textSecondary: '#9ca3af',
+  textLight: '#ffffff',
+  border: '#3d4552',
+  borderLight: '#4a5568',
+  success: '#34d399',
+  warning: '#f59e0b',
+  error: '#ef4444',
+  disabled: '#6b7280',
+  shadow: '#000000',
+  overlaySubtle: 'rgba(255, 255, 255, 0.06)',
+  overlayLight: 'rgba(255, 255, 255, 0.2)',
+  overlayMedium: 'rgba(255, 255, 255, 0.3)',
+  overlayDark: 'rgba(0, 0, 0, 0.6)',
+} as const;
+
+/** Light surfaces + gold accent (same keys as dark) */
+export const LIGHT_THEME_COLORS = {
+  primary: '#eef0f4',
+  background: '#eef0f4',
+  surface: '#ffffff',
+  surfaceLight: '#e4e7ec',
+  secondary: '#cbd5e1',
+  accent: '#e6a800',
+  accentMuted: '#9a7b2c',
+  text: '#1a1d24',
+  textSecondary: '#64748b',
+  textLight: '#ffffff',
+  border: '#e2e8f0',
+  borderLight: '#cbd5e1',
+  success: '#059669',
+  warning: '#d97706',
+  error: '#dc2626',
+  disabled: '#94a3b8',
+  shadow: '#000000',
+  overlaySubtle: 'rgba(0, 0, 0, 0.04)',
+  overlayLight: 'rgba(0, 0, 0, 0.08)',
+  overlayMedium: 'rgba(0, 0, 0, 0.14)',
+  overlayDark: 'rgba(0, 0, 0, 0.4)',
+} as const;
+
+export type ThemeColors = {
+  [K in keyof typeof DARK_THEME_COLORS]: string;
+};
+
+export const THEME_STORAGE_KEY = '@water_theme_preference';
+
+/** Effective light/dark for a preference and optional OS scheme (`null` treats system as dark). */
+export function resolveEffectiveScheme(
+  preference: ThemePreference,
+  systemColorScheme: 'light' | 'dark' | null | undefined
+): 'light' | 'dark' {
+  if (preference === 'system') {
+    return systemColorScheme === 'light' ? 'light' : 'dark';
+  }
+  return preference;
+}
+
+export function getColorsForScheme(scheme: 'light' | 'dark'): ThemeColors {
+  return (scheme === 'light' ? LIGHT_THEME_COLORS : DARK_THEME_COLORS) as unknown as ThemeColors;
+}
+
 // UI Configuration
 export const UI_CONFIG = {
   fonts: {
@@ -65,34 +139,7 @@ export const UI_CONFIG = {
     bold: 'System',
     fallback: ['System'],
   },
-  colors: {
-    // Gold palette — dark & refined
-    primary: '#1a1d24', // Main app background (screens, scroll areas)
-    background: '#1a1d24', // Alternate background where needed
-    surface: '#252a33', // Cards, inputs, drawer panel, elevated surfaces
-    surfaceLight: '#2f3540', // Hover/active states, subtle elevation
-    secondary: '#3d4552', // Secondary buttons, borders, neutral surfaces
-    accent: '#ffc300', // Gold — primary buttons, CTAs, highlights, active states
-    accentMuted: '#a08b4a', // Softer gold for outline buttons, subtle highlights
-    // Text colors
-    text: '#f0f2f5', // Primary text on dark
-    textSecondary: '#9ca3af', // Secondary text, placeholders, captions
-    textLight: '#ffffff', // Text on gold/primary buttons
-    // Border colors
-    border: '#3d4552', // Borders, dividers
-    borderLight: '#4a5568', // Lighter dividers
-    // Status colors
-    success: '#34d399', // Success states (delivered, completed)
-    warning: '#f59e0b', // Pending, caution
-    error: '#ef4444', // Errors, destructive (logout, cancel)
-    disabled: '#6b7280', // Disabled controls
-    shadow: '#000000', // Shadow color for elevation (use with opacity)
-    // Overlay tokens (replace inline rgba)
-    overlaySubtle: 'rgba(255, 255, 255, 0.06)', // Glass/frosted surfaces
-    overlayLight: 'rgba(255, 255, 255, 0.2)', // Light overlays (e.g. menu on gradient)
-    overlayMedium: 'rgba(255, 255, 255, 0.3)', // Active badges on accent
-    overlayDark: 'rgba(0, 0, 0, 0.6)', // Modal overlays
-  },
+  colors: DARK_THEME_COLORS as unknown as ThemeColors,
   spacing: {
     xs: 4,
     sm: 8,

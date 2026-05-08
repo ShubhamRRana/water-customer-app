@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   TextInput,
@@ -15,7 +15,8 @@ import { getErrorMessage } from '../../utils/errors';
 import { AuthStackParamList } from '../../types/index';
 import { Typography, Button, Card } from '../../components/common';
 import { AuthScreenLayout } from '../../components/layouts';
-import { UI_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 type SocietyLoginNavigationProp = StackNavigationProp<AuthStackParamList, 'SocietyLogin'>;
 
@@ -23,7 +24,55 @@ interface Props {
   navigation: SocietyLoginNavigationProp;
 }
 
+function createSocietyLoginStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    formCard: { marginBottom: 24 },
+    form: { marginBottom: 0 },
+    inputContainer: { marginBottom: 20 },
+    label: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      fontSize: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      color: colors.text,
+    },
+    passwordInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      position: 'relative',
+    },
+    passwordInput: { flex: 1, paddingRight: 50 },
+    eyeIcon: { position: 'absolute', right: 16, padding: 4 },
+    inputError: { borderColor: colors.error },
+    errorText: { color: colors.error, fontSize: 14, marginTop: 4 },
+    submitButton: { marginTop: 16 },
+    footer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+    },
+    footerText: { fontSize: 16, color: colors.textSecondary },
+    linkText: {
+      fontSize: 16,
+      color: colors.accent,
+      fontWeight: '600',
+      textDecorationLine: 'underline',
+    },
+  });
+}
+
 const SocietyLoginScreen: React.FC<Props> = ({ navigation }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createSocietyLoginStyles(colors), [colors]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -156,7 +205,7 @@ const SocietyLoginScreen: React.FC<Props> = ({ navigation }) => {
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                   size={24}
-                  color={UI_CONFIG.colors.textSecondary}
+                  color={colors.textSecondary}
                 />
               </TouchableOpacity>
             </View>
@@ -194,73 +243,5 @@ const SocietyLoginScreen: React.FC<Props> = ({ navigation }) => {
     </AuthScreenLayout>
   );
 };
-
-const styles = StyleSheet.create({
-  formCard: {
-    marginBottom: 24,
-  },
-  form: {
-    marginBottom: 0,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: UI_CONFIG.colors.text,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: UI_CONFIG.colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: UI_CONFIG.colors.border,
-    color: UI_CONFIG.colors.text,
-  },
-  passwordInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  passwordInput: {
-    flex: 1,
-    paddingRight: 50,
-  },
-  eyeIcon: {
-    position: 'absolute',
-    right: 16,
-    padding: 4,
-  },
-  inputError: {
-    borderColor: UI_CONFIG.colors.error,
-  },
-  errorText: {
-    color: UI_CONFIG.colors.error,
-    fontSize: 14,
-    marginTop: 4,
-  },
-  submitButton: {
-    marginTop: 16,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-  footerText: {
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
-  },
-  linkText: {
-    fontSize: 16,
-    color: UI_CONFIG.colors.accent,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
-  },
-});
 
 export default SocietyLoginScreen;

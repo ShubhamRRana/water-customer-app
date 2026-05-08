@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   TextInput,
@@ -17,7 +17,8 @@ import { AuthStackParamList, CustomerAccountKind } from '../../types/index';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { Typography, Button, Card } from '../../components/common';
-import { UI_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 type RegisterScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Register'>;
 type RegisterScreenRouteProp = RouteProp<AuthStackParamList, 'Register'>;
@@ -27,7 +28,106 @@ interface Props {
   route: RegisterScreenRouteProp;
 }
 
+function createRegisterStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollContainer: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      padding: 24,
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: 40,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      fontFamily: 'PlayfairDisplay-Regular',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    formCard: {
+      marginBottom: 24,
+    },
+    form: {
+      marginBottom: 0,
+    },
+    inputContainer: {
+      marginBottom: 20,
+    },
+    label: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      fontSize: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      color: colors.text,
+    },
+    passwordInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      position: 'relative',
+    },
+    passwordInput: {
+      flex: 1,
+      paddingRight: 50,
+    },
+    eyeIcon: {
+      position: 'absolute',
+      right: 16,
+      padding: 4,
+    },
+    inputError: {
+      borderColor: colors.error,
+    },
+    errorText: {
+      color: colors.error,
+      fontSize: 14,
+      marginTop: 4,
+    },
+    submitButton: {
+      marginTop: 16,
+    },
+    footer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    footerText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    linkText: {
+      fontSize: 16,
+      color: colors.accent,
+      fontWeight: '600',
+      textDecorationLine: 'underline',
+    },
+  });
+}
+
 const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createRegisterStyles(colors), [colors]);
   const registrationAccountKind: CustomerAccountKind =
     route.params?.accountKind === 'society' ? 'society' : 'individual';
   const [email, setEmail] = useState('');
@@ -292,7 +392,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                   size={24}
-                  color={UI_CONFIG.colors.textSecondary}
+                  color={colors.textSecondary}
                 />
               </TouchableOpacity>
             </View>
@@ -315,7 +415,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Ionicons
                   name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
                   size={24}
-                  color={UI_CONFIG.colors.textSecondary}
+                  color={colors.textSecondary}
                 />
               </TouchableOpacity>
             </View>
@@ -346,100 +446,5 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: UI_CONFIG.colors.background,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    fontFamily: 'PlayfairDisplay-Regular',
-    color: UI_CONFIG.colors.text,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
-  },
-  formCard: {
-    marginBottom: 24,
-  },
-  form: {
-    marginBottom: 0,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: UI_CONFIG.colors.text,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: UI_CONFIG.colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: UI_CONFIG.colors.border,
-    color: UI_CONFIG.colors.text,
-  },
-  passwordInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  passwordInput: {
-    flex: 1,
-    paddingRight: 50,
-  },
-  eyeIcon: {
-    position: 'absolute',
-    right: 16,
-    padding: 4,
-  },
-  inputError: {
-    borderColor: UI_CONFIG.colors.error,
-  },
-  errorText: {
-    color: UI_CONFIG.colors.error,
-    fontSize: 14,
-    marginTop: 4,
-  },
-  submitButton: {
-    marginTop: 16,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 16,
-    color: UI_CONFIG.colors.textSecondary,
-  },
-  linkText: {
-    fontSize: 16,
-    color: UI_CONFIG.colors.accent,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
-  },
-});
 
 export default RegisterScreen;

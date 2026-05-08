@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   TextInput,
@@ -8,37 +8,50 @@ import {
   StyleProp,
 } from 'react-native';
 import { UI_CONFIG } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import Typography from './Typography';
 
-/**
- * Input component props
- * Extends React Native's TextInputProps with additional styling and error handling
- */
 interface InputProps extends TextInputProps {
-  /** Optional label text displayed above the input */
   label?: string;
-  /** Error message to display below the input */
   error?: string;
-  /** Additional styles for the container */
   containerStyle?: StyleProp<ViewStyle>;
 }
 
-/**
- * Reusable Input component with label and error display
- * 
- * Extends React Native's TextInput with consistent styling, label support, and error handling.
- * 
- * @example
- * ```tsx
- * <Input
- *   label="Email"
- *   value={email}
- *   onChangeText={setEmail}
- *   error={emailError}
- *   keyboardType="email-address"
- * />
- * ```
- */
+function createInputStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      marginBottom: 16,
+    },
+    label: {
+      fontSize: UI_CONFIG.fontSize.md,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: colors.surface,
+      borderRadius: UI_CONFIG.borderRadius.lg,
+      padding: UI_CONFIG.spacing.md,
+      fontSize: UI_CONFIG.fontSize.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      color: colors.text,
+    },
+    inputFocused: {
+      borderColor: colors.accent,
+    },
+    inputError: {
+      borderColor: colors.error,
+    },
+    errorText: {
+      color: colors.error,
+      fontSize: UI_CONFIG.fontSize.sm,
+      marginTop: 4,
+    },
+  });
+}
+
 const Input: React.FC<InputProps> = ({
   label,
   error,
@@ -48,6 +61,8 @@ const Input: React.FC<InputProps> = ({
   onBlur,
   ...props
 }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createInputStyles(colors), [colors]);
   const [isFocused, setIsFocused] = useState(false);
   const handleFocus = (e: Parameters<NonNullable<TextInputProps['onFocus']>>[0]) => {
     setIsFocused(true);
@@ -59,7 +74,11 @@ const Input: React.FC<InputProps> = ({
   };
   return (
     <View style={[styles.container, containerStyle]}>
-      {label && <Typography variant="body" style={styles.label}>{label}</Typography>}
+      {label && (
+        <Typography variant="body" style={styles.label}>
+          {label}
+        </Typography>
+      )}
       <TextInput
         style={[
           styles.input,
@@ -67,46 +86,18 @@ const Input: React.FC<InputProps> = ({
           isFocused && !error && styles.inputFocused,
           style,
         ]}
-        placeholderTextColor={UI_CONFIG.colors.textSecondary}
+        placeholderTextColor={colors.textSecondary}
         onFocus={handleFocus}
         onBlur={handleBlur}
         {...props}
       />
-      {error && <Typography variant="caption" style={styles.errorText}>{error}</Typography>}
+      {error && (
+        <Typography variant="caption" style={styles.errorText}>
+          {error}
+        </Typography>
+      )}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: UI_CONFIG.fontSize.md,
-    fontWeight: '600',
-    color: UI_CONFIG.colors.text,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: UI_CONFIG.colors.surface,
-    borderRadius: UI_CONFIG.borderRadius.lg,
-    padding: UI_CONFIG.spacing.md,
-    fontSize: UI_CONFIG.fontSize.md,
-    borderWidth: 1,
-    borderColor: UI_CONFIG.colors.border,
-    color: UI_CONFIG.colors.text,
-  },
-  inputFocused: {
-    borderColor: UI_CONFIG.colors.accent,
-  },
-  inputError: {
-    borderColor: UI_CONFIG.colors.error,
-  },
-  errorText: {
-    color: UI_CONFIG.colors.error,
-    fontSize: UI_CONFIG.fontSize.sm,
-    marginTop: 4,
-  },
-});
 
 export default Input;

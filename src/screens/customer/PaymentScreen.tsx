@@ -19,6 +19,8 @@ import {
 } from '../../services/phonepe.service';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { UI_CONFIG, PRICING_CONFIG, LOADING_MESSAGES } from '../../constants/config';
+import type { ThemeColors } from '../../constants/config';
+import { useThemeColors } from '../../hooks/useThemeColors';
 import { errorLogger } from '../../utils/errorLogger';
 import Constants from 'expo-constants';
 
@@ -31,6 +33,8 @@ interface Props {
 }
 
 const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createPaymentStyles(colors), [colors]);
   const { orderId, planName, amount } = route.params;
   const [phase, setPhase] = useState<'init' | 'ready' | 'done'>('init');
   const [checkoutUri, setCheckoutUri] = useState<string | null>(null);
@@ -110,7 +114,7 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
   if (phase === 'init' && !error) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <Header onBack={() => navigation.goBack()} title="Pay with PhonePe" />
+        <Header onBack={() => navigation.goBack()} title="Pay with PhonePe" colors={colors} styles={styles} />
         <ScreenLoading message={LOADING_MESSAGES.payment.processing} />
       </SafeAreaView>
     );
@@ -119,7 +123,7 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
   if (error && phase === 'done' && !checkoutUri) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <Header onBack={() => navigation.goBack()} title="Pay with PhonePe" />
+        <Header onBack={() => navigation.goBack()} title="Pay with PhonePe" colors={colors} styles={styles} />
         <ScreenError message={error} onRetry={() => void startCheckout()} />
       </SafeAreaView>
     );
@@ -127,14 +131,14 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <Header onBack={() => navigation.goBack()} title="Pay with PhonePe" />
+      <Header onBack={() => navigation.goBack()} title="Pay with PhonePe" colors={colors} styles={styles} />
       <View style={styles.summary}>
         <Typography variant="h3">{planName}</Typography>
         <Typography variant="h2" style={styles.summaryAmt}>
           {PRICING_CONFIG.currencySymbol}
           {amount.toFixed(2)}
         </Typography>
-        <Typography variant="caption" style={{ color: UI_CONFIG.colors.textSecondary }}>
+        <Typography variant="caption" style={{ color: colors.textSecondary }}>
           Order ID: {orderId}
         </Typography>
       </View>
@@ -169,11 +173,21 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 };
 
-function Header({ title, onBack }: { title: string; onBack: () => void }) {
+function Header({
+  title,
+  onBack,
+  colors,
+  styles,
+}: {
+  title: string;
+  onBack: () => void;
+  colors: ThemeColors;
+  styles: ReturnType<typeof createPaymentStyles>;
+}) {
   return (
     <View style={styles.header}>
       <TouchableOpacity onPress={onBack} style={styles.backBtn} accessibilityLabel="Go back">
-        <Ionicons name="chevron-back" size={28} color={UI_CONFIG.colors.accent} />
+        <Ionicons name="chevron-back" size={28} color={colors.accent} />
       </TouchableOpacity>
       <Typography variant="h2" style={styles.headerTitle}>
         {title}
@@ -187,8 +201,9 @@ function getErrMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Something went wrong';
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: UI_CONFIG.colors.primary },
+function createPaymentStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.primary },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -196,18 +211,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: UI_CONFIG.spacing.md,
     paddingVertical: UI_CONFIG.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
+    borderBottomColor: colors.border,
   },
   backBtn: { padding: UI_CONFIG.spacing.xs },
   headerTitle: { flex: 1, textAlign: 'center' },
   summary: {
     padding: UI_CONFIG.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: UI_CONFIG.colors.border,
+    borderBottomColor: colors.border,
   },
   summaryAmt: { marginVertical: 8 },
-  webview: { flex: 1, backgroundColor: UI_CONFIG.colors.primary },
-  footer: { padding: UI_CONFIG.spacing.md, borderTopWidth: 1, borderTopColor: UI_CONFIG.colors.border },
-});
+  webview: { flex: 1, backgroundColor: colors.primary },
+  footer: { padding: UI_CONFIG.spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
+  });
+}
 
 export default PaymentScreen;
