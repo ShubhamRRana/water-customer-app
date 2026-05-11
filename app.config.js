@@ -8,7 +8,7 @@ try {
 
 module.exports = {
   expo: {
-    name: 'water-tanker-app',
+    name: 'Water Tanker - Customer',
     slug: 'water-tanker-app',
     version: '1.0.0',
     orientation: 'default',
