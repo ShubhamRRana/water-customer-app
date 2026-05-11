@@ -9,7 +9,7 @@ try {
 module.exports = {
   expo: {
     name: 'Water Tanker - Customer',
-    slug: 'watertanker-customer-app',
+    slug: 'water-tanker-app',
     version: '1.0.0',
     orientation: 'default',
     icon: './assets/icon.png',
@@ -25,6 +25,7 @@ module.exports = {
       barStyle: 'light-content',
     },
     ios: {
+      bundleIdentifier: 'com.watertanker.app',
       supportsTablet: true,
     },
     android: {
@@ -41,7 +42,7 @@ module.exports = {
       favicon: './assets/favicon.png',
     },
     fonts: ['assets/fonts/PlayfairDisplay-Regular.ttf'],
-    plugins: ['expo-font'],
+    plugins: ['expo-dev-client', 'expo-font'],
     extra: {
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,

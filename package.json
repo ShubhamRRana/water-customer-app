@@ -1,9 +1,12 @@
 {
-  "name": "water-tanker-app",
+  "name": "Water Tanker - Customer",
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
+    "start:dev": "expo start --dev-client",
+    "eas:dev:android": "eas build --profile development --platform android",
+    "_eas_dev_ios": "eas build --profile development --platform ios",
     "start:tunnel": "expo start --tunnel",
     "android": "expo start --android",
     "ios": "expo start --ios",
@@ -31,6 +34,7 @@
     "expo": "~54.0.32",
     "expo-asset": "~12.0.12",
     "expo-constants": "~18.0.13",
+    "expo-dev-client": "~6.0.21",
     "expo-document-picker": "~14.0.8",
     "expo-file-system": "~19.0.21",
     "expo-font": "~14.0.11",
