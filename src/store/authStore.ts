@@ -6,6 +6,7 @@ import { AuthService } from '../services/auth.service';
 import { supabase } from '../lib/supabaseClient';
 import { handleError } from '../utils/errorHandler';
 import { ErrorSeverity } from '../utils/errorLogger';
+import { isInvalidRefreshTokenError } from '../utils/authErrors';
 
 const CUSTOMER_ACCOUNT_KIND_KEY = '@water_customer_account_kind';
 
@@ -27,6 +28,15 @@ async function writeStoredCustomerAccountKind(kind: CustomerAccountKind | null):
     }
   } catch {
     // non-fatal
+  }
+}
+
+/** Clears persisted Supabase tokens when refresh is invalid (no server round-trip). */
+async function clearCorruptedLocalAuthSession(): Promise<void> {
+  try {
+    await supabase.auth.signOut({ scope: 'local' });
+  } catch {
+    // Non-fatal when storage is already inconsistent
   }
 }
 
@@ -123,9 +133,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       let session = null;
       try {
         const result = await supabase.auth.getSession();
-        session = result.data?.session ?? null;
+        if (result.error && isInvalidRefreshTokenError(result.error)) {
+          await clearCorruptedLocalAuthSession();
+          session = null;
+        } else {
+          session = result.data?.session ?? null;
+        }
       } catch (sessionError) {
-        if (isNetworkFailure(sessionError)) {
+        if (isInvalidRefreshTokenError(sessionError)) {
+          await clearCorruptedLocalAuthSession();
+          session = null;
+        } else if (isNetworkFailure(sessionError)) {
           set({
             user: null,
             isAuthenticated: false,
@@ -136,8 +154,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           });
           get().subscribeToAuthChanges();
           return;
+        } else {
+          throw sessionError;
         }
-        throw sessionError;
       }
 
       // If no session, check for password reset deep link (app opened from reset email link)
@@ -227,6 +246,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       get().subscribeToAuthChanges();
     } catch (error) {
+      if (isInvalidRefreshTokenError(error)) {
+        await clearCorruptedLocalAuthSession();
+        set({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          customerAccountKind: null,
+          showSocietySubscriptionIntro: false,
+          showPostRegisterWelcome: false,
+        });
+        get().subscribeToAuthChanges();
+        return;
+      }
       if (isNetworkFailure(error)) {
         set({
           user: null,

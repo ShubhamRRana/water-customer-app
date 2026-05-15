@@ -6,6 +6,8 @@ jest.mock('../../lib/supabaseClient');
 
 import { useAuthStore } from '../../store/authStore';
 import { AuthService } from '../../services/auth.service';
+import { supabase } from '../../lib/supabaseClient';
+import { isInvalidRefreshTokenError } from '../../utils/authErrors';
 import { User, UserRole } from '../../types';
 
 // Mock the AuthService
@@ -26,6 +28,41 @@ describe('useAuthStore', () => {
       showPostRegisterWelcome: false,
     });
     jest.clearAllMocks();
+    (supabase.auth.getSession as jest.Mock).mockReset();
+    (supabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: {
+        session: {
+          user: { id: 'test-user-id', email: 'test@example.com' },
+          access_token: 'mock-token',
+        },
+      },
+      error: null,
+    });
+    (supabase.auth.signOut as jest.Mock).mockReset();
+    (supabase.auth.signOut as jest.Mock).mockResolvedValue({ error: null });
+  });
+
+  describe('isInvalidRefreshTokenError', () => {
+    it('returns true for Invalid Refresh Token message', () => {
+      expect(isInvalidRefreshTokenError(new Error('Invalid Refresh Token: Refresh Token Not Found'))).toBe(true);
+    });
+
+    it('returns true for Refresh Token Not Found substring', () => {
+      expect(isInvalidRefreshTokenError(new Error('Refresh Token Not Found'))).toBe(true);
+    });
+
+    it('returns true for refresh_token_not_found code', () => {
+      expect(isInvalidRefreshTokenError({ code: 'refresh_token_not_found', message: 'x' })).toBe(true);
+    });
+
+    it('returns true for invalid_grant code', () => {
+      expect(isInvalidRefreshTokenError({ code: 'invalid_grant' })).toBe(true);
+    });
+
+    it('returns false for unrelated errors', () => {
+      expect(isInvalidRefreshTokenError(new Error('Network request failed'))).toBe(false);
+      expect(isInvalidRefreshTokenError(null)).toBe(false);
+    });
   });
 
   describe('Initial State', () => {
@@ -85,6 +122,39 @@ describe('useAuthStore', () => {
       expect(state.isLoading).toBe(false);
       expect(state.user).toBeNull();
       expect(state.isAuthenticated).toBe(false);
+    });
+
+    it('should clear local session and finish logged out when getSession returns invalid refresh error', async () => {
+      (AuthService.initializeApp as jest.Mock).mockResolvedValue(undefined);
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
+        data: { session: null },
+        error: { message: 'Invalid Refresh Token: Refresh Token Not Found' },
+      });
+      (supabase.auth.signOut as jest.Mock).mockResolvedValue({ error: null });
+
+      await useAuthStore.getState().initializeAuth();
+
+      expect(supabase.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+      expect(AuthService.getCurrentUserData).not.toHaveBeenCalled();
+      const state = useAuthStore.getState();
+      expect(state.user).toBeNull();
+      expect(state.isAuthenticated).toBe(false);
+      expect(state.isLoading).toBe(false);
+    });
+
+    it('should clear local session when getSession throws invalid refresh error', async () => {
+      (AuthService.initializeApp as jest.Mock).mockResolvedValue(undefined);
+      (supabase.auth.getSession as jest.Mock).mockRejectedValue(
+        new Error('Invalid Refresh Token: Refresh Token Not Found')
+      );
+      (supabase.auth.signOut as jest.Mock).mockResolvedValue({ error: null });
+
+      await useAuthStore.getState().initializeAuth();
+
+      expect(supabase.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+      expect(AuthService.getCurrentUserData).not.toHaveBeenCalled();
+      expect(useAuthStore.getState().user).toBeNull();
+      expect(useAuthStore.getState().isLoading).toBe(false);
     });
   });
 

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -17,6 +18,9 @@ import type { ThemeColors } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
 
 type RoleSelectionNavigationProp = StackNavigationProp<AuthStackParamList, 'RoleSelection'>;
+
+const ADMIN_PLAY_STORE_URL =
+  'https://play.google.com/store/apps/details?id=in.tankerhub.admin';
 
 interface Props {
   navigation: RoleSelectionNavigationProp;
@@ -43,11 +47,19 @@ function createRoleSelectionStyles(colors: ThemeColors) {
     },
     contentOverlay: {
       zIndex: 1,
+      flex: 1,
     },
     scrollContainer: {
       flexGrow: 1,
-      justifyContent: 'center',
       padding: 24,
+    },
+    mainContent: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    footer: {
+      paddingTop: 16,
+      paddingBottom: 8,
     },
     header: {
       alignItems: 'center',
@@ -65,6 +77,16 @@ function createRoleSelectionStyles(colors: ThemeColors) {
       fontSize: 16,
       color: colors.textSecondary,
       textAlign: 'center',
+    },
+    usageNotice: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+    usageNoticeLink: {
+      color: colors.accent,
+      textDecorationLine: 'underline',
     },
     roleContainer: {
       marginBottom: 32,
@@ -258,17 +280,18 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
         ))}
 
         <ScrollView contentContainerStyle={styles.scrollContainer} style={styles.contentOverlay}>
-          <View style={styles.header}>
-            <Typography variant="h1" style={styles.title}>
-              Water Tanker - Customer
-            </Typography>
-            <Typography variant="body" style={styles.subtitle}>
-              Select how you want to use the app
-            </Typography>
-          </View>
+          <View style={styles.mainContent}>
+            <View style={styles.header}>
+              <Typography variant="h1" style={styles.title}>
+                Water Tanker - Customer
+              </Typography>
+              <Typography variant="body" style={styles.subtitle}>
+                Select how you want to use the app
+              </Typography>
+            </View>
 
-          <View style={styles.roleContainer}>
-            {accountTypes.map((accountType) => (
+            <View style={styles.roleContainer}>
+              {accountTypes.map((accountType) => (
               <TouchableOpacity
                 key={accountType.key}
                 style={[
@@ -314,25 +337,43 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
                   </View>
                 </View>
               </TouchableOpacity>
-            ))}
+              ))}
+            </View>
+
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  !selectedAccount && styles.buttonDisabled,
+                  isButtonPressed && styles.buttonPressed,
+                ]}
+                onPress={handleContinue}
+                disabled={!selectedAccount}
+                onPressIn={() => setIsButtonPressed(true)}
+                onPressOut={() => setIsButtonPressed(false)}
+              >
+                <Typography variant="body" style={styles.buttonText}>
+                  Continue
+                </Typography>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[
-                styles.button,
-                !selectedAccount && styles.buttonDisabled,
-                isButtonPressed && styles.buttonPressed,
-              ]}
-              onPress={handleContinue}
-              disabled={!selectedAccount}
-              onPressIn={() => setIsButtonPressed(true)}
-              onPressOut={() => setIsButtonPressed(false)}
-            >
-              <Typography variant="body" style={styles.buttonText}>
-                Continue
-              </Typography>
-            </TouchableOpacity>
+          <View style={styles.footer}>
+            <Typography variant="caption" style={styles.usageNotice}>
+              This app is for individual and society uses for creating booking only. If you are a business owner
+              please use{' '}
+              <Typography
+                variant="caption"
+                style={[styles.usageNotice, styles.usageNoticeLink]}
+                onPress={() => {
+                  void Linking.openURL(ADMIN_PLAY_STORE_URL);
+                }}
+              >
+                Water Tanker - Admin
+              </Typography>{' '}
+              app. Thanks. Happy Booking.
+            </Typography>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

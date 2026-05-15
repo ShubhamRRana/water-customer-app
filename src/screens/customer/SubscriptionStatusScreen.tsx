@@ -157,10 +157,16 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
             ) : null}
           </Card>
 
-          <Button title="Plans & upgrade" onPress={() => navigation.navigate('SubscriptionPlans')} style={styles.btn} />
+          <Button
+            title="Plans & upgrade"
+            disabled
+            onPress={() => navigation.navigate('SubscriptionPlans')}
+            style={styles.btn}
+          />
           <Button
             title="Payment history"
             variant="secondary"
+            disabled
             onPress={() => navigation.navigate('PaymentHistory')}
             style={styles.btn}
           />
