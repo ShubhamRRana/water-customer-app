@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Typography, CustomerMenuDrawer, ScreenLoading, ScreenError } from '../../components/common';
+import AppScreenHeader from '../../components/layouts/AppScreenHeader';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
@@ -295,9 +296,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const showContactCta =
     customerAccountKind === 'individual' || customerAccountKind === 'society';
   const appearanceOptions: Array<{ key: ThemePreference; label: string }> = [
-    { key: 'light', label: 'Light' },
     { key: 'dark', label: 'Dark' },
-    { key: 'system', label: 'Match device' },
+    { key: 'light', label: 'Light' },
+    { key: 'system', label: 'System' },
   ];
 
   return (
@@ -306,6 +307,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         style={{ flex: 1 }} 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        <AppScreenHeader
+          left={{ type: 'menu', onPress: () => setMenuVisible(true) }}
+          title="Profile"
+          centerTitle
+        />
         <ScrollView 
           style={styles.scrollView} 
           contentContainerStyle={styles.contentContainer} 
@@ -319,18 +325,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             end={{ x: 1, y: 1 }}
             style={styles.headerGradient}
           >
-            <View style={styles.header}>
-              <TouchableOpacity 
-                style={styles.menuButton} 
-                onPress={() => setMenuVisible(true)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="menu" size={24} color={colors.textLight} />
-              </TouchableOpacity>
-              <Typography variant="h2" style={styles.headerTitle}>Profile</Typography>
-              <View style={styles.headerSpacer} />
-            </View>
-
             {/* Profile Section */}
             <Animated.View 
               style={[
@@ -437,30 +431,39 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             <Typography variant="h3" style={styles.appearanceTitle}>
               Appearance
             </Typography>
-            {appearanceOptions.map((option) => {
-              const selected = preference === option.key;
-              return (
-                <TouchableOpacity
-                  key={option.key}
-                  style={[
-                    styles.appearanceOption,
-                    selected && styles.appearanceOptionActive,
-                    selected && { borderColor: colors.accent, backgroundColor: colors.surfaceLight },
-                  ]}
-                  onPress={() => setPreference(option.key)}
-                  activeOpacity={0.8}
-                >
-                  <Typography variant="body" style={styles.appearanceOptionText}>
-                    {option.label}
-                  </Typography>
-                  {selected ? (
-                    <Ionicons name="checkmark-circle" size={20} color={colors.accent} />
-                  ) : (
-                    <Ionicons name="ellipse-outline" size={20} color={colors.textSecondary} />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
+            <Typography variant="body" style={styles.appearanceDescription}>
+              Choose a theme for menus, lists, and forms. System follows your device settings.
+            </Typography>
+            <View style={styles.appearanceSegmentRow}>
+              {appearanceOptions.map((option) => {
+                const selected = preference === option.key;
+                return (
+                  <TouchableOpacity
+                    key={option.key}
+                    style={[
+                      styles.appearanceSegment,
+                      selected && styles.appearanceSegmentSelected,
+                      selected && {
+                        borderColor: colors.accent,
+                        backgroundColor: colors.surfaceLight,
+                      },
+                    ]}
+                    onPress={() => setPreference(option.key)}
+                    activeOpacity={0.8}
+                  >
+                    <Typography
+                      variant="body"
+                      style={[
+                        styles.appearanceSegmentText,
+                        selected && { color: colors.accent },
+                      ]}
+                    >
+                      {option.label}
+                    </Typography>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </Animated.View>
 
           {/* Edit Profile Form */}
@@ -677,30 +680,9 @@ function createProfileStyles(colors: ThemeColors) {
     shadowRadius: 8,
     elevation: 8,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
-  menuButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: colors.overlayLight,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.textLight,
-  },
-  headerSpacer: {
-    width: 40,
-  },
   profileSection: {
     alignItems: 'center',
-    paddingTop: 40,
+    paddingTop: 24,
     paddingBottom: 40,
   },
   userName: {
@@ -712,7 +694,7 @@ function createProfileStyles(colors: ThemeColors) {
   },
   userPhone: {
     fontSize: 16,
-    color: colors.textLight,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   infoCard: {
@@ -767,31 +749,41 @@ function createProfileStyles(colors: ThemeColors) {
     marginTop: 20,
     borderRadius: 12,
     padding: 16,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.background,
   },
   appearanceTitle: {
-    marginBottom: 12,
+    marginBottom: 6,
     color: colors.text,
+    fontWeight: '700',
   },
-  appearanceOption: {
+  appearanceDescription: {
+    marginBottom: 16,
+    color: colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  appearanceSegmentRow: {
     flexDirection: 'row',
+    gap: 10,
+  },
+  appearanceSegment: {
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     backgroundColor: colors.surface,
   },
-  appearanceOptionActive: {
+  appearanceSegmentSelected: {
     borderWidth: 1,
   },
-  appearanceOptionText: {
-    color: colors.text,
+  appearanceSegmentText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: colors.textSecondary,
   },
   contactUsButton: {
     marginTop: 12,

@@ -32,10 +32,10 @@ function computeTheme(
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
-      preference: 'dark' as ThemePreference,
+      preference: 'light' as ThemePreference,
       systemColorScheme: null as 'light' | 'dark' | null,
-      resolvedScheme: 'dark' as const,
-      colors: getColorsForScheme('dark'),
+      resolvedScheme: 'light' as const,
+      colors: getColorsForScheme('light'),
 
       setPreference: (preference) => {
         const { systemColorScheme } = get();
@@ -58,7 +58,7 @@ export const useThemeStore = create<ThemeState>()(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({ preference: state.preference }),
       merge: (persisted, current) => {
-        const p = (persisted as Partial<Pick<ThemeState, 'preference'>> | undefined)?.preference ?? 'dark';
+        const p = (persisted as Partial<Pick<ThemeState, 'preference'>> | undefined)?.preference ?? 'light';
         const { systemColorScheme } = current as ThemeState;
         return {
           ...(current as ThemeState),

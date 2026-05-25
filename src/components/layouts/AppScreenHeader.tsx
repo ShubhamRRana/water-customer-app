@@ -17,6 +17,8 @@ export interface AppScreenHeaderProps {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   subtitleFirst?: boolean;
+  /** Centers the title between balanced left/right slots (e.g. menu + spacer). */
+  centerTitle?: boolean;
   right?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }
@@ -65,6 +67,23 @@ function createHeaderStyles(colors: ThemeColors) {
       color: colors.textSecondary,
       marginBottom: UI_CONFIG.spacing.xs,
     },
+    sideSlot: {
+      minWidth: headerTokens.trailingMinWidth,
+      justifyContent: 'center',
+    },
+    sideSlotRight: {
+      alignItems: 'flex-end',
+    },
+    centerSlot: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    titleCentered: {
+      fontWeight: '700',
+      color: colors.text,
+      textAlign: 'center',
+    },
   });
 }
 
@@ -73,6 +92,7 @@ const AppScreenHeader: React.FC<AppScreenHeaderProps> = ({
   title,
   subtitle,
   subtitleFirst = false,
+  centerTitle = false,
   right,
   style,
 }) => {
@@ -137,6 +157,27 @@ const AppScreenHeader: React.FC<AppScreenHeaderProps> = ({
       </View>
     );
   };
+
+  if (centerTitle) {
+    return (
+      <View style={[styles.header, style]}>
+        <View style={styles.sideSlot}>{renderLeft()}</View>
+        <View style={styles.centerSlot}>
+          <Typography variant="h2" style={styles.titleCentered}>
+            {title}
+          </Typography>
+          {hasSubtitle ? (
+            <Typography variant="body" style={[styles.subtitle, { textAlign: 'center' }]}>
+              {subtitle}
+            </Typography>
+          ) : null}
+        </View>
+        <View style={[styles.sideSlot, styles.sideSlotRight]}>
+          {right !== undefined ? right : <AppScreenHeaderTrailingSpacer />}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.header, style]}>
