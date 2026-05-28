@@ -25,11 +25,11 @@ module.exports = {
       barStyle: 'light-content',
     },
     ios: {
-      bundleIdentifier: 'com.watertanker.app',
+      bundleIdentifier: 'in.tankerhub.admin',
       supportsTablet: true,
     },
     android: {
-      package: 'com.watertanker.app',
+      package: 'in.tankerhub.admin',
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#78B4E0',
