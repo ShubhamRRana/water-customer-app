@@ -66,11 +66,19 @@ describe('TankerSelectionModal', () => {
       expect(getByText('15000L Tanker - XYZ789')).toBeTruthy();
     });
 
-    it('should display amount placeholder for each vehicle', () => {
+    it('should display amount placeholder for each vehicle by default', () => {
       const { getAllByText } = render(<TankerSelectionModal {...defaultProps} />);
 
       const placeholders = getAllByText('Amount to be determined at delivery');
       expect(placeholders.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('should hide amount placeholder when showAmountSubtext is false', () => {
+      const { queryByText } = render(
+        <TankerSelectionModal {...defaultProps} showAmountSubtext={false} />
+      );
+
+      expect(queryByText('Amount to be determined at delivery')).toBeNull();
     });
 
     it('should call onSelectVehicle when vehicle is pressed', () => {

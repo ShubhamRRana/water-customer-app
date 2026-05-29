@@ -13,6 +13,7 @@ import { Typography } from '../common';
 import { Ionicons } from '@expo/vector-icons';
 import type { ThemeColors } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useThemeStore } from '../../store/themeStore';
 import { parseDateString, parseTimeString } from '../../utils/dateUtils';
 
 interface DateTimeInputProps {
@@ -157,6 +158,7 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({
   onTimePeriodChange,
 }) => {
   const colors = useThemeColors();
+  const resolvedScheme = useThemeStore((s) => s.resolvedScheme);
   const styles = useMemo(() => createDateTimeStyles(colors), [colors]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -267,6 +269,8 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({
                   display="spinner"
                   onChange={handleDateChange}
                   minimumDate={new Date()}
+                  themeVariant={resolvedScheme}
+                  textColor={colors.text}
                 />
               </View>
             </Pressable>
@@ -299,6 +303,8 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({
                   display="spinner"
                   onChange={handleTimeChange}
                   is24Hour={false}
+                  themeVariant={resolvedScheme}
+                  textColor={colors.text}
                 />
               </View>
             </Pressable>

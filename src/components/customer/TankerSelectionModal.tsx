@@ -26,6 +26,7 @@ interface TankerSelectionModalProps {
   }) => void;
   loading: boolean;
   selectedAgency: { id: string; name: string; ownerName?: string } | null;
+  showAmountSubtext?: boolean;
 }
 
 function createTankerModalStyles(colors: ThemeColors) {
@@ -110,6 +111,7 @@ const TankerSelectionModal: React.FC<TankerSelectionModalProps> = ({
   onSelectVehicle,
   loading,
   selectedAgency,
+  showAmountSubtext = true,
 }) => {
   const colors = useThemeColors();
   const styles = useMemo(() => createTankerModalStyles(colors), [colors]);
@@ -164,9 +166,11 @@ const TankerSelectionModal: React.FC<TankerSelectionModalProps> = ({
                     <Typography variant="body" style={styles.tankerName}>
                       {vehicle.vehicleCapacity}L Tanker - {vehicle.vehicleNumber}
                     </Typography>
-                    <Typography variant="caption" style={styles.tankerPrice}>
-                      Amount to be determined at delivery
-                    </Typography>
+                    {showAmountSubtext ? (
+                      <Typography variant="caption" style={styles.tankerPrice}>
+                        Amount to be determined at delivery
+                      </Typography>
+                    ) : null}
                   </View>
                   <Ionicons
                     name={selectedVehicleId === vehicle.id ? 'radio-button-on' : 'radio-button-off'}

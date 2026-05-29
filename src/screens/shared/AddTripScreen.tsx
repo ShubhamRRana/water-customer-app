@@ -521,6 +521,7 @@ const AddTripScreen: React.FC = () => {
             onSelectVehicle={handleVehicleSelection}
             loading={vehiclesLoading}
             selectedAgency={selectedAgency}
+            showAmountSubtext={false}
           />
           <Modal
             visible={showSizeFallbackModal}

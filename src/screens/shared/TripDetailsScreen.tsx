@@ -26,7 +26,7 @@ import AppScreenHeader, {
 } from '../../components/layouts/AppScreenHeader';
 import { SocietyTrip } from '../../types';
 import { societyPaymentPeriodKey, type AppStackParamList } from '../../navigation/rootNavigation';
-import { BOOKING_CONFIG, UI_CONFIG } from '../../constants/config';
+import { UI_CONFIG } from '../../constants/config';
 import type { ThemeColors } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { errorLogger } from '../../utils/errorLogger';
@@ -316,8 +316,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
       }
       bucket.set(t.tankerSizeLiters, prev);
     }
-    const defaultSizes = BOOKING_CONFIG.defaultTankerSizes.map((d) => d.size);
-    const allLiters = [...new Set([...defaultSizes, ...bucket.keys()])].sort((a, b) => a - b);
+    const allLiters = [...bucket.keys()].sort((a, b) => a - b);
     return allLiters.map((liters) => {
       const b = bucket.get(liters);
       return {
