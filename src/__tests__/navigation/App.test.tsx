@@ -3,6 +3,8 @@
  * Tests for App.tsx navigation configuration and route determination
  */
 
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+
 // Mock React Navigation before any imports
 jest.mock('@react-navigation/native', () => {
   const React = require('react');
@@ -48,7 +50,7 @@ jest.mock('../../store/authStore', () => ({
 import React from 'react';
 import { render, waitFor } from '@testing-library/react-native';
 import App from '../../../App';
-import { CustomerUser } from '../../types';
+import { AdminUser, CustomerUser, isCustomerUser } from '../../types';
 
 // Mock expo-font
 jest.mock('expo-font', () => ({
@@ -135,15 +137,15 @@ describe('App Navigation Logic', () => {
     });
 
     it('should return Auth route when user is non-customer (admin/driver) on session restore', () => {
-      const adminUser = {
+      const adminUser: AdminUser = {
         id: '2',
         email: 'admin@test.com',
         password: 'hashed',
         name: 'Test Admin',
-        role: 'admin' as const,
+        role: 'admin',
         createdAt: new Date(),
       };
-      const route = adminUser.role === 'customer' ? 'Main' : 'Auth';
+      const route = isCustomerUser(adminUser) ? 'Main' : 'Auth';
       expect(route).toBe('Auth');
     });
 

@@ -4,6 +4,7 @@ import { SocietyTrip } from '../types';
 import { handleError } from '../utils/errorHandler';
 import { SubscriptionService } from './subscription.service';
 import {
+  societyAgencyPaymentPeriodKey,
   societyPaymentPeriodKey,
   type SocietyPaymentCompletePeriod,
 } from '../navigation/rootNavigation';
@@ -165,7 +166,10 @@ export class SocietyTripService {
     customerId: string,
     period: SocietyPaymentCompletePeriod,
   ): Promise<void> {
-    const periodKey = societyPaymentPeriodKey(period);
+    const periodKey =
+      period.agencyName != null
+        ? societyAgencyPaymentPeriodKey(period)
+        : societyPaymentPeriodKey(period);
     try {
       const { error } = await supabase.from('society_payment_periods_completed').upsert(
         {

@@ -19,13 +19,13 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
 import Card from '../../components/common/Card';
-import { Typography, CustomerMenuDrawer, Button, ScreenLoading, ScreenEmpty } from '../../components/common';
+import { Typography, CustomerMenuDrawer, ScreenLoading, ScreenEmpty } from '../../components/common';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import AppScreenHeader, {
   AppScreenHeaderTrailingSpacer,
 } from '../../components/layouts/AppScreenHeader';
 import { SocietyTrip } from '../../types';
-import { societyPaymentPeriodKey, type AppStackParamList } from '../../navigation/rootNavigation';
+import { type AppStackParamList } from '../../navigation/rootNavigation';
 import { UI_CONFIG } from '../../constants/config';
 import type { ThemeColors } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -34,33 +34,16 @@ import { formatDateTime } from '../../utils/dateUtils';
 import { PricingUtils } from '../../utils/pricing';
 import { SocietyTripService } from '../../services/societyTrip.service';
 import { useRefreshControl } from '../../hooks/useRefreshControl';
+import {
+  buildTripsByAgency,
+  filterTripsByPeriod,
+  isAgencyPaymentComplete as computeAgencyPaymentComplete,
+} from '../../utils/societyTripBreakdown';
 
 type TripDetailsNavigationProp = StackNavigationProp<AppStackParamList, 'TripDetails'>;
 
 interface TripDetailsScreenProps {
   navigation: TripDetailsNavigationProp;
-}
-
-function filterTripsByPeriod(
-  list: SocietyTrip[],
-  periodType: 'month' | 'year',
-  year: number,
-  month: number,
-): SocietyTrip[] {
-  if (periodType === 'year') {
-    const start = new Date(year, 0, 1, 0, 0, 0, 0);
-    const end = new Date(year, 11, 31, 23, 59, 59, 999);
-    return list.filter((t) => {
-      const d = new Date(t.scheduledAt);
-      return d >= start && d <= end;
-    });
-  }
-  const monthStart = new Date(year, month, 1, 0, 0, 0, 0);
-  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
-  return list.filter((t) => {
-    const d = new Date(t.scheduledAt);
-    return d >= monthStart && d <= monthEnd;
-  });
 }
 
 const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => {
@@ -72,7 +55,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
   const [isLoading, setIsLoading] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
   const [photoPreviewUri, setPhotoPreviewUri] = useState<string | null>(null);
-  const [tankerBreakdownVisible, setTankerBreakdownVisible] = useState(false);
+  const [breakdownVisible, setBreakdownVisible] = useState(false);
   const [completedPaymentPeriods, setCompletedPaymentPeriods] = useState<
     { periodKey: string; completedAt: Date }[]
   >([]);
@@ -87,7 +70,6 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
   const periodTypeGliderAnim = useRef(new Animated.Value(0)).current;
   const monthGliderAnim = useRef(new Animated.Value(0)).current;
   const yearGliderAnim = useRef(new Animated.Value(0)).current;
-
   const [periodTypeOptionWidth, setPeriodTypeOptionWidth] = useState(0);
   const [monthOptionWidth, setMonthOptionWidth] = useState(0);
   const [yearOptionWidth, setYearOptionWidth] = useState(0);
@@ -172,14 +154,18 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
     }, [loadTripDetailsData]),
   );
 
-  const openSettlePayment = useCallback(() => {
-    setTankerBreakdownVisible(false);
-    navigation.navigate('SettlePaymentPlaceholder', {
-      periodType,
-      year: selectedYear,
-      month: selectedMonth,
-    });
-  }, [navigation, periodType, selectedYear, selectedMonth]);
+  const openAgencyBreakdown = useCallback(
+    (agencyName: string) => {
+      setBreakdownVisible(false);
+      navigation.navigate('AgencyTripBreakdown', {
+        periodType,
+        year: selectedYear,
+        month: selectedMonth,
+        agencyName,
+      });
+    },
+    [navigation, periodType, selectedYear, selectedMonth],
+  );
 
   const { refreshing, onRefresh } = useRefreshControl(
     useCallback(async () => {
@@ -287,46 +273,30 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
     [trips, periodType, selectedYear, selectedMonth],
   );
 
-  const paymentCompleteForCurrentPeriod = useMemo(() => {
-    const key = societyPaymentPeriodKey({
-      periodType,
-      year: selectedYear,
-      month: selectedMonth,
-    });
-    const row = completedPaymentPeriods.find((p) => p.periodKey === key);
-    if (!row) return false;
-    return !filteredTrips.some((t) => t.createdAt > row.completedAt);
-  }, [completedPaymentPeriods, periodType, selectedYear, selectedMonth, filteredTrips]);
+  const isAgencyPaymentComplete = useCallback(
+    (agencyName: string) =>
+      computeAgencyPaymentComplete(agencyName, filteredTrips, completedPaymentPeriods, {
+        periodType,
+        year: selectedYear,
+        month: selectedMonth,
+      }),
+    [completedPaymentPeriods, periodType, selectedYear, selectedMonth, filteredTrips],
+  );
 
-  const tripsByTankerSize = useMemo(() => {
-    const bucket = new Map<
-      number,
-      { count: number; amountSum: number; tripsWithAmount: number }
-    >();
-    for (const t of filteredTrips) {
-      const prev = bucket.get(t.tankerSizeLiters) ?? {
-        count: 0,
-        amountSum: 0,
-        tripsWithAmount: 0,
-      };
-      prev.count += 1;
-      if (t.tankerAmount != null && Number.isFinite(t.tankerAmount)) {
-        prev.amountSum += t.tankerAmount;
-        prev.tripsWithAmount += 1;
-      }
-      bucket.set(t.tankerSizeLiters, prev);
-    }
-    const allLiters = [...bucket.keys()].sort((a, b) => a - b);
-    return allLiters.map((liters) => {
-      const b = bucket.get(liters);
-      return {
-        liters,
-        count: b?.count ?? 0,
-        amountSum: b?.amountSum ?? 0,
-        tripsWithAmount: b?.tripsWithAmount ?? 0,
-      };
-    });
-  }, [filteredTrips]);
+  const tripsByAgency = useMemo(
+    () =>
+      buildTripsByAgency(filteredTrips, completedPaymentPeriods, {
+        periodType,
+        year: selectedYear,
+        month: selectedMonth,
+      }),
+    [filteredTrips, completedPaymentPeriods, periodType, selectedYear, selectedMonth],
+  );
+
+  const paymentCompleteForCurrentPeriod = useMemo(() => {
+    if (filteredTrips.length === 0 || tripsByAgency.length === 0) return false;
+    return tripsByAgency.every((row) => isAgencyPaymentComplete(row.agencyName));
+  }, [filteredTrips, tripsByAgency, isAgencyPaymentComplete]);
 
   const grandTotalAmount = useMemo(
     () =>
@@ -542,15 +512,15 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
 
         <TouchableOpacity
           style={styles.summaryCardWrap}
-          onPress={() => setTankerBreakdownVisible(true)}
+          onPress={() => setBreakdownVisible(true)}
           activeOpacity={0.75}
           accessibilityRole="button"
-          accessibilityLabel="Trips by tanker size, show breakdown"
+          accessibilityLabel="Trip breakdown, show details"
         >
           <Card style={styles.summaryCard}>
             <View style={styles.summaryCardHeaderRow}>
               <Typography variant="caption" style={styles.summaryHeading}>
-                Trips by tanker size
+                Trip breakdown
               </Typography>
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </View>
@@ -718,26 +688,26 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
       />
 
       <Modal
-        visible={tankerBreakdownVisible}
+        visible={breakdownVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setTankerBreakdownVisible(false)}
+        onRequestClose={() => setBreakdownVisible(false)}
         statusBarTranslucent
       >
         <View style={styles.breakdownModalRoot}>
           <Pressable
             style={styles.breakdownModalBackdropFill}
-            onPress={() => setTankerBreakdownVisible(false)}
+            onPress={() => setBreakdownVisible(false)}
             accessibilityRole="button"
             accessibilityLabel="Dismiss breakdown"
           />
           <View style={[styles.breakdownModalSheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
             <View style={styles.breakdownModalHeader}>
               <Typography variant="h2" style={styles.breakdownModalTitle}>
-                Trips by tanker size
+                Trips by agency
               </Typography>
               <TouchableOpacity
-                onPress={() => setTankerBreakdownVisible(false)}
+                onPress={() => setBreakdownVisible(false)}
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 accessibilityRole="button"
                 accessibilityLabel="Close breakdown"
@@ -746,27 +716,71 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.breakdownModalScroll} showsVerticalScrollIndicator={false}>
-              {tripsByTankerSize.map(({ liters, count, amountSum, tripsWithAmount }) => (
-                <View key={liters} style={styles.summaryRow}>
-                  <View style={styles.summaryColLeft}>
-                    <Typography variant="body" style={styles.summaryCellLeft}>
-                      {liters.toLocaleString()}L
-                    </Typography>
-                  </View>
-                  <View style={styles.summaryColCenter}>
-                    <Typography variant="body" style={styles.summaryCellCenter}>
-                      {count > 0 && tripsWithAmount > 0
-                        ? PricingUtils.formatPrice(amountSum)
-                        : '—'}
-                    </Typography>
-                  </View>
-                  <View style={styles.summaryColRight}>
-                    <Typography variant="body" style={styles.summaryCellRight}>
-                      {count} {count === 1 ? 'trip' : 'trips'}
-                    </Typography>
-                  </View>
+              {tripsByAgency.length > 0 ? (
+                <View style={styles.agencyBreakdownList}>
+                  {tripsByAgency.map((agency, index) => {
+                    const agencyKey = agency.agencyName.toLowerCase();
+                    const agencyComplete = isAgencyPaymentComplete(agency.agencyName);
+                    const hasBillableAmount = agency.tripsWithAmount > 0;
+                    const isLast = index === tripsByAgency.length - 1;
+                    return (
+                      <TouchableOpacity
+                        key={agencyKey}
+                        style={[
+                          styles.agencyBreakdownRow,
+                          !isLast && styles.agencyBreakdownRowDivider,
+                        ]}
+                        onPress={() => openAgencyBreakdown(agency.agencyName)}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${agency.agencyName}, show breakdown`}
+                      >
+                        <View style={styles.agencySummaryRow}>
+                          <View style={styles.agencySummaryInfo}>
+                            <Typography
+                              variant="body"
+                              style={styles.agencyCardTitle}
+                              numberOfLines={2}
+                            >
+                              {agency.agencyName}
+                            </Typography>
+                            <View style={styles.agencySummaryMetaRow}>
+                              <Typography variant="body" style={styles.agencySummaryAmount}>
+                                {hasBillableAmount
+                                  ? PricingUtils.formatPrice(agency.amountSum)
+                                  : '—'}
+                              </Typography>
+                              <Typography variant="caption" style={styles.agencySummaryTrips}>
+                                {agency.count} {agency.count === 1 ? 'trip' : 'trips'}
+                              </Typography>
+                              {agencyComplete ? (
+                                <View style={styles.agencyPaidBadge}>
+                                  <Ionicons
+                                    name="checkmark-circle"
+                                    size={14}
+                                    color={colors.success}
+                                  />
+                                  <Typography
+                                    variant="caption"
+                                    style={styles.agencyPaymentCompleteText}
+                                  >
+                                    Paid
+                                  </Typography>
+                                </View>
+                              ) : null}
+                            </View>
+                          </View>
+                          <Ionicons
+                            name="chevron-forward"
+                            size={20}
+                            color={colors.textSecondary}
+                          />
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
-              ))}
+              ) : null}
               {filteredTrips.length > 0 ? (
                 <View style={[styles.summaryRow, styles.summaryTotalRow]}>
                   <View style={styles.summaryColLeft}>
@@ -787,25 +801,6 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
                 </View>
               ) : null}
             </ScrollView>
-            {paymentCompleteForCurrentPeriod ? (
-              <View style={styles.settlePaymentFooter}>
-                <View style={styles.paymentCompleteBanner}>
-                  <Ionicons name="checkmark-circle" size={22} color={colors.success} />
-                  <Typography variant="body" style={styles.paymentCompleteBannerText}>
-                    Payment Complete
-                  </Typography>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.settlePaymentFooter}>
-                <Button
-                  title="Settle Payment"
-                  onPress={openSettlePayment}
-                  variant="primary"
-                  style={styles.settlePaymentButton}
-                />
-              </View>
-            )}
           </View>
         </View>
       </Modal>
@@ -962,23 +957,54 @@ function createTripDetailsStyles(colors: ThemeColors) {
     color: colors.success,
     fontWeight: '700',
   },
-  settlePaymentFooter: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+  agencyBreakdownList: {
+    backgroundColor: colors.surface,
+    borderRadius: UI_CONFIG.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
   },
-  settlePaymentButton: {
-    alignSelf: 'stretch',
+  agencyBreakdownRow: {
+    paddingVertical: 14,
+    paddingHorizontal: 14,
   },
-  paymentCompleteBanner: {
+  agencyBreakdownRowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  agencySummaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
+    gap: 10,
   },
-  paymentCompleteBannerText: {
+  agencySummaryInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  agencyCardTitle: {
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 6,
+  },
+  agencySummaryMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  agencySummaryAmount: {
+    color: colors.accent,
+    fontWeight: '700',
+  },
+  agencySummaryTrips: {
+    color: colors.textSecondary,
+  },
+  agencyPaidBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  agencyPaymentCompleteText: {
     color: colors.success,
     fontWeight: '700',
   },
@@ -1013,6 +1039,17 @@ function createTripDetailsStyles(colors: ThemeColors) {
   },
   breakdownModalScroll: {
     maxHeight: 480,
+  },
+  summaryHeaderRow: {
+    borderTopWidth: 0,
+    paddingTop: 0,
+    paddingBottom: 4,
+  },
+  summaryColHeading: {
+    color: colors.textSecondary,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   summaryRow: {
     flexDirection: 'row',

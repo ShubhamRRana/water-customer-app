@@ -40,6 +40,13 @@ function createSettleStyles(colors: ThemeColors) {
       color: colors.text,
       fontWeight: '700',
     },
+    context: {
+      textAlign: 'center',
+      color: colors.text,
+      fontWeight: '600',
+      marginBottom: 12,
+      lineHeight: 22,
+    },
     message: {
       textAlign: 'center',
       color: colors.textSecondary,
@@ -54,11 +61,21 @@ function createSettleStyles(colors: ThemeColors) {
 
 const SettlePaymentPlaceholderScreen: React.FC<Props> = ({ navigation }) => {
   const route = useRoute<RouteProp<AppStackParamList, 'SettlePaymentPlaceholder'>>();
-  const { periodType, year, month } = route.params;
+  const { periodType, year, month, agencyName } = route.params;
   const user = useAuthStore((s) => s.user);
   const [saving, setSaving] = useState(false);
   const colors = useThemeColors();
   const styles = useMemo(() => createSettleStyles(colors), [colors]);
+
+  const contextLabel = useMemo(() => {
+    if (agencyName == null) return null;
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    const periodLabel = periodType === 'year' ? `${year}` : `${monthNames[month]} ${year}`;
+    return `${agencyName} for ${periodLabel}`;
+  }, [agencyName, periodType, year, month]);
 
   const onOk = useCallback(async () => {
     if (!user?.id) {
@@ -67,7 +84,12 @@ const SettlePaymentPlaceholderScreen: React.FC<Props> = ({ navigation }) => {
     }
     setSaving(true);
     try {
-      await SocietyTripService.markPaymentPeriodComplete(user.id, { periodType, year, month });
+      await SocietyTripService.markPaymentPeriodComplete(user.id, {
+        periodType,
+        year,
+        month,
+        ...(agencyName != null ? { agencyName } : {}),
+      });
       navigation.goBack();
     } catch {
       Alert.alert('Error', 'Could not save payment status. Try again.');
@@ -94,6 +116,11 @@ const SettlePaymentPlaceholderScreen: React.FC<Props> = ({ navigation }) => {
           <Typography variant="h2" style={styles.title}>
             Payment
           </Typography>
+          {contextLabel ? (
+            <Typography variant="body" style={styles.context}>
+              {contextLabel}
+            </Typography>
+          ) : null}
           <Typography variant="body" style={styles.message}>
             Payment feature will be available soon.
           </Typography>

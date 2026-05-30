@@ -3,6 +3,8 @@
  * Tests for navigation setup, screen registration, and route configuration
  */
 
+import { describe, expect, it, jest } from '@jest/globals';
+
 // Mock React Navigation before any imports
 jest.mock('@react-navigation/native', () => {
   const React = require('react');
@@ -101,6 +103,16 @@ jest.mock('../../screens/shared/TripDetailsScreen', () => {
   return () => (
     <View testID="TripDetailsScreen">
       <Text>TripDetailsScreen</Text>
+    </View>
+  );
+});
+
+jest.mock('../../screens/shared/AgencyTripBreakdownScreen', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return () => (
+    <View testID="AgencyTripBreakdownScreen">
+      <Text>AgencyTripBreakdownScreen</Text>
     </View>
   );
 });

@@ -5,11 +5,20 @@ export type SocietyPaymentCompletePeriod = {
   periodType: 'month' | 'year';
   year: number;
   month: number;
+  /** When settling a single agency collectively, its name is provided. */
+  agencyName?: string;
 };
 
 export function societyPaymentPeriodKey(p: SocietyPaymentCompletePeriod): string {
   if (p.periodType === 'year') return `y:${p.year}`;
   return `m:${p.year}-${p.month}`;
+}
+
+/** Composite key for per-agency (collective) settlement, e.g. `m:2026-2|abc agency`. */
+export function societyAgencyPaymentPeriodKey(p: SocietyPaymentCompletePeriod): string {
+  const base = societyPaymentPeriodKey(p);
+  const agency = (p.agencyName ?? '').trim().toLowerCase();
+  return `${base}|${agency}`;
 }
 
 export type AppStackParamList = {
@@ -20,6 +29,7 @@ export type AppStackParamList = {
   Booking: undefined;
   AddTrip: undefined;
   TripDetails: undefined;
+  AgencyTripBreakdown: SocietyPaymentCompletePeriod & { agencyName: string };
   SettlePaymentPlaceholder: SocietyPaymentCompletePeriod;
   OrderTracking: { orderId: string };
   SavedAddresses: undefined;
