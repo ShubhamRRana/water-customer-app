@@ -48,8 +48,6 @@ jest.mock('../../store/authStore', () => ({
 }));
 
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
-import App from '../../../App';
 import { AdminUser, CustomerUser, isCustomerUser } from '../../types';
 
 // Mock expo-font
