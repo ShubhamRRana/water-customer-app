@@ -25,6 +25,9 @@ export function navigateCustomerMenuRoute(
     case 'TripDetails':
       navigation.navigate('TripDetails');
       break;
+    case 'SavedAddresses':
+      navigation.navigate('SavedAddresses');
+      break;
     case 'SubscriptionPlans':
       navigation.navigate('SubscriptionPlans');
       break;

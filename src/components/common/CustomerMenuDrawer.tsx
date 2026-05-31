@@ -9,6 +9,7 @@ export type CustomerMenuRoute =
   | 'Profile'
   | 'PastOrders'
   | 'TripDetails'
+  | 'SavedAddresses'
   | 'SubscriptionPlans'
   | 'SubscriptionStatus'
   | 'PaymentHistory';
@@ -22,7 +23,7 @@ interface CustomerMenuDrawerProps {
   onNavigate: (route: CustomerMenuRoute) => void;
   onLogout: () => void;
   currentRoute?: CustomerMenuRoute;
-  /** When `society`, shows Trip details (society-logged tanker trips). */
+  /** When `society`, shows Trip details and Saved Addresses (society-only stack screens). */
   customerAccountKind?: CustomerAccountKind | null;
 }
 
@@ -71,6 +72,15 @@ const CustomerMenuDrawer: React.FC<CustomerMenuDrawerProps> = ({
         route: 'TripDetails',
         onPress: () => {
           onNavigate('TripDetails');
+          onClose();
+        },
+      });
+      base.push({
+        label: 'Saved Addresses',
+        icon: 'location-outline',
+        route: 'SavedAddresses',
+        onPress: () => {
+          onNavigate('SavedAddresses');
           onClose();
         },
       });
