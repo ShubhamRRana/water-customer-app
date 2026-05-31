@@ -16,6 +16,7 @@ import { dataAccess } from '../lib/index';
 import { deserializeDate } from '../utils/dateSerialization';
 import { handleError } from '../utils/errorHandler';
 import { getErrorMessage } from '../utils/errors';
+import { getPasswordResetRedirectUrl } from '../utils/recoveryLink';
 
 /** Optional fields passed only from app registration flows */
 type RegisterAdditionalData = Partial<AppUser> & { customerAccountKind?: CustomerAccountKind };
@@ -839,6 +840,153 @@ export class AuthService {
       return {
         success: false,
         error: getErrorMessage(error, 'Failed to resend confirmation email'),
+      };
+    }
+  }
+
+  /**
+   * Send a password recovery email. Supabase Auth delivers via configured SMTP (Resend).
+   * Always returns success when the request is accepted (no email enumeration).
+   */
+  static async requestPasswordReset(email: string): Promise<AuthResult> {
+    const sanitizedEmail = SanitizationUtils.sanitizeEmail(email);
+    const emailValidation = ValidationUtils.validateEmail(sanitizedEmail, true);
+    if (!emailValidation.isValid) {
+      return {
+        success: false,
+        error: emailValidation.error || 'Invalid email address',
+      };
+    }
+
+    const rateLimitCheck = rateLimiter.isAllowed('password_reset', sanitizedEmail);
+    if (!rateLimitCheck.allowed) {
+      return {
+        success: false,
+        error: `Too many reset attempts. Try again after ${new Date(rateLimitCheck.resetTime).toLocaleTimeString()}.`,
+      };
+    }
+
+    const redirectTo = getPasswordResetRedirectUrl();
+
+    try {
+      rateLimiter.record('password_reset', sanitizedEmail);
+      const { error } = await supabase.auth.resetPasswordForEmail(sanitizedEmail, {
+        redirectTo,
+      });
+
+      if (error) {
+        const msg = error.message || 'Failed to send reset email';
+        const normalized = msg.toLowerCase();
+        if (normalized.includes('rate limit') || normalized.includes('too many')) {
+          return {
+            success: false,
+            error: 'Too many emails sent. Please wait a few minutes and try again.',
+          };
+        }
+        return { success: false, error: msg };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: getErrorMessage(error, 'Failed to send reset email'),
+      };
+    }
+  }
+
+  /**
+   * Set a new password for the current Supabase session (recovery or logged-in user).
+   */
+  static async updatePassword(newPassword: string, userId?: string): Promise<AuthResult> {
+    const passwordValidation = ValidationUtils.validatePassword(newPassword);
+    if (!passwordValidation.isValid) {
+      return {
+        success: false,
+        error: passwordValidation.error || 'Invalid password',
+      };
+    }
+
+    try {
+      securityLogger.log(
+        SecurityEventType.PASSWORD_CHANGE_ATTEMPT,
+        SecuritySeverity.INFO,
+        { context: 'update_password' },
+        userId
+      );
+
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+      if (error) {
+        securityLogger.log(
+          SecurityEventType.PASSWORD_CHANGE_FAILURE,
+          SecuritySeverity.WARNING,
+          { error: error.message },
+          userId
+        );
+        return { success: false, error: error.message || 'Failed to update password' };
+      }
+
+      securityLogger.log(
+        SecurityEventType.PASSWORD_CHANGE_SUCCESS,
+        SecuritySeverity.INFO,
+        { context: 'update_password' },
+        userId
+      );
+      return { success: true };
+    } catch (error) {
+      securityLogger.log(
+        SecurityEventType.PASSWORD_CHANGE_FAILURE,
+        SecuritySeverity.WARNING,
+        { error: getErrorMessage(error, 'Failed to update password') },
+        userId
+      );
+      return {
+        success: false,
+        error: getErrorMessage(error, 'Failed to update password'),
+      };
+    }
+  }
+
+  /**
+   * Verify the user's current password before allowing an in-app password change.
+   */
+  static async verifyCurrentPassword(email: string, password: string): Promise<AuthResult> {
+    const sanitizedEmail = SanitizationUtils.sanitizeEmail(email);
+    const emailValidation = ValidationUtils.validateEmail(sanitizedEmail, true);
+    if (!emailValidation.isValid) {
+      return {
+        success: false,
+        error: emailValidation.error || 'Invalid email address',
+      };
+    }
+
+    const passwordValidation = ValidationUtils.validatePassword(password);
+    if (!passwordValidation.isValid) {
+      return {
+        success: false,
+        error: passwordValidation.error || 'Invalid password',
+      };
+    }
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: sanitizedEmail,
+        password,
+      });
+
+      if (error) {
+        return {
+          success: false,
+          error: ERROR_MESSAGES.auth.invalidCredentials,
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: getErrorMessage(error, ERROR_MESSAGES.auth.invalidCredentials),
       };
     }
   }

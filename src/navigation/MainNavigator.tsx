@@ -18,6 +18,7 @@ import SubscriptionPlansScreen from '../screens/customer/SubscriptionPlansScreen
 import SubscriptionStatusScreen from '../screens/customer/SubscriptionStatusScreen';
 import PaymentScreen from '../screens/customer/PaymentScreen';
 import PaymentHistoryScreen from '../screens/customer/PaymentHistoryScreen';
+import ChangePasswordScreen from '../screens/customer/ChangePasswordScreen';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import { useAuthStore } from '../store/authStore';
 import type { AppStackParamList, RootStackParamList } from './rootNavigation';
@@ -47,6 +48,7 @@ const MainNavigator: React.FC = () => {
         <Stack.Screen name="Home" component={CustomerHomeScreen} />
         <Stack.Screen name="Orders" component={OrderHistoryScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         <Stack.Screen name="Booking" component={BookingScreen} />
         <Stack.Screen name="AddTrip" component={AddTripScreen} />
         <Stack.Screen name="TripDetails" component={TripDetailsScreen} />

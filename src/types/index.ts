@@ -208,6 +208,8 @@ export interface AuthStackParamList {
   SocietyLogin: undefined;
   Register: { accountKind?: CustomerAccountKind };
   VerifyEmail: { email: string; accountKind: CustomerAccountKind };
+  ForgotPassword: { accountKind?: CustomerAccountKind };
+  SetNewPassword: undefined;
   [key: string]: object | undefined;
 }
 

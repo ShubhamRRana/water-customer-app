@@ -221,6 +221,8 @@ export const ERROR_MESSAGES = {
     networkError: 'Network error during authentication.',
     adminCreatedDriverOnly: 'Only admin-created drivers can login. Please contact the administrator to create your driver account.',
     roleMismatch: 'Invalid credentials for this account type. Please use the correct login page for your account.',
+    currentPasswordIncorrect: 'Current password is incorrect.',
+    passwordUpdateFailed: 'Failed to update password. Please try again.',
   },
   booking: {
     createFailed: 'Failed to create booking.',
@@ -273,6 +275,21 @@ export const SUCCESS_MESSAGES = {
     verifyEmailResent: 'If an account exists for this email, we sent another confirmation message.',
     verifyEmailOpenMail: 'Open email app',
     verifyEmailContinueSignIn: 'Continue to sign in',
+    forgotPasswordTitle: 'Reset your password',
+    forgotPasswordSubtitle: 'Enter the email for your account and we will send you a reset link.',
+    forgotPasswordSubmit: 'Send reset link',
+    forgotPasswordSentTitle: 'Check your email',
+    forgotPasswordSentMessage:
+      'If an account exists for this email, we sent a link to reset your password. Open the link on this device to set a new password in the app.',
+    forgotPasswordBackToSignIn: 'Back to sign in',
+    setNewPasswordTitle: 'Set a new password',
+    setNewPasswordSubtitle: 'Choose a strong password for your account.',
+    setNewPasswordSubmit: 'Update password',
+    setNewPasswordSuccess: 'Your password has been updated. Sign in with your new password.',
+    changePasswordTitle: 'Change password',
+    changePasswordSubtitle: 'Enter your current password and choose a new one.',
+    changePasswordSubmit: 'Save new password',
+    changePasswordSuccess: 'Your password has been updated.',
     welcomeAfterRegister: "You're all set — welcome to TankerHub!",
     logoutSuccess: 'Logged out successfully!',
   },
@@ -285,6 +302,7 @@ export const SUCCESS_MESSAGES = {
   },
   profile: {
     updated: 'Profile updated successfully!',
+    passwordChanged: 'Password changed successfully!',
   },
   address: {
     added: 'Address added successfully!',

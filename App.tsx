@@ -29,7 +29,7 @@ const Stack = createStackNavigator<RootStackParamList>();
 
 const App: React.FC = () => {
   const [queryClient] = useState(() => createAppQueryClient());
-  const { user, initializeAuth } = useAuthStore();
+  const { user, initializeAuth, needsPasswordReset } = useAuthStore();
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   const systemScheme = useColorScheme();
   const setSystemColorScheme = useThemeStore((s) => s.setSystemColorScheme);
@@ -69,9 +69,13 @@ const App: React.FC = () => {
   }, [resolvedScheme, themeColors]);
 
   // Customer app: only customers may enter. Non-customer users (e.g. admin/driver from session restore) go to Auth.
-  const getInitialRouteName = (user: User | null): keyof RootStackParamList => {
-    if (!user) return 'Auth';
-    if (isCustomerUser(user)) return 'Main';
+  const getInitialRouteName = (
+    currentUser: User | null,
+    needsPasswordReset: boolean
+  ): keyof RootStackParamList => {
+    if (needsPasswordReset) return 'Auth';
+    if (!currentUser) return 'Auth';
+    if (isCustomerUser(currentUser)) return 'Main';
     return 'Auth';
   };
 
@@ -80,7 +84,7 @@ const App: React.FC = () => {
     const nav = navigationRef.current;
     if (!nav?.isReady()) return;
 
-    const targetRoute = getInitialRouteName(user);
+    const targetRoute = getInitialRouteName(user, needsPasswordReset);
     const currentRoute = nav.getCurrentRoute()?.name;
 
     if (currentRoute !== targetRoute) {
@@ -89,14 +93,15 @@ const App: React.FC = () => {
         routes: [{ name: targetRoute }],
       });
     }
-  }, [user]);
+  }, [user, needsPasswordReset]);
 
   const onNavigationReady = () => {
     const nav = navigationRef.current;
     if (!nav?.isReady()) return;
 
     const u = useAuthStore.getState().user;
-    const targetRoute = getInitialRouteName(u);
+    const resetNeeded = useAuthStore.getState().needsPasswordReset;
+    const targetRoute = getInitialRouteName(u, resetNeeded);
     const currentRoute = nav.getCurrentRoute()?.name;
 
     if (currentRoute !== targetRoute) {
@@ -123,7 +128,7 @@ const App: React.FC = () => {
           >
             <StatusBar style={resolvedScheme === 'dark' ? 'light' : 'dark'} />
             <Stack.Navigator
-              initialRouteName={getInitialRouteName(user)}
+              initialRouteName={getInitialRouteName(user, needsPasswordReset)}
               screenOptions={{
                 headerShown: false,
               }}

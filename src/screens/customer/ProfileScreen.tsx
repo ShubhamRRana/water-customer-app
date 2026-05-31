@@ -402,6 +402,20 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               </TouchableOpacity>
             )}
 
+            {!isEditing && (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => navigation.navigate('ChangePassword')}
+                activeOpacity={0.8}
+                disabled={isDeleting}
+              >
+                <Ionicons name="key-outline" size={22} color={colors.accent} />
+                <Typography variant="body" style={styles.actionButtonText}>
+                  Change Password
+                </Typography>
+              </TouchableOpacity>
+            )}
+
             {showContactCta && (
               <TouchableOpacity
                 style={[

@@ -91,6 +91,15 @@ function createLoginStyles(colors: ThemeColors) {
       fontWeight: '600',
       textDecorationLine: 'underline',
     },
+    forgotPasswordRow: {
+      alignSelf: 'flex-end',
+      marginBottom: 4,
+    },
+    forgotPasswordText: {
+      fontSize: 14,
+      color: colors.accent,
+      fontWeight: '600',
+    },
   });
 }
 
@@ -192,7 +201,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       subtitle="Order water tankers for personal use"
       backLabel="Account type"
       onBack={() => navigation.navigate('RoleSelection')}
-      bottomNotice="Reset password is not available yet. Please keep your password safe."
     >
       <Card padding="large" style={styles.formCard}>
         <View style={styles.form}>
@@ -239,6 +247,15 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 {errors.password}
               </Typography>
             ) : null}
+            <TouchableOpacity
+              style={styles.forgotPasswordRow}
+              onPress={() => navigation.navigate('ForgotPassword', { accountKind: 'individual' })}
+              activeOpacity={0.7}
+            >
+              <Typography variant="caption" style={styles.forgotPasswordText}>
+                Forgot password?
+              </Typography>
+            </TouchableOpacity>
           </View>
 
           <Button

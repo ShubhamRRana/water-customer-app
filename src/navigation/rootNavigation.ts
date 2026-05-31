@@ -26,6 +26,7 @@ export type AppStackParamList = {
   SubscriptionComingSoon: undefined;
   Orders: undefined;
   Profile: undefined;
+  ChangePassword: undefined;
   Booking: undefined;
   AddTrip: undefined;
   TripDetails: undefined;
