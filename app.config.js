@@ -28,9 +28,13 @@ module.exports = {
     ios: {
       bundleIdentifier: 'in.tankerhub.admin',
       supportsTablet: true,
+      infoPlist: {
+        CFBundleDisplayName: 'WTC',
+      },
     },
     android: {
       package: 'in.tankerhub.admin',
+      label: 'WTC',
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#78B4E0',
