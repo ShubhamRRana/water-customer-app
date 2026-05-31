@@ -46,5 +46,6 @@ yarn-error.*
 eas_error.txt
 *.error.txt
 
-# docs
-.docs/
+# documentation
+docs/
+# 
