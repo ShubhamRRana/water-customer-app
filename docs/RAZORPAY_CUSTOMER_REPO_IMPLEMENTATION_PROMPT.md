@@ -1,344 +1,467 @@
+# Razorpay — Customer App Implementation Guide
+
 You are implementing **Razorpay online payments** in a **React Native + Expo customer mobile app** for a water-tanker / delivery marketplace. This app serves **individual** and **society** customer users (not admin, not driver).
 
-There are **two separate money flows** in this repo — implement **both** A and B, with **strict separation** between them:
+---
+
+## Table of contents
+
+1. [Overview — two money flows](#overview--two-money-flows)
+2. [Test credentials (Razorpay sandbox)](#test-credentials-razorpay-sandbox)
+3. [Prerequisites checklist](#prerequisites-checklist)
+4. [Phase 0 — Foundation](#phase-0--foundation)
+5. [Phase 1 — Backend Edge Functions](#phase-1--backend-edge-functions)
+6. [Phase 2 — Flow A: Customer subscription](#phase-2--flow-a-customer-subscription)
+7. [Phase 3 — Flow B: Booking / delivery payment](#phase-3--flow-b-booking--delivery-payment)
+8. [Phase 4 — Wire screens & subscription gating](#phase-4--wire-screens--subscription-gating)
+9. [Phase 5 — Payment history & order UX](#phase-5--payment-history--order-ux)
+10. [Phase 6 — Tests, errors & polish](#phase-6--tests-errors--polish)
+11. [Reference — rules, contracts, diagrams](#reference--rules-contracts-diagrams)
+
+---
+
+## Overview — two money flows
+
+Implement **both** Flow A and Flow B with **strict separation** between them:
 
 | Flow | Who pays | Who receives | Razorpay product | Settlement | Where implemented |
 |------|----------|--------------|------------------|------------|-------------------|
 | **A — Customer subscription** | Individual or society customer | **Platform merchant account** | Standard Checkout (no Route transfer) | 100% to platform | **This customer repo** |
 | **B — Delivery / booking payment** | Customer | **Agency** (linked account) | **Route** (transfers to `account_id`) | 100% to agency linked account | **This customer repo** |
-| **C — Agency platform subscription** | Agency admin | Platform owner | Standard Checkout | Platform | **Admin app repo** (out of scope here) |
+| **C — Agency platform subscription** | Agency admin | Platform owner | Standard Checkout | Platform | **Admin app repo** (out of scope) |
 
 **Critical rule:** Subscription money and delivery money must **never** share the same checkout session, Edge Function, or Razorpay order metadata `flow` value.
 
-**Rules (non-negotiable):**
+### Non-negotiable rules
 
 1. **Never trust client amounts** — order amount comes from server (Supabase Edge Function reading `subscription_plans`, `bookings`, or pricing rules).
 2. **Webhook is source of truth** — SDK success only triggers verify/poll; final status is set by webhook.
 3. **Do not mix subscription checkout with booking checkout** — different Edge Functions, metadata, UI labels, and payment history filters.
 4. **Never put `RAZORPAY_KEY_SECRET` or webhook secret in the mobile app** — only `EXPO_PUBLIC_RAZORPAY_KEY_ID` on client.
-5. **Flow A (customer subscription):** Razorpay order has **no** `transfers` array — funds settle to the **platform merchant account**.
-6. **Flow B (delivery):** Every order must include **`agency_id`** in metadata and a Route **`transfers`** entry so funds settle to the correct agency linked account.
-7. **Individual and society users** both subscribe via Flow A (same plans table or plan variants filtered by `account_kind` — confirm with product). Society users currently see a “coming soon” screen; replace it with the same Razorpay subscription flow once plans exist.
+5. **Flow A:** Razorpay order has **no** `transfers` array — funds settle to the **platform merchant account**.
+6. **Flow B:** Every order must include **`agency_id`** in metadata and a Route **`transfers`** entry.
+7. **Individual and society users** both subscribe via Flow A. Society users currently see a “coming soon” screen; replace it with the same Razorpay subscription flow once plans exist.
 
-### Prerequisites (confirm with platform team before coding)
+### Current repo state (scan before starting)
+
+| Area | Status |
+|------|--------|
+| Subscription checkout | PhonePe via `PaymentScreen` + `phonepe.service.ts` |
+| Booking online pay | COD stub in `payment.service.ts`; `enableOnlinePayment: false` |
+| Society subscription | `SubscriptionComingSoonScreen` placeholder |
+| Payment history | `PaymentHistoryScreen` exists (extend for Razorpay) |
+| Feature flags | `enableOnlinePayment`, `enableSubscriptionGating` in `config.ts` |
+
+**Recommended order:** Phase 0 → Phase 1 (backend) → Phase 2 (Flow A) → Phase 3 (Flow B) → Phase 4 → Phase 5 → Phase 6.
+
+---
+
+## Test credentials (Razorpay sandbox)
+
+Use these **test mode** keys for development. Do **not** use live keys until production cutover.
+
+| Variable | Value | Where to set |
+|----------|-------|--------------|
+| **Key ID** (public) | `rzp_test_SvZ3J7Z3onV3qK` | Client `.env` as `EXPO_PUBLIC_RAZORPAY_KEY_ID` |
+| **Key Secret** (private) | `7ICKfU0ycfh197WzY6gj1EnC` | **Supabase Edge Function secrets only** — never in app code or Git |
+
+### Client `.env` (copy from `.env.example`)
+
+```env
+EXPO_PUBLIC_RAZORPAY_KEY_ID=rzp_test_SvZ3J7Z3onV3qK
+EXPO_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+### Supabase secrets (Dashboard → Project Settings → Edge Functions → Secrets)
+
+```env
+RAZORPAY_KEY_ID=rzp_test_SvZ3J7Z3onV3qK
+RAZORPAY_KEY_SECRET=7ICKfU0ycfh197WzY6gj1EnC
+RAZORPAY_WEBHOOK_SECRET=<set after creating webhook in Razorpay Dashboard>
+```
+
+### Razorpay test cards / UPI (checkout UI)
+
+| Method | Details |
+|--------|---------|
+| **Success card** | `4111 1111 1111 1111`, any future expiry, any CVV |
+| **Failure card** | `4000 0000 0000 0002` |
+| **Test UPI** | `success@razorpay` (success) / `failure@razorpay` (failure) |
+
+> **Security:** Do not commit `.env` with real values. If this doc or chat is shared publicly, rotate the test secret in the Razorpay Dashboard.
+
+---
+
+## Prerequisites checklist
+
+Complete (or confirm with platform team) **before Phase 2**:
 
 - [ ] Razorpay **Route** enabled on platform merchant account (required for Flow B only).
 - [ ] Agencies onboarded via admin app (`agency_razorpay_accounts` with `razorpay_account_id`, status `active`).
-- [ ] Supabase Edge Functions exist (or will be created in backend repo):
-
-  **Subscription (Flow A — platform merchant):**
-  - `create-customer-subscription-order`
-  - `verify-customer-subscription-payment`
-
-  **Delivery (Flow B — agency Route):**
-  - `create-customer-booking-order` (or reuse `create-delivery-order` with `initiator: 'customer'`)
-  - `verify-customer-booking-payment`
-
-  **Shared:**
-  - `razorpay-webhook` (handles `payment.captured`, `payment.failed`; routes by `notes.flow`)
-
 - [ ] `subscriptions` + `payment_transactions` tables support Razorpay ids (`gateway_order_id`, `gateway_transaction_id`, `payment_gateway: 'razorpay'`).
-- [ ] `bookings` table has: `payment_status` (`pending` | `completed` | `failed` | `refunded`), `payment_id`, `agency_id`, `total_price` / `deliveredAmount` as applicable.
+- [ ] `bookings` table has: `payment_status`, `payment_id`, `agency_id`, `total_price` / `deliveredAmount`.
 - [ ] RLS: customer can only create/read payments for **their own** subscriptions and bookings.
 - [ ] `has_active_subscription(user_id)` remains the gate for bookings and society trips (see `docs/SUBSCRIPTION_GATING_REVIEW.md`).
 
-**Product decisions to implement (ask if unclear, use defaults):**
+### Product defaults (use unless product says otherwise)
 
 | # | Decision | Default |
 |---|----------|---------|
-| 1 | Pay **at booking** vs only at delivery on driver app? | **At booking** (prepay or pay-on-confirm) in customer app |
-| 2 | Booking created before or after payment? | Create booking `pending` → pay → webhook sets `payment_status=completed` and may confirm booking |
-| 3 | Agency without active Route account? | Block online pay; show “Agency cannot accept online payments — try another agency or pay at delivery” |
-| 4 | Cash/COD at booking? | Optional: allow booking without Razorpay if `payment_method=cod` and platform allows |
-| 5 | Platform commission on delivery transfer? | 0% MVP — 100% transfer to agency linked account |
-| 6 | GST line on checkout? | Show if server includes tax in order amount |
-| 7 | Individual vs society subscription plans? | Same `subscription_plans` table; filter by `target_account_kind` (`individual` \| `society` \| `both`) if column exists, else shared plans |
-| 8 | Migrate from PhonePe? | Replace PhonePe subscription checkout with Razorpay; keep PhonePe behind flag until cutover |
-| 9 | Subscription auto-renew? | Manual renew via plans screen for MVP; Razorpay Subscriptions API is Phase 2+ |
+| 1 | Pay at booking vs at delivery? | **At delivery** in customer app |
+| 2 | Booking before payment? | Create booking `pending` → pay → webhook sets `payment_status=completed` |
+| 3 | Agency without Route account? | Block online pay; show clear message |
+| 4 | Cash/COD at booking? | No amount charged at booking, charged only at the time of delivery |
+| 5 | Platform commission on delivery |  100% to agency |
+| 6 | Individual vs society plans? | Different plans for individual and society plans |
+| 7 | PhonePe migration | Replace with Razorpay; keep PhonePe behind flag until cutover |
+| 8 | Auto-renew | Manual renew for MVP; Razorpay Subscriptions API is later |
 
-### Tech stack expectations
+---
 
-- React Native + Expo
-- Supabase Auth + Postgres + Edge Functions
-- Zustand (or existing state pattern) for bookings/auth/subscription state
-- Install Razorpay React Native SDK (or WebView checkout per project convention)
-- Feature flags:
-  - `FEATURE_FLAGS.enableOnlinePayment` — Flow B booking checkout
-  - `FEATURE_FLAGS.enableRazorpaySubscription` — Flow A (when `false`, keep PhonePe or block subscribe CTA)
+## Phase 0 — Foundation
 
-### Screens to add or modify
+**Goal:** Install SDK, env vars, shared types, feature flags, and a reusable checkout wrapper. No user-facing payment yet.
 
-#### Subscription — Flow A (individual + society)
+**Depends on:** Test credentials configured locally.
 
-1. **`SubscriptionPlansScreen`** (modify existing)
-   - Load plans from server; filter by `customerAccountKind` (`individual` | `society`) when plans are segmented.
-   - Primary CTA: **Subscribe with Razorpay** (replace PhonePe copy).
-   - Create pending `subscriptions` row → navigate to `PaySubscriptionScreen`.
-   - Block subscribe if plan inactive; show renewal CTA when subscription expired.
+### Tasks
 
-2. **`PaySubscriptionScreen`** (new — or refactor existing `PaymentScreen`)
-   - Params: `subscriptionId`, `planId`, `planName`
-   - Amount **from server** via `create-customer-subscription-order`.
-   - Legal copy: payment goes to **{platform business name}** for app access / subscription.
-   - **No** agency name, **no** Route transfer messaging.
-   - On SDK return → `verify-customer-subscription-payment` → activate subscription (`status=active`, set `start_date` / `end_date`) → `SubscriptionStatusScreen`.
-   - Metadata flow: `customer_subscription`.
+- [ ] Install Razorpay React Native SDK (or confirm WebView checkout convention with team).
+- [ ] Add `EXPO_PUBLIC_RAZORPAY_KEY_ID` to `.env` and `.env.example` (placeholder in example, real value in local `.env` only).
+- [ ] Add feature flags in `src/constants/config.ts`:
+  - `enableRazorpaySubscription: false` — Flow A (when `false`, keep PhonePe or block subscribe CTA)
+  - `enableOnlinePayment: false` — Flow B booking checkout (already exists; wire to Razorpay)
+- [ ] Create `src/types/razorpay.types.ts`:
+  - `RazorpayCheckoutParams`, `RazorpayVerifyPayload`, `PaymentFlow = 'customer_subscription' | 'customer_booking'`
+- [ ] Create `src/services/razorpayCheckout.service.ts`:
+  - `openCheckout({ orderId, amount, currency, keyId, prefill, description })`
+  - Handle user cancel vs SDK error; return structured result to callers
+- [ ] Extend `ERROR_MESSAGES.payment` in `config.ts` for Razorpay-specific user messages.
+- [ ] Run `npm run secrets:check` (or equivalent) to ensure no secret keys under `src/`.
 
-3. **`SubscriptionComingSoonScreen`** (society — modify)
-   - Replace placeholder with navigation to `SubscriptionPlansScreen` when `enableRazorpaySubscription=true` and society plans exist.
-   - Keep “coming soon” only when no society plans are published.
+### Files
 
-4. **`SubscriptionStatusScreen`** (modify existing)
-   - Show Razorpay payment id, renewal date, **Renew** → `PaySubscriptionScreen`.
-   - Refresh `hasActiveSubscription` in auth/store after successful payment.
+| Action | Path |
+|--------|------|
+| Create | `src/services/razorpayCheckout.service.ts` |
+| Create | `src/types/razorpay.types.ts` |
+| Modify | `src/constants/config.ts` |
+| Modify | `.env.example` |
+| Modify | `src/services/index.ts` (export new service) |
 
-5. **`MyPaymentsScreen`**
-   - Sections or filters: **Subscription payments** (Flow A) vs **Delivery payments** (Flow B).
-   - Subscription rows: plan name, period, platform receipt, status.
+### Verify Phase 0
 
-#### Delivery — Flow B (booking)
+- [ ] App builds with new env var (Key ID only).
+- [ ] `openCheckout` can be invoked in dev with a **manual test order** from Razorpay Dashboard or mock params (optional smoke test).
+- [ ] No `RAZORPAY_KEY_SECRET` anywhere in client bundle.
 
-6. **`PayBookingScreen`**
-   - Params: `bookingId` (or full booking draft before persist)
-   - Order summary: agency name, vehicle/capacity, address, scheduled time, **amount from server**
-   - Primary CTA: **Pay with Razorpay**
-   - Legal copy: payment goes to **{agency business name}**, processed via Razorpay Route
-   - States: loading (creating order) · checkout open · processing · success/fail
-   - On SDK return → call verify endpoint → navigate to `PaymentResultScreen`
-   - Do **not** collect card/UPI in custom inputs
+---
 
-7. **`PaymentResultScreen`** (shared)
-   - Params: `type: 'subscription' | 'booking'`, `status`, `subscriptionId?`, `bookingId?`, `referenceId?`
-   - Subscription success → `SubscriptionStatusScreen`
-   - Booking success → “View order” → `OrderTracking`
-   - Failure → **Retry payment** (re-invokes correct Flow A or B create-order function)
+## Phase 1 — Backend Edge Functions
 
-#### Modify existing screens
+**Goal:** Supabase Edge Functions + webhook that create orders server-side and verify signatures. Can be done in backend repo; customer app unblocks after this phase.
 
-8. **`BookingScreen`**
-   - Require active subscription before confirm (individual + society).
-   - After user confirms booking details, if online payment enabled and agency Route active:
-     - Navigate to `PayBookingScreen` instead of finishing on “Amount at delivery”
-   - If agency not onboarded: allow booking with COD only (if platform allows) or block with clear message
+**Depends on:** Supabase secrets set (see [Test credentials](#test-credentials-razorpay-sandbox)).
 
-9. **`OrderHistoryScreen` / order cards**
-   - Payment chip: Unpaid · Paid · Failed · COD
-   - Unpaid confirmed bookings → **Pay now** → `PayBookingScreen`
+### Functions to create
 
-10. **`OrderTrackingScreen`**
-    - Show payment status and Razorpay payment id when paid
-    - **Pay now** if booking confirmed but `payment_status=pending`
+| Function | Flow | Purpose |
+|----------|------|---------|
+| `create-customer-subscription-order` | A | Create order **without** transfers |
+| `verify-customer-subscription-payment` | A | HMAC verify + activate subscription |
+| `create-customer-booking-order` | B | Create order **with** Route transfer |
+| `verify-customer-booking-payment` | B | HMAC verify + update booking |
+| `razorpay-webhook` | A + B | Idempotent; branch on `notes.flow` |
 
-11. **`AddTripScreen` / society trip flows**
-    - Gate on `hasActiveSubscription` (society users).
-    - Trip settlement payments (if any) are **not** subscription — treat as delivery/agency Flow B if online pay is added later; MVP may remain offline settlement.
+### Tasks — Flow A (`create-customer-subscription-order`)
 
-12. **`CustomerHomeScreen` / `ProfileScreen`**
-    - Link to **Payment history** (`MyPaymentsScreen`)
-    - Banner when subscription expired → plans screen
-    - Optional banner for failed delivery payments on recent orders
+- [ ] Validate customer JWT.
+- [ ] Load subscription + plan; ensure `user_id` matches caller.
+- [ ] Ensure status allows payment (`pending` or renewal of `expired`).
+- [ ] Load amount from `subscription_plans.price` — **ignore client amount**.
+- [ ] Create Razorpay order **without transfers**:
+  - `notes`: `{ subscription_id, plan_id, user_id, account_kind, flow: 'customer_subscription' }`
+- [ ] Insert/update `payment_transactions` with `payment_gateway: 'razorpay'`.
+- [ ] Return `{ orderId, amount, currency, keyId }`.
 
-13. **`CustomerNavigator` / `MainNavigator`**
-    - Register routes: `PaySubscription`, `PayBooking`, `MyPayments`, `PaymentResult`
-    - Typing for stack params
+### Tasks — Flow A (`verify-customer-subscription-payment`)
 
-### Client services (create or extend)
+- [ ] Verify HMAC signature server-side.
+- [ ] Idempotent if transaction already `success`.
+- [ ] Update `payment_transactions`; set subscription `status=active`, `start_date` / `end_date`.
+- [ ] Reject if `notes.flow !== 'customer_subscription'`.
 
-**`razorpayCheckout.service.ts`**
+### Tasks — Flow B (`create-customer-booking-order`)
 
-- `openCheckout({ orderId, amount, currency, keyId, prefill, description })`
-- Handle cancel vs error
-- Reuse for both flows; caller passes distinct `description` / receipt label
+- [ ] Validate customer JWT; booking `customer_id` matches.
+- [ ] Load amount from DB — **ignore client amount**.
+- [ ] Load agency `razorpay_account_id`; return 4xx if missing/inactive.
+- [ ] Create order with Route transfer:
+  - `transfers: [{ account: acc_xxx, amount, currency: 'INR' }]`
+  - `notes`: `{ booking_id, agency_id, customer_id, flow: 'customer_booking' }`
+- [ ] Insert pending payment row; return `{ orderId, amount, currency, keyId }`.
 
-**`payment.service.ts`** (replace stub / PhonePe paths for subscription)
+### Tasks — Flow B (`verify-customer-booking-payment`)
 
-- `createSubscriptionPayment(subscriptionId)` → Flow A Edge Function
-- `verifySubscriptionPayment(subscriptionId, { razorpay_order_id, razorpay_payment_id, razorpay_signature })`
-- `createBookingPayment(bookingId)` → Flow B Edge Function
-- `verifyBookingPayment(bookingId, { razorpay_order_id, razorpay_payment_id, razorpay_signature })`
-- `getPaymentHistory(customerId, { flow?: 'customer_subscription' | 'customer_booking' })`
+- [ ] Verify HMAC; idempotent if already `completed`.
+- [ ] Update booking `payment_status`, `payment_id`.
+- [ ] Reject if `notes.flow !== 'customer_booking'`.
 
-**`subscription.service.ts`**
+### Tasks — `razorpay-webhook`
 
-- Replace PhonePe `activateSubscription` with Razorpay verify path
-- After verify/webhook: refresh subscription row and expose `hasActiveSubscription` to UI
-
-**`booking.service.ts`**
-
-- After payment success (verified), refresh booking; optional `subscribeToBookingUpdates` for `payment_status`
-
-### Backend contract (implement in Supabase if missing — coordinate with admin repo)
-
-**`create-customer-subscription-order`** (Flow A)
-
-1. Validate customer JWT.
-2. Load subscription + plan; ensure `user_id` matches caller.
-3. Ensure subscription status allows payment (`pending` or renewal of `expired`).
-4. Load amount from `subscription_plans.price` — **ignore client-sent amount**.
-5. Create Razorpay order **without transfers** (platform merchant receives funds):
-   - `notes`: `{ subscription_id, plan_id, user_id, account_kind, flow: 'customer_subscription' }`
-6. Insert/update pending row in `payment_transactions` with `payment_gateway: 'razorpay'`.
-7. Return `{ orderId, amount, currency, keyId }` to client.
-
-**`verify-customer-subscription-payment`**
-
-1. Verify HMAC signature server-side.
-2. Idempotent: if transaction already `success`, return OK.
-3. Update `payment_transactions`; set subscription `status=active`, compute `start_date` / `end_date` from plan duration.
-4. Reject if `notes.flow !== 'customer_subscription'`.
-
-**`create-customer-booking-order`** (Flow B)
-
-1. Validate customer JWT.
-2. Load booking; ensure `customer_id` matches caller.
-3. Ensure booking status allows payment (e.g. `pending` / `confirmed`).
-4. Load amount from DB (`total_price` or pricing rules) — **ignore client-sent amount**.
-5. Load agency `razorpay_account_id`; return 4xx if missing/inactive.
-6. Create Razorpay order with **transfer** to agency account:
-   - `transfers: [{ account: acc_xxx, amount, currency: 'INR' }]`
-   - `notes`: `{ booking_id, agency_id, customer_id, flow: 'customer_booking' }`
-7. Insert pending row in `delivery_payment_orders` or `payment_transactions`.
-8. Return `{ orderId, amount, currency, keyId }` to client.
-
-**`verify-customer-booking-payment`**
-
-1. Verify HMAC signature server-side.
-2. Idempotent: if already `completed`, return OK.
-3. Update booking `payment_status`, `payment_id`; confirm booking if business rules require paid-before-confirm.
-4. Reject if `notes.flow !== 'customer_booking'`.
-
-**`razorpay-webhook`**
-
-- Idempotent on `razorpay_payment_id`
-- Branch on `payment.entity.notes.flow`:
+- [ ] Register webhook URL in Razorpay Dashboard (test mode).
+- [ ] Store `RAZORPAY_WEBHOOK_SECRET` in Supabase secrets.
+- [ ] Handle `payment.captured`, `payment.failed`; idempotent on `razorpay_payment_id`.
+- [ ] Branch on `payment.entity.notes.flow`:
   - `customer_subscription` → subscription + `payment_transactions`
   - `customer_booking` → booking + delivery payment tables
-- Never apply a booking webhook payload to a subscription row (and vice versa)
 
-### Environment variables
+### Verify Phase 1
 
-**Client (`.env`):**
+- [ ] curl/Postman: create subscription order returns valid `orderId` and amount from DB.
+- [ ] curl: create booking order includes `transfers` when agency is active; 4xx when not.
+- [ ] Test payment in Razorpay Dashboard → webhook updates DB (check Supabase logs).
+- [ ] Flow A order rejected if `transfers` present; Flow B rejected without valid agency.
 
-```env
-EXPO_PUBLIC_RAZORPAY_KEY_ID=rzp_test_xxx
-EXPO_PUBLIC_SUPABASE_URL=...
-EXPO_PUBLIC_SUPABASE_ANON_KEY=...
-```
+---
 
-**Supabase secrets (backend only):**
+## Phase 2 — Flow A: Customer subscription
 
-```env
-RAZORPAY_KEY_ID=...
-RAZORPAY_KEY_SECRET=...
-RAZORPAY_WEBHOOK_SECRET=...
-```
+**Goal:** Individual + society customers can subscribe via Razorpay; funds go to **platform merchant** (no Route).
 
-### Security & RLS
+**Depends on:** Phase 0 + Phase 1 (subscription Edge Functions deployed).
 
-- Customer can only pay own subscriptions and own bookings.
-- Flow A Edge Functions must reject orders that include Route `transfers`.
-- Flow B Edge Functions must require valid `agency_id` and active linked account.
-- Driver/admin Edge Functions must not be callable with customer token for agency subscription orders (Flow C).
-- Map errors: user cancelled, signature mismatch, agency not onboarded, subscription already active, network timeout.
+### Tasks
 
-### User journeys to support
+- [ ] Extend `src/services/payment.service.ts`:
+  - `createSubscriptionPayment(subscriptionId)` → `create-customer-subscription-order`
+  - `verifySubscriptionPayment(subscriptionId, { razorpay_order_id, razorpay_payment_id, razorpay_signature })`
+- [ ] Update `src/services/subscription.service.ts`:
+  - Replace PhonePe `activateSubscription` path with Razorpay verify when `enableRazorpaySubscription=true`
+  - Refresh `hasActiveSubscription` in auth/store after success
+- [ ] Create **`PaySubscriptionScreen`** (or refactor `PaymentScreen.tsx`):
+  - Params: `subscriptionId`, `planId`, `planName`
+  - Amount from server only via create-order
+  - Legal copy: payment to **platform business name** for app access — **no** agency / Route messaging
+  - On SDK return → verify → navigate to `SubscriptionStatusScreen` or shared `PaymentResultScreen`
+  - Metadata flow: `customer_subscription`
+- [ ] Modify **`SubscriptionPlansScreen`**:
+  - Primary CTA: **Subscribe with Razorpay** when flag on
+  - Create pending `subscriptions` row → navigate to `PaySubscriptionScreen`
+  - Filter plans by `customerAccountKind` when segmented
+- [ ] Modify **`SubscriptionStatusScreen`**:
+  - Show Razorpay payment id, renewal date, **Renew** → `PaySubscriptionScreen`
+- [ ] Register route `PaySubscription` in `MainNavigator.tsx` + `rootNavigation.ts` types
+- [ ] Keep PhonePe behind `enableRazorpaySubscription === false` for rollback
 
-**Journey 1 — Individual customer subscribes (Flow A)**
+### Files
 
-1. User registers as **individual** → `SubscriptionPlansScreen`
-2. Select plan → pending subscription → `PaySubscriptionScreen` → Razorpay (platform merchant)
-3. Webhook → subscription `active` → user can book / use app features
+| Action | Path |
+|--------|------|
+| Create / refactor | `src/screens/customer/PaySubscriptionScreen.tsx` |
+| Modify | `src/screens/customer/SubscriptionPlansScreen.tsx` |
+| Modify | `src/screens/customer/SubscriptionStatusScreen.tsx` |
+| Modify | `src/services/payment.service.ts` |
+| Modify | `src/services/subscription.service.ts` |
+| Modify | `src/navigation/MainNavigator.tsx`, `rootNavigation.ts` |
 
-**Journey 2 — Society customer subscribes (Flow A)**
+### User journey (test this phase)
 
-1. User registers as **society** → subscription intro → `SubscriptionPlansScreen` (society plans)
-2. Same Razorpay checkout as Journey 1; `account_kind: 'society'` in order notes
-3. Active subscription unlocks **society trip** creation and bookings
+1. Individual user → `SubscriptionPlansScreen` → select plan → `PaySubscriptionScreen`
+2. Complete Razorpay test checkout (`success@razorpay` or test card)
+3. Webhook + verify → subscription `active` → booking/trip gates unlock (Phase 4)
 
-**Journey 3 — Pay delivery at booking (Flow B)**
+### Verify Phase 2
 
-1. Customer with **active subscription** completes `BookingScreen` → booking created `pending`, `payment_status=pending`
-2. `PayBookingScreen` → Razorpay Route → transfer to **selected agency**
-3. Webhook → `payment_status=completed` → `OrderTracking` shows confirmed/paid
+- [ ] Test mode: subscribe → webhook sets subscription `active`; **no** Route transfer on order
+- [ ] Society user can use same flow with `account_kind: 'society'` in order notes
+- [ ] Tampering client amount has no effect (server order amount wins)
+- [ ] User cancel shows friendly message, no crash
+- [ ] Feature flag off → PhonePe or blocked CTA still works
 
-**Journey 4 — Pay later from history (Flow B)**
+---
 
-1. Order list shows Unpaid → Pay now → same booking checkout flow
+## Phase 3 — Flow B: Booking / delivery payment
 
-**Journey 5 — Failed payment**
+**Goal:** Customer pays for a booking at checkout; funds Route to **agency linked account**.
 
-1. `PaymentResult` failure → Retry → new order from server (new receipt id) for the same flow type
+**Depends on:** Phase 0 + Phase 1 (booking Edge Functions + Route-enabled agencies).
 
-**Journey 6 — Expired subscription blocks booking**
+### Tasks
 
-1. Subscription `end_date` passed → `has_active_subscription` false
-2. Booking / add-trip blocked with CTA to renew (Flow A only — no agency transfer)
+- [ ] Extend `payment.service.ts`:
+  - `createBookingPayment(bookingId)` → `create-customer-booking-order`
+  - `verifyBookingPayment(bookingId, verify payload)`
+- [ ] Create **`PayBookingScreen`**:
+  - Params: `bookingId`
+  - Order summary: agency name, vehicle, address, time, **amount from server**
+  - Legal copy: payment to **{agency business name}** via Razorpay Route
+  - States: loading · checkout open · processing · success/fail
+  - On SDK return → verify → `PaymentResultScreen`
+- [ ] Create **`PaymentResultScreen`** (shared with Flow A):
+  - Params: `type: 'subscription' | 'booking'`, `status`, ids, `referenceId?`
+  - Success: subscription → `SubscriptionStatus`; booking → `OrderTracking`
+  - Failure: **Retry** re-invokes correct create-order for same flow type
+- [ ] Update `booking.service.ts`: refresh booking after verify; optional realtime on `payment_status`
+- [ ] Register routes `PayBooking`, `PaymentResult` in navigator
 
-### Implementation phases (this repo)
+### Files
 
-| Phase | Deliverable |
-|-------|-------------|
-| **P0** | SDK + `razorpayCheckout.service` + feature flags + shared types |
-| **P1a** | Flow A: `PaySubscriptionScreen` + subscription Edge Functions + migrate off PhonePe |
-| **P1b** | Flow B: `PayBookingScreen` + booking Edge Functions + `PaymentResultScreen` |
-| **P2** | Wire `SubscriptionPlansScreen`, society intro, subscription gating on booking/trips |
-| **P3** | Wire `BookingScreen` + order list/history pay CTAs (Flow B) |
-| **P4** | `MyPaymentsScreen` (both flows) + tracking screen payment UI |
-| **P5** | Tests, error mapping, realtime on `payment_status` and subscription status |
+| Action | Path |
+|--------|------|
+| Create | `src/screens/customer/PayBookingScreen.tsx` |
+| Create | `src/screens/shared/PaymentResultScreen.tsx` |
+| Modify | `src/services/payment.service.ts` |
+| Modify | `src/services/booking.service.ts` |
+| Modify | `src/navigation/MainNavigator.tsx`, `rootNavigation.ts` |
 
-### Acceptance criteria
+### User journey (test this phase)
 
-- [ ] Test mode: individual customer subscribes → webhook sets subscription `active`; funds on **platform merchant** (no Route transfer on order)
-- [ ] Test mode: society customer subscribes with same Flow A pattern
-- [ ] Test mode: customer pays for booking → webhook sets `payment_status=completed`; transfer settles to **agency linked account**
-- [ ] Subscription and booking checkouts use different Edge Functions and `notes.flow` values
-- [ ] Amount on checkout always matches server order (tampering client amount has no effect)
-- [ ] Payment with inactive agency account shows clear error, no crash
-- [ ] Customer cannot pay another customer’s subscription or booking (RLS + function checks)
-- [ ] Expired subscription blocks booking/trip until Flow A renewal succeeds
+1. Customer with active subscription creates booking (`payment_status=pending`)
+2. `PayBookingScreen` → Razorpay → webhook sets `payment_status=completed`
+3. `OrderTracking` shows paid status
+
+### Verify Phase 3
+
+- [ ] Test mode: booking payment → transfer to agency linked account in Razorpay Dashboard
+- [ ] Inactive agency → clear error, no crash
+- [ ] Subscription and booking use **different** Edge Functions and `notes.flow` values
+- [ ] Retry after failure creates new server order (new receipt id)
+
+---
+
+## Phase 4 — Wire screens & subscription gating
+
+**Goal:** Connect payment flows into existing booking, society, and home/profile UX; enforce subscription gates.
+
+**Depends on:** Phase 2 (Flow A live for gating to matter).
+
+### Tasks
+
+- [ ] **`BookingScreen`**: after confirm, if `enableOnlinePayment` + agency Route active → `PayBookingScreen`; else COD or block with message
+- [ ] Require active subscription before confirm (`enableSubscriptionGating=true`)
+- [ ] **`SubscriptionComingSoonScreen`**: when society plans exist + `enableRazorpaySubscription` → navigate to `SubscriptionPlansScreen`
+- [ ] **`AddTripScreen` / society flows**: gate on `hasActiveSubscription`
+- [ ] **`CustomerHomeScreen` / `ProfileScreen`**: expired subscription banner → plans; link to payment history
+- [ ] Enable flags when ready: `enableRazorpaySubscription`, `enableOnlinePayment`, `enableSubscriptionGating`
+
+### Files
+
+| Action | Path |
+|--------|------|
+| Modify | `src/screens/customer/BookingScreen.tsx` |
+| Modify | `src/screens/society/SubscriptionComingSoonScreen.tsx` |
+| Modify | `src/screens/society/AddTripScreen.tsx` (or equivalent) |
+| Modify | `src/constants/config.ts` (feature flags) |
+
+### Verify Phase 4
+
+- [ ] Expired subscription blocks booking/trip with renew CTA
+- [ ] Society intro no longer “coming soon” when plans published
+- [ ] Booking with onboarded agency routes to online pay; without → COD or error per product default
+
+---
+
+## Phase 5 — Payment history & order UX
+
+**Goal:** Unified payment history and pay-now entry points on orders.
+
+**Depends on:** Phase 2 + Phase 3.
+
+### Tasks
+
+- [ ] Extend or alias **`MyPaymentsScreen`** from existing `PaymentHistoryScreen`:
+  - Sections/filters: **Subscription** (Flow A) vs **Delivery** (Flow B)
+  - `getPaymentHistory(customerId, { flow? })` in `payment.service.ts`
+- [ ] **`PastOrdersScreen` / order cards**: payment chip (Unpaid · Paid · Failed · COD); **Pay now** → `PayBookingScreen`
+- [ ] **`OrderTrackingScreen`**: show payment status + Razorpay id; **Pay now** if `payment_status=pending`
+
+### Files
+
+| Action | Path |
+|--------|------|
+| Modify | `src/screens/customer/PaymentHistoryScreen.tsx` |
+| Modify | `src/screens/customer/PastOrdersScreen.tsx` |
+| Modify | `src/screens/customer/OrderTrackingScreen.tsx` |
+| Modify | `src/services/payment.service.ts` |
+
+### Verify Phase 5
+
+- [ ] History shows both subscription and delivery rows with correct labels
+- [ ] Pay now from order list/tracking completes Flow B end-to-end
+
+---
+
+## Phase 6 — Tests, errors & polish
+
+**Goal:** Automated tests, error mapping, optional realtime, and documentation.
+
+### Tasks
+
+- [ ] Unit tests: `razorpayCheckout.service`, `payment.service` (mock Edge Functions)
+- [ ] Update `src/__tests__/flows/paymentFlow.test.ts` for both flows
+- [ ] Navigation tests for new routes
+- [ ] Map errors: user cancelled, signature mismatch, agency not onboarded, subscription already active, network timeout
+- [ ] Optional: realtime subscription on booking `payment_status`
+- [ ] Create `docs/RAZORPAY_CUSTOMER_APP.md` — flows, env vars, test cards (brief runbook)
+- [ ] Final acceptance pass (checklist below)
+
+### Verify Phase 6 — full acceptance criteria
+
+- [ ] Test mode: individual + society subscribe (Flow A); funds on platform merchant
+- [ ] Test mode: booking pay (Flow B); transfer to agency linked account
+- [ ] Amount on checkout always matches server order
+- [ ] Customer cannot pay another user’s subscription or booking (RLS + function checks)
 - [ ] Retry after failure works for both flows
 - [ ] Feature flags restore legacy flow with no regression
 - [ ] No secret keys in app bundle
 
-### Files to inspect first in this repo
-
-- Navigation: `MainNavigator.tsx`, `rootNavigation.ts`
-- Subscription: `SubscriptionPlansScreen.tsx`, `SubscriptionStatusScreen.tsx`, `SubscriptionComingSoonScreen.tsx`, `subscription.service.ts`, `PaymentScreen.tsx` (PhonePe — to replace)
-- Booking flow: `BookingScreen.tsx`, `booking.service.ts`, `bookingStore.ts`
-- Society: `AddTripScreen.tsx`, `societyTrip.service.ts`, `customerAccountKind` in `authStore`
-- Existing payment stub: `payment.service.ts`
-- Types: `subscription.types.ts`, `Booking` with `paymentStatus`, `paymentId`, `agencyId`
-- Config: `FEATURE_FLAGS`, `ERROR_MESSAGES.payment`
-- Gating review: `docs/SUBSCRIPTION_GATING_REVIEW.md`
-
-### Out of scope for this repo
-
-- Agency admin platform subscription (Flow C) — admin repo
-- Driver `CollectPaymentScreen` (pay at delivery on driver device) — driver/admin repo
-- Agency Razorpay KYC / Route onboarding UI — admin repo
-- Society bulk billing settlement to agencies (offline or future Flow B extension) — separate product decision
-
-### Deliverables
-
-1. Working Razorpay checkout for **customer subscriptions** (individual + society) crediting the **platform merchant account**.
-2. Working Razorpay checkout for **booking/delivery payments** with Route transfer to the **booking’s agency**.
-3. Updated navigation and modified subscription, booking, and order screens.
-4. Edge Functions (or PR to backend repo) with webhook idempotency and `flow`-based routing.
-5. Brief `docs/RAZORPAY_CUSTOMER_APP.md` documenting both flows, env vars, and test cards.
-
-Start by scanning the repo structure, listing what already exists vs gaps (PhonePe subscription, society coming soon, booking Route pay), then implement **P0 → P1a → P1b** before wiring the full booking and gating flows.
-
 ---
 
-## Quick-start prompt (minimal)
+## Reference — rules, contracts, diagrams
 
-Use this when you need a shorter instruction block:
+### Tech stack
 
-> Implement Razorpay in this **customer** React Native + Expo app with **two isolated flows**: (1) **Customer subscription** for **individual and society** users — standard checkout to the **platform merchant account** via `create-customer-subscription-order` / `verify-customer-subscription-payment`, replacing PhonePe on `SubscriptionPlansScreen`; (2) **Booking delivery payment** — Route transfer to the booking’s **agency** via `create-customer-booking-order`. Shared webhook branches on `notes.flow`. Add `PaySubscriptionScreen`, `PayBookingScreen`, `MyPaymentsScreen`, `PaymentResultScreen`; gate bookings and society trips on `has_active_subscription`; never trust client amounts or store secrets. Agency admin subscription (Flow C) stays in the admin repo.
+- React Native + Expo
+- Supabase Auth + Postgres + Edge Functions
+- Zustand (or existing state) for auth/booking/subscription
+- Razorpay React Native SDK (or WebView per convention)
 
----
+### Files to inspect first
 
-## Money flow diagram
+| Area | Paths |
+|------|-------|
+| Navigation | `MainNavigator.tsx`, `rootNavigation.ts` |
+| Subscription | `SubscriptionPlansScreen.tsx`, `SubscriptionStatusScreen.tsx`, `SubscriptionComingSoonScreen.tsx`, `subscription.service.ts`, `PaymentScreen.tsx` (PhonePe) |
+| Booking | `BookingScreen.tsx`, `booking.service.ts`, `bookingStore.ts` |
+| Society | `AddTripScreen.tsx`, `societyTrip.service.ts`, `authStore` (`customerAccountKind`) |
+| Payment stub | `payment.service.ts` |
+| Types | `subscription.types.ts`, `Booking` (`paymentStatus`, `paymentId`, `agencyId`) |
+| Config | `FEATURE_FLAGS`, `ERROR_MESSAGES.payment` |
+| Gating | `docs/SUBSCRIPTION_GATING_REVIEW.md` |
+
+### Payment type fields
+
+**Subscription (Flow A)**
+
+| Field | Values / notes |
+|-------|----------------|
+| `subscriptions.status` | `pending` → `active` after paid |
+| `payment_transactions.paymentGateway` | `razorpay` |
+| `payment_transactions.metadata.flow` | `customer_subscription` |
+| Settlement | Platform merchant only — **no** `agency_id` on order |
+
+**Booking (Flow B)**
+
+| Field | Values / notes |
+|-------|----------------|
+| `paymentStatus` | `pending` \| `completed` \| `failed` \| `refunded` |
+| `paymentId` | Razorpay payment id when completed |
+| `agencyId` | Route transfer target |
+| `metadata.flow` | `customer_booking` |
+
+### Money flow diagram
 
 ```mermaid
 flowchart TB
@@ -389,39 +512,22 @@ flowchart TB
   History --> DB
 ```
 
----
+### Out of scope (this repo)
 
-## Payment type fields (display & enforce)
+- Agency admin platform subscription (Flow C) — admin repo
+- Driver `CollectPaymentScreen` — driver/admin repo
+- Agency Razorpay KYC / Route onboarding UI — admin repo
+- Society bulk billing settlement — separate product decision
 
-### Subscription (Flow A)
+### Related docs
 
-| Field | Values / notes |
-|-------|----------------|
-| `subscriptions.status` | `pending` → `active` after paid |
-| `payment_transactions.paymentGateway` | `razorpay` |
-| `payment_transactions.metadata.flow` | `customer_subscription` |
-| Settlement | Platform merchant only — **no** `agency_id` on order |
-
-### Booking / delivery (Flow B)
-
-| Field | Values / notes |
-|-------|----------------|
-| `paymentStatus` | `pending` \| `completed` \| `failed` \| `refunded` |
-| `paymentId` | Razorpay payment id when completed |
-| `agencyId` | Route transfer target |
-| `metadata.flow` | `customer_booking` |
-
----
-
-## Optional: admin/driver repo prompt
-
-A separate prompt for the **admin + driver** repo (agency platform subscription Flow C, driver collect payment, agency Route onboarding) is documented in:
-
-- [`RAZORPAY_IMPLEMENTATION_PHASES.md`](./RAZORPAY_IMPLEMENTATION_PHASES.md)
+- [`RAZORPAY_IMPLEMENTATION_PHASES.md`](./RAZORPAY_IMPLEMENTATION_PHASES.md) — admin/driver repo
 - [`RAZORPAY_SUBSCRIPTION_AND_PAYMENTS_SCREEN_PLAN.md`](./RAZORPAY_SUBSCRIPTION_AND_PAYMENTS_SCREEN_PLAN.md)
 
-Customer app work should stay aligned with delivery order Edge Functions in that repo; **customer subscription (Flow A) is owned by this customer repo**, not the admin app.
+### Quick-start prompt (minimal)
+
+> Implement Razorpay in this **customer** React Native + Expo app with **two isolated flows**: (1) **Customer subscription** for **individual and society** users — standard checkout to the **platform merchant account** via `create-customer-subscription-order` / `verify-customer-subscription-payment`, replacing PhonePe on `SubscriptionPlansScreen`; (2) **Booking delivery payment** — Route transfer to the booking’s **agency** via `create-customer-booking-order`. Shared webhook branches on `notes.flow`. Add `PaySubscriptionScreen`, `PayBookingScreen`, `MyPaymentsScreen`, `PaymentResultScreen`; gate bookings and society trips on `has_active_subscription`; never trust client amounts or store secrets. Use test Key ID `rzp_test_SvZ3J7Z3onV3qK` on client; secret in Supabase only.
 
 ---
 
-*Document version: 1.1 — added customer subscription (individual + society) to platform merchant; delivery payments remain Route to agency.*
+*Document version: 2.0 — phase-wise implementation guide with Razorpay test credentials.*
