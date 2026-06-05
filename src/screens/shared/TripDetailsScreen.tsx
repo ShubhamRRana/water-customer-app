@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,7 +11,6 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
-  Animated,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +18,13 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
 import Card from '../../components/common/Card';
-import { Typography, CustomerMenuDrawer, ScreenLoading, ScreenEmpty } from '../../components/common';
+import {
+  Typography,
+  CustomerMenuDrawer,
+  ScreenLoading,
+  ScreenEmpty,
+  MonthYearFilterRow,
+} from '../../components/common';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import AppScreenHeader, {
   AppScreenHeaderTrailingSpacer,
@@ -38,6 +43,8 @@ import {
   buildTripsByAgency,
   filterTripsByPeriod,
   isAgencyPaymentComplete as computeAgencyPaymentComplete,
+  isTripPaymentPending,
+  isTripWithinDeleteWindow,
 } from '../../utils/societyTripBreakdown';
 
 type TripDetailsNavigationProp = StackNavigationProp<AppStackParamList, 'TripDetails'>;
@@ -62,19 +69,12 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [deleting, setDeleting] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
-  const [periodType, setPeriodType] = useState<'month' | 'year'>('month');
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
-  const periodTypeGliderAnim = useRef(new Animated.Value(0)).current;
-  const monthGliderAnim = useRef(new Animated.Value(0)).current;
-  const yearGliderAnim = useRef(new Animated.Value(0)).current;
-  const [periodTypeOptionWidth, setPeriodTypeOptionWidth] = useState(0);
-  const [monthOptionWidth, setMonthOptionWidth] = useState(0);
-  const [yearOptionWidth, setYearOptionWidth] = useState(0);
-
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const periodType = 'month' as const;
 
   const availableYears = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -86,43 +86,14 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
   }, []);
 
   useEffect(() => {
-    if (periodTypeOptionWidth > 0) {
-      Animated.spring(periodTypeGliderAnim, {
-        toValue: periodType === 'month' ? 0 : periodTypeOptionWidth,
-        useNativeDriver: true,
-        tension: 120,
-        friction: 8,
-      }).start();
-    }
-  }, [periodType, periodTypeOptionWidth, periodTypeGliderAnim]);
-
-  useEffect(() => {
-    if (monthOptionWidth > 0) {
-      Animated.spring(monthGliderAnim, {
-        toValue: selectedMonth * monthOptionWidth,
-        useNativeDriver: true,
-        tension: 120,
-        friction: 8,
-      }).start();
-    }
-  }, [selectedMonth, monthOptionWidth, monthGliderAnim]);
-
-  useEffect(() => {
-    if (yearOptionWidth > 0) {
-      const yearIndex = availableYears.indexOf(selectedYear);
-      Animated.spring(yearGliderAnim, {
-        toValue: yearIndex >= 0 ? yearIndex * yearOptionWidth : 0,
-        useNativeDriver: true,
-        tension: 120,
-        friction: 8,
-      }).start();
-    }
-  }, [selectedYear, yearOptionWidth, yearGliderAnim, availableYears]);
-
-  useEffect(() => {
     setSelectionMode(false);
     setSelectedIds([]);
-  }, [periodType, selectedYear, selectedMonth]);
+  }, [selectedYear, selectedMonth]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const loadTripDetailsData = useCallback(async () => {
     if (!user?.id) return;
@@ -213,22 +184,28 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
   const performDelete = useCallback(
     async (tripIds: string[]) => {
       if (!user?.id || tripIds.length === 0) return;
+      const nowDate = new Date();
+      const deletableIds = tripIds.filter((id) => {
+        const trip = trips.find((t) => t.id === id);
+        return trip != null && isTripWithinDeleteWindow(trip, nowDate);
+      });
+      if (deletableIds.length === 0) return;
       setDeleting(true);
       try {
-        await SocietyTripService.deleteTripsForCustomer(user.id, tripIds);
-        setTrips((prev) => prev.filter((t) => !tripIds.includes(t.id)));
+        await SocietyTripService.deleteTripsForCustomer(user.id, deletableIds);
+        setTrips((prev) => prev.filter((t) => !deletableIds.includes(t.id)));
         exitSelectionMode();
       } catch (error) {
         errorLogger.medium('Failed to delete society trips', error, {
           userId: user.id,
-          count: tripIds.length,
+          count: deletableIds.length,
         });
         Alert.alert('Error', 'Could not delete trip(s). Try again.');
       } finally {
         setDeleting(false);
       }
     },
-    [user?.id, exitSelectionMode],
+    [user?.id, exitSelectionMode, trips],
   );
 
   const confirmDeleteSingle = useCallback(
@@ -273,24 +250,31 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
     [trips, periodType, selectedYear, selectedMonth],
   );
 
+  const periodContext = useMemo(
+    () => ({
+      periodType,
+      year: selectedYear,
+      month: selectedMonth,
+    }),
+    [periodType, selectedYear, selectedMonth],
+  );
+
+  const nowDate = useMemo(() => new Date(now), [now]);
+
+  const hasDeletableTrips = useMemo(
+    () => filteredTrips.some((t) => isTripWithinDeleteWindow(t, nowDate)),
+    [filteredTrips, nowDate],
+  );
+
   const isAgencyPaymentComplete = useCallback(
     (agencyName: string) =>
-      computeAgencyPaymentComplete(agencyName, filteredTrips, completedPaymentPeriods, {
-        periodType,
-        year: selectedYear,
-        month: selectedMonth,
-      }),
-    [completedPaymentPeriods, periodType, selectedYear, selectedMonth, filteredTrips],
+      computeAgencyPaymentComplete(agencyName, filteredTrips, completedPaymentPeriods, periodContext),
+    [completedPaymentPeriods, periodContext, filteredTrips],
   );
 
   const tripsByAgency = useMemo(
-    () =>
-      buildTripsByAgency(filteredTrips, completedPaymentPeriods, {
-        periodType,
-        year: selectedYear,
-        month: selectedMonth,
-      }),
-    [filteredTrips, completedPaymentPeriods, periodType, selectedYear, selectedMonth],
+    () => buildTripsByAgency(filteredTrips, completedPaymentPeriods, periodContext),
+    [filteredTrips, completedPaymentPeriods, periodContext],
   );
 
   const paymentCompleteForCurrentPeriod = useMemo(() => {
@@ -334,7 +318,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
               : `${filteredTrips.length} ${filteredTrips.length === 1 ? 'trip' : 'trips'} logged`
           }
           right={
-            filteredTrips.length > 0 ? (
+            filteredTrips.length > 0 && hasDeletableTrips ? (
               selectionMode ? (
                 <TouchableOpacity
                   style={styles.headerAction}
@@ -363,152 +347,13 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
           }
         />
 
-        <View style={styles.periodTypeToggle}>
-          <View style={styles.glassRadioGroup}>
-            <TouchableOpacity
-              style={styles.glassRadioOption}
-              onPress={() => setPeriodType('month')}
-              activeOpacity={0.8}
-              onLayout={(e) => {
-                if (periodTypeOptionWidth === 0) {
-                  setPeriodTypeOptionWidth(e.nativeEvent.layout.width);
-                }
-              }}
-            >
-              <Typography
-                variant="body"
-                style={[
-                  styles.glassRadioLabel,
-                  periodType === 'month' && styles.glassRadioLabelActive,
-                ]}
-              >
-                Month
-              </Typography>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.glassRadioOption}
-              onPress={() => setPeriodType('year')}
-              activeOpacity={0.8}
-            >
-              <Typography
-                variant="body"
-                style={[
-                  styles.glassRadioLabel,
-                  periodType === 'year' && styles.glassRadioLabelActive,
-                ]}
-              >
-                Year
-              </Typography>
-            </TouchableOpacity>
-            {periodTypeOptionWidth > 0 ? (
-              <Animated.View
-                style={[
-                  styles.glassGlider,
-                  {
-                    width: periodTypeOptionWidth,
-                    transform: [{ translateX: periodTypeGliderAnim }],
-                  },
-                ]}
-              />
-            ) : null}
-          </View>
-        </View>
-
-        {periodType === 'year' ? (
-          <View style={styles.filterContainer}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.monthSelector}
-              contentContainerStyle={styles.monthSelectorContent}
-            >
-              <View style={styles.glassRadioGroup}>
-                {availableYears.map((year, index) => (
-                  <TouchableOpacity
-                    key={year}
-                    style={styles.glassRadioOption}
-                    onPress={() => setSelectedYear(year)}
-                    activeOpacity={0.8}
-                    onLayout={(e) => {
-                      if (yearOptionWidth === 0 && index === 0) {
-                        setYearOptionWidth(e.nativeEvent.layout.width);
-                      }
-                    }}
-                  >
-                    <Typography
-                      variant="body"
-                      style={[
-                        styles.glassRadioLabel,
-                        selectedYear === year && styles.glassRadioLabelActive,
-                      ]}
-                    >
-                      {year}
-                    </Typography>
-                  </TouchableOpacity>
-                ))}
-                {yearOptionWidth > 0 ? (
-                  <Animated.View
-                    style={[
-                      styles.glassGlider,
-                      {
-                        width: yearOptionWidth,
-                        transform: [{ translateX: yearGliderAnim }],
-                      },
-                    ]}
-                  />
-                ) : null}
-              </View>
-            </ScrollView>
-          </View>
-        ) : null}
-
-        {periodType === 'month' ? (
-          <View style={styles.filterContainer}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.monthSelector}
-              contentContainerStyle={styles.monthSelectorContent}
-            >
-              <View style={styles.glassRadioGroup}>
-                {months.map((month, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.glassRadioOption}
-                    onPress={() => setSelectedMonth(index)}
-                    activeOpacity={0.8}
-                    onLayout={(e) => {
-                      if (monthOptionWidth === 0 && index === 0) {
-                        setMonthOptionWidth(e.nativeEvent.layout.width);
-                      }
-                    }}
-                  >
-                    <Typography
-                      variant="body"
-                      style={[
-                        styles.glassRadioLabel,
-                        selectedMonth === index && styles.glassRadioLabelActive,
-                      ]}
-                    >
-                      {month}
-                    </Typography>
-                  </TouchableOpacity>
-                ))}
-                {monthOptionWidth > 0 ? (
-                  <Animated.View
-                    style={[
-                      styles.glassGlider,
-                      {
-                        width: monthOptionWidth,
-                        transform: [{ translateX: monthGliderAnim }],
-                      },
-                    ]}
-                  />
-                ) : null}
-              </View>
-            </ScrollView>
-          </View>
-        ) : null}
+        <MonthYearFilterRow
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
+          onMonthChange={setSelectedMonth}
+          onYearChange={setSelectedYear}
+          availableYears={availableYears}
+        />
 
         <TouchableOpacity
           style={styles.summaryCardWrap}
@@ -551,7 +396,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
                 message={
                   trips.length === 0
                     ? 'Trips you add from Home appear here.'
-                    : 'Try another month or year, or switch between Month and Year.'
+                    : 'Try another month or year.'
                 }
               />
             </Card>
@@ -559,6 +404,12 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
           renderItem={({ item }) => {
             const isSelected = selectedIds.includes(item.id);
             const multiPhoto = item.photoUrls.length > 1;
+            const paymentPending = isTripPaymentPending(
+              item,
+              completedPaymentPeriods,
+              periodContext,
+            );
+            const canDelete = isTripWithinDeleteWindow(item, nowDate);
 
             const thumbScroll = (
               <ScrollView
@@ -603,10 +454,18 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
                     Amount: {PricingUtils.formatPrice(item.tankerAmount)}
                   </Typography>
                 ) : null}
+                {paymentPending ? (
+                  <View style={styles.tripPendingBadge}>
+                    <Ionicons name="time-outline" size={14} color={colors.warning} />
+                    <Typography variant="caption" style={styles.tripPendingBadgeText}>
+                      Payment Pending
+                    </Typography>
+                  </View>
+                ) : null}
               </View>
             );
 
-            const deleteBtn = !selectionMode ? (
+            const deleteBtn = !selectionMode && canDelete ? (
               <TouchableOpacity
                 style={styles.tripDeleteBtn}
                 onPress={() => confirmDeleteSingle(item)}
@@ -619,7 +478,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
               </TouchableOpacity>
             ) : null;
 
-            const checkbox = selectionMode ? (
+            const checkbox = selectionMode && canDelete ? (
               <TouchableOpacity
                 style={styles.selectCheckbox}
                 onPress={() => toggleTripSelected(item.id)}
@@ -857,74 +716,6 @@ function createTripDetailsStyles(colors: ThemeColors) {
   headerActionText: {
     color: colors.accent,
     fontWeight: '600',
-  },
-  periodTypeToggle: {
-    paddingHorizontal: UI_CONFIG.spacing.lg,
-    paddingTop: UI_CONFIG.spacing.sm,
-    paddingBottom: UI_CONFIG.spacing.sm,
-    alignItems: 'center',
-  },
-  filterContainer: {
-    paddingVertical: UI_CONFIG.spacing.sm,
-  },
-  monthSelector: {
-    paddingVertical: UI_CONFIG.spacing.sm,
-  },
-  monthSelectorContent: {
-    paddingHorizontal: UI_CONFIG.spacing.lg,
-  },
-  glassRadioGroup: {
-    position: 'relative',
-    flexDirection: 'row',
-    backgroundColor: colors.overlaySubtle,
-    borderRadius: 16,
-    overflow: 'hidden',
-    alignSelf: 'center',
-    shadowColor: colors.shadow,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    borderWidth: 0,
-  },
-  glassRadioOption: {
-    flex: 1,
-    minWidth: 80,
-    paddingVertical: 12.8,
-    paddingHorizontal: 25.6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  glassRadioLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-    color: colors.text,
-  },
-  glassRadioLabelActive: {
-    color: colors.text,
-  },
-  glassGlider: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    borderRadius: 16,
-    zIndex: 1,
-    backgroundColor: colors.accent,
-    shadowColor: colors.accent,
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowOpacity: 0.9,
-    shadowRadius: 18,
-    elevation: 10,
-    height: '100%',
   },
   summaryCardWrap: {
     marginHorizontal: 16,
@@ -1185,6 +976,16 @@ function createTripDetailsStyles(colors: ThemeColors) {
   meta: {
     color: colors.textSecondary,
     marginTop: 2,
+  },
+  tripPendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+  },
+  tripPendingBadgeText: {
+    color: colors.warning,
+    fontWeight: '700',
   },
   emptyState: {
     overflow: 'hidden',
