@@ -358,6 +358,42 @@ s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
 
+[functions.provision-free-trial-subscription]
+enabled = true
+verify_jwt = true
+import_map = "./functions/deno.json"
+entrypoint = "./functions/provision-free-trial-subscription/index.ts"
+
+[functions.create-customer-subscription-order]
+enabled = true
+verify_jwt = true
+import_map = "./functions/deno.json"
+entrypoint = "./functions/create-customer-subscription-order/index.ts"
+
+[functions.verify-customer-subscription-payment]
+enabled = true
+verify_jwt = true
+import_map = "./functions/deno.json"
+entrypoint = "./functions/verify-customer-subscription-payment/index.ts"
+
+[functions.create-customer-booking-order]
+enabled = true
+verify_jwt = true
+import_map = "./functions/deno.json"
+entrypoint = "./functions/create-customer-booking-order/index.ts"
+
+[functions.verify-customer-booking-payment]
+enabled = true
+verify_jwt = true
+import_map = "./functions/deno.json"
+entrypoint = "./functions/verify-customer-booking-payment/index.ts"
+
+[functions.razorpay-webhook]
+enabled = true
+verify_jwt = false
+import_map = "./functions/deno.json"
+entrypoint = "./functions/razorpay-webhook/index.ts"
+
 [functions.delete-auth-user-on-account-deletion]
 enabled = true
 verify_jwt = true

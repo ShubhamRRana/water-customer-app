@@ -277,7 +277,7 @@ graph TB
     W --> AC
     AT --> SY
     
-    SU --> PP
+    SU --> RZ
     X --> AF
     Y --> AF
     SY --> AF
@@ -832,8 +832,9 @@ Add `subscriptions` / `payment_transactions` to your publication if the client s
 ### Version 2.0 (Planned Features)
 
 - [x] **Razorpay foundation (Phase 0)** — SDK, types, checkout wrapper; see `docs/RAZORPAY_CUSTOMER_REPO_IMPLEMENTATION_PROMPT.md`
-- [ ] **Razorpay subscription + booking checkout (Phases 1–3)** — Edge Functions, PaySubscription/PayBooking screens
-- [ ] **Re-enable subscription gating** — Enable `FEATURE_FLAGS.enableSubscriptionGating` when Razorpay subscription flow is live
+- [x] **Razorpay Edge Functions (Phase 1)** — Six functions in repo; deploy + webhook secrets pending
+- [ ] **Razorpay subscription + booking checkout (Phases 2–3)** — PaySubscription/PayBooking screens
+- [ ] **Re-enable subscription gating** — Enable `FEATURE_FLAGS.enableSubscriptionGating` when Razorpay flow is live
 - [ ] **Broader payment UX**
   - Full payment history and receipts in-app
   - Refund management and additional gateways if product requires
