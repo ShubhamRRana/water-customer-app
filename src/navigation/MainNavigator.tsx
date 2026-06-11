@@ -16,7 +16,6 @@ import SubscriptionComingSoonScreen from '../screens/society/SubscriptionComingS
 import SettlePaymentPlaceholderScreen from '../screens/shared/SettlePaymentPlaceholderScreen';
 import SubscriptionPlansScreen from '../screens/customer/SubscriptionPlansScreen';
 import SubscriptionStatusScreen from '../screens/customer/SubscriptionStatusScreen';
-import PaymentScreen from '../screens/customer/PaymentScreen';
 import PaymentHistoryScreen from '../screens/customer/PaymentHistoryScreen';
 import ChangePasswordScreen from '../screens/customer/ChangePasswordScreen';
 import ErrorBoundary from '../components/common/ErrorBoundary';
@@ -59,7 +58,6 @@ const MainNavigator: React.FC = () => {
         <Stack.Screen name="PastOrders" component={PastOrdersScreen} />
         <Stack.Screen name="SubscriptionPlans" component={SubscriptionPlansScreen} />
         <Stack.Screen name="SubscriptionStatus" component={SubscriptionStatusScreen} />
-        <Stack.Screen name="Payment" component={PaymentScreen} />
         <Stack.Screen name="PaymentHistory" component={PaymentHistoryScreen} />
       </Stack.Navigator>
     </ErrorBoundary>

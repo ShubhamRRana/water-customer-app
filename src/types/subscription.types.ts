@@ -1,5 +1,5 @@
 /**
- * Subscription billing and PhonePe payment types (align with migrations 024/025).
+ * Subscription billing and payment transaction types (align with migrations 024/025).
  */
 
 export type SubscriptionStatus =

@@ -37,12 +37,6 @@ export type AppStackParamList = {
   PastOrders: undefined;
   SubscriptionPlans: undefined;
   SubscriptionStatus: undefined;
-  Payment: {
-    orderId: string;
-    planName: string;
-    amount: number;
-    subscriptionId: string;
-  };
   PaymentHistory: undefined;
 };
 

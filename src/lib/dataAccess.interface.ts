@@ -124,7 +124,7 @@ export interface IExpenseDataAccess {
 }
 
 /**
- * Subscription plans, user subscriptions, and gateway payment transactions (PhonePe).
+ * Subscription plans, user subscriptions, and gateway payment transactions (Razorpay).
  */
 export interface ISubscriptionDataAccess {
   getSubscriptionPlans(): Promise<SubscriptionPlan[]>;

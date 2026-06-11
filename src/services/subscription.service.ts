@@ -9,7 +9,6 @@ import type {
   UpdatePaymentTransactionData,
 } from '../types/subscription.types';
 import { handleAsyncOperationWithRethrow } from '../utils/errorHandler';
-import { PhonePeService } from './phonepe.service';
 
 /**
  * Subscription lifecycle and plan queries for the customer app.
@@ -51,13 +50,15 @@ export class SubscriptionService {
   }
 
   /**
-   * Confirms payment with PhonePe via Edge Function (`verify-payment`), which activates the subscription when successful.
+   * Activates subscription after Razorpay payment verify (Phase 2 — `verify-customer-subscription-payment`).
    */
   static async activateSubscription(
     _subscriptionId: string,
-    gatewayOrderId: string
+    _gatewayOrderId: string
   ): Promise<void> {
-    await PhonePeService.verifyTransaction(gatewayOrderId);
+    throw new Error(
+      'Subscription activation via Razorpay verify is not wired yet. Complete Phase 2 implementation.'
+    );
   }
 
   static async cancelSubscription(subscriptionId: string, reason: string): Promise<void> {

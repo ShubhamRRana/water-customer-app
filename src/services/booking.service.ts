@@ -29,8 +29,7 @@ export class BookingService {
    * Create a new booking in local storage
    * Note: bookingData.customerId, agencyId, driverId should be id values
    *
-   * Subscription gating is temporarily disabled until PhonePe integration is completed.
-   * Subscription gating will be enabled again after PhonePe Integration is completed.
+   * Subscription gating is controlled by FEATURE_FLAGS.enableSubscriptionGating (Razorpay subscription flow).
    */
   static async createBooking(
     bookingData: Omit<Booking, 'id' | 'createdAt' | 'updatedAt'>,

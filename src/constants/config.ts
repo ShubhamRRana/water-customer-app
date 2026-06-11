@@ -249,6 +249,10 @@ export const ERROR_MESSAGES = {
     failed: 'Payment failed. Please try again.',
     cancelled: 'Payment was cancelled.',
     networkError: 'Network error during payment.',
+    razorpayNotConfigured: 'Payment is not configured. Please contact support.',
+    razorpayCheckoutFailed: 'Payment could not be completed. Please try again.',
+    razorpayCancelled: 'Payment was cancelled.',
+    razorpayNetworkError: 'Network error during payment. Check your connection and try again.',
   },
   general: {
     unexpected: 'An unexpected error occurred.',
@@ -353,7 +357,8 @@ export const DATE_CONFIG = {
 
 // Feature Flags
 export const FEATURE_FLAGS = {
-  enableOnlinePayment: false, // Disabled in MVP
+  enableRazorpaySubscription: false, // Flow A — when false, subscription checkout is blocked
+  enableOnlinePayment: false, // Flow B booking checkout — disabled in MVP
   enablePushNotifications: true, // ✅ Enabled - Phase 3 Item 2 Complete
   enableRealTimeTracking: true, // ✅ Enabled - Phase 3 Item 2 Complete
   enableDriverSelfRegistration: false, // Disabled in MVP

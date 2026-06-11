@@ -30,6 +30,8 @@ module.exports = {
       supportsTablet: true,
       infoPlist: {
         CFBundleDisplayName: 'WTC',
+        // UPI app URL schemes for Razorpay checkout deep links (not PhonePe integration)
+        LSApplicationQueriesSchemes: ['tez', 'phonepe', 'paytmmp'],
       },
     },
     android: {
@@ -51,6 +53,7 @@ module.exports = {
     extra: {
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      razorpayKeyId: process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID,
       passwordResetRedirectUrl: process.env.EXPO_PUBLIC_PASSWORD_RESET_REDIRECT_URL,
       eas: {
         projectId: 'd87af120-6b69-4668-908e-002561c55444',

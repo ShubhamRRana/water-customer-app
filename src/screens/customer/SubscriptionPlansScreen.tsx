@@ -17,7 +17,7 @@ import Button from '../../components/common/Button';
 import { useAuthStore } from '../../store/authStore';
 import { SubscriptionService } from '../../services/subscription.service';
 import type { SubscriptionPlan } from '../../types/subscription.types';
-import { UI_CONFIG, PRICING_CONFIG } from '../../constants/config';
+import { UI_CONFIG, PRICING_CONFIG, FEATURE_FLAGS } from '../../constants/config';
 import type { ThemeColors } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { errorLogger } from '../../utils/errorLogger';
@@ -31,11 +31,6 @@ interface Props {
   navigation: Nav;
 }
 
-function buildOrderId(userId: string): string {
-  const compact = userId.replace(/-/g, '').slice(0, 12);
-  return `WC${compact}${Date.now().toString(36)}`.toUpperCase().slice(0, 64);
-}
-
 const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
   const colors = useThemeColors();
   const styles = useMemo(() => createSubscriptionPlansStyles(colors), [colors]);
@@ -43,7 +38,6 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [checkoutPlanId, setCheckoutPlanId] = useState<string | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
 
   const load = useCallback(async () => {
@@ -72,37 +66,19 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
     return m?.price ?? null;
   }, [plans]);
 
-  const handleSubscribe = async (plan: SubscriptionPlan) => {
+  const handleSubscribe = (plan: SubscriptionPlan) => {
     if (!user?.id) return;
-    setCheckoutPlanId(plan.id);
-    try {
-      const orderId = buildOrderId(user.id);
-      const sub = await SubscriptionService.createSubscription({
-        userId: user.id,
-        planId: plan.id,
-        status: 'pending',
-      });
-      await SubscriptionService.createPaymentTransaction({
-        userId: user.id,
-        subscriptionId: sub.id,
-        amount: plan.price,
-        currency: plan.currency || 'INR',
-        gatewayOrderId: orderId,
-        status: 'pending',
-        paymentGateway: 'phonepe',
-      });
-      navigation.navigate('Payment', {
-        orderId,
-        planName: plan.name,
-        amount: plan.price,
-        subscriptionId: sub.id,
-      });
-    } catch (e) {
-      errorLogger.high('Start subscription checkout failed', e, { userId: user.id, planId: plan.id });
-      Alert.alert('Error', 'Could not start checkout. Please try again.');
-    } finally {
-      setCheckoutPlanId(null);
+    if (!FEATURE_FLAGS.enableRazorpaySubscription) {
+      Alert.alert(
+        'Coming soon',
+        'Online subscription payment via Razorpay will be available in a future update.'
+      );
+      return;
     }
+    Alert.alert(
+      'Not available yet',
+      'Razorpay subscription checkout is not wired yet. Complete Phase 2 implementation.'
+    );
   };
 
   const savingsLabel = (plan: SubscriptionPlan): string | null => {
@@ -146,12 +122,11 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
         >
           <Typography variant="body" style={[styles.intro, { color: colors.textSecondary }]}>
-            Choose a plan to keep booking water deliveries. Secure payment via PhonePe.
+            Choose a plan to keep booking water deliveries. Secure payment via Razorpay.
           </Typography>
 
           {plans.map((plan) => {
             const saving = savingsLabel(plan);
-            const busy = checkoutPlanId === plan.id;
             return (
               <Card key={plan.id} padding="large" style={styles.card}>
                 <View style={styles.cardTop}>
@@ -183,10 +158,8 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
                   ))}
                 </View>
                 <Button
-                  title={busy ? 'Starting…' : 'Subscribe now'}
+                  title="Subscribe now"
                   onPress={() => handleSubscribe(plan)}
-                  loading={busy}
-                  disabled={busy}
                 />
               </Card>
             );

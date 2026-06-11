@@ -4,7 +4,7 @@ A **customer-facing** mobile app for on-demand water tanker delivery, built with
 
 This client only mounts **Auth** and **Customer** flows (`App.tsx`). Users restored as non-customer (e.g. staff) are sent back to sign-in.
 
-Customers can sign in as **individual** or **society** accounts (same customer role; account kind differs). **Active subscriptions** are required to create bookings and society trips; plan purchase and renewals use **PhonePe** via Supabase Edge Functions (see [Subscription & Payment Implementation Guide](./SUBSCRIPTION_IMPLEMENTATION_GUIDE.md)).
+Customers can sign in as **individual** or **society** accounts (same customer role; account kind differs). **Active subscriptions** are required to create bookings and society trips; plan purchase and renewals use **Razorpay** via Supabase Edge Functions (see [Razorpay implementation guide](./docs/RAZORPAY_CUSTOMER_REPO_IMPLEMENTATION_PROMPT.md)).
 
 ## Table of Contents
 
@@ -31,7 +31,7 @@ Customers can sign in as **individual** or **society** accounts (same customer r
 - **Order History**: View past and current orders
 - **Price Calculation**: Automatic distance-based pricing with Indian numbering format
 - **Scheduled Deliveries**: Schedule deliveries for future dates
-- **Subscriptions**: Browse plans, subscribe or renew via PhonePe checkout, and view subscription status
+- **Subscriptions**: Browse plans, subscribe or renew via Razorpay checkout, and view subscription status
 - **Society login & trips**: Society-specific login flow; record and manage society trips (subscription rules apply; see migrations and services)
 - **Delete Account**: Permanently delete account from the Profile screen (with confirmation); removes all customer data and bookings, then logs out
 
@@ -230,7 +230,6 @@ graph TB
         C --> M[ProfileScreen]
         C --> N[SubscriptionPlansScreen]
         C --> NS[SubscriptionStatusScreen]
-        C --> P[PaymentScreen]
         C --> AT[AddTripScreen]
         C --> TD[TripDetailsScreen]
     end
@@ -247,7 +246,7 @@ graph TB
         Y[BookingService]
         SY[SocietyTripService]
         SU[SubscriptionService]
-        PP[PhonePeService]
+        RZ[razorpayCheckout.service]
         Z[UserService]
         AA[PaymentService]
         AB[LocationService]
@@ -494,7 +493,7 @@ Also configure (see `.env.example` for comments and optional keys):
 - `EXPO_PUBLIC_PASSWORD_RESET_REDIRECT_URL` — where password-reset links should land
 - `SUPABASE_SERVICE_ROLE_KEY` — **server-side and migration scripts only**; must not appear in client bundles (`npm run secrets:check` helps guard this)
 
-PhonePe subscription checkout uses **Supabase Edge Function secrets** (not `EXPO_PUBLIC_*`). Configure those in the Supabase Dashboard and follow [SUBSCRIPTION_IMPLEMENTATION_GUIDE.md](./SUBSCRIPTION_IMPLEMENTATION_GUIDE.md).
+Razorpay subscription and booking checkout use **Supabase Edge Function secrets** (not `EXPO_PUBLIC_*`). Configure those in the Supabase Dashboard and follow [docs/RAZORPAY_CUSTOMER_REPO_IMPLEMENTATION_PROMPT.md](./docs/RAZORPAY_CUSTOMER_REPO_IMPLEMENTATION_PROMPT.md). Client uses `EXPO_PUBLIC_RAZORPAY_KEY_ID` only.
 
 Optional: `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` for enhanced map features.
 
@@ -512,12 +511,12 @@ Apply SQL migrations from [`migrations/`](./migrations/) to your Supabase projec
 - `bank_accounts` — Bank account information
 - `tanker_sizes` — Tanker size configurations
 - `pricing` — Pricing configuration
-- `subscription_plans`, `subscriptions`, `payment_transactions` — Subscription and PhonePe-related payment records ([`024_create_subscription_tables.sql`](./migrations/024_create_subscription_tables.sql) and follow-ups)
+- `subscription_plans`, `subscriptions`, `payment_transactions` — Subscription and Razorpay payment records ([`024_create_subscription_tables.sql`](./migrations/024_create_subscription_tables.sql) and follow-ups)
 - `society_trips` (and related society migrations) — Society trip flows
 
-Apply every file in [`migrations/`](./migrations/) in **lexicographic (filename) order** (some numeric prefixes have more than one file, e.g. two `026_*` migrations—run both). Later files such as [`027_payment_transactions_user_insert.sql`](./migrations/027_payment_transactions_user_insert.sql) through [`029_payment_gateway_backfill_paytm_to_phonepe.sql`](./migrations/029_payment_gateway_backfill_paytm_to_phonepe.sql) adjust payment metadata and RLS for PhonePe.
+Apply every file in [`migrations/`](./migrations/) in **lexicographic (filename) order** (some numeric prefixes have more than one file, e.g. two `026_*` migrations—run both). Later payment migrations adjust gateway metadata and RLS for online payments.
 
-**Important**: Row Level Security (RLS) is enabled on all tables with comprehensive policies. Subscription gating for booking and society trip creation is **temporarily disabled** until PhonePe integration is completed (it will be enabled again after PhonePe Integration is completed). Configure realtime publications for:
+**Important**: Row Level Security (RLS) is enabled on all tables with comprehensive policies. Subscription gating for booking and society trip creation is controlled by `FEATURE_FLAGS.enableSubscriptionGating` (enable when Razorpay subscription flow is live). Configure realtime publications for:
 - `bookings`
 - `notifications`
 - `users`
@@ -558,7 +557,7 @@ Tunnel mode (e.g. testing on a physical device off LAN): `npm run start:tunnel`
 | Document | Purpose |
 |----------|---------|
 | [docs/CUSTOMER_APP_SPLIT.md](./docs/CUSTOMER_APP_SPLIT.md) | How this customer-only repo relates to staff apps and the shared backend |
-| [SUBSCRIPTION_IMPLEMENTATION_GUIDE.md](./SUBSCRIPTION_IMPLEMENTATION_GUIDE.md) | Subscription model, PhonePe / Edge Functions, DB migrations for plans and payments |
+| [docs/RAZORPAY_CUSTOMER_REPO_IMPLEMENTATION_PROMPT.md](./docs/RAZORPAY_CUSTOMER_REPO_IMPLEMENTATION_PROMPT.md) | Razorpay subscription + booking flows, Edge Functions, phased implementation |
 | [docs/SUBSCRIPTION_GATING_REVIEW.md](./docs/SUBSCRIPTION_GATING_REVIEW.md) | Engineering notes on subscription gating for bookings and society trips |
 | [UI_REDESIGN_SPEC.md](./UI_REDESIGN_SPEC.md) | UI redesign notes and specifications |
 | [docs/CUSTOMER_PROFILE.md](./docs/CUSTOMER_PROFILE.md) | Inventory of customer flows, files, and schema touchpoints |
@@ -576,7 +575,7 @@ Database changes are versioned under [`migrations/`](./migrations/); apply them 
 | `npm run lint` | ESLint (`expo lint`) |
 | `npm test` | Full Jest suite |
 | `npm run test:release` | Focused tests (booking + society trip services; used in CI-style checks) |
-| `npm run secrets:check` | Fails if forbidden patterns (e.g. service role, PhonePe client secret) appear under `src/` |
+| `npm run secrets:check` | Fails if forbidden patterns (e.g. service role, Razorpay key secret) appear under `src/` |
 | `npm run prebuild:check` | `secrets:check` + `lint` + `test:release` — recommended before release builds |
 
 ## Project Structure
@@ -587,7 +586,7 @@ water-customer-app/
 ├── index.ts                # Expo entry (registers App)
 ├── eas.json                # EAS Build profiles (use Dashboard secrets for production keys)
 ├── migrations/             # Supabase SQL migrations (apply in lexicographic order)
-├── supabase/functions/     # Edge Functions (PhonePe: initiate-payment, payment-callback, verify-payment; delete-auth-user-on-account-deletion)
+├── supabase/functions/     # Edge Functions (Razorpay — Phase 1+; delete-auth-user-on-account-deletion)
 ├── docs/                   # Operational and product notes (see Additional documentation)
 ├── scripts/                # Utilities (e.g. verify-no-client-secrets.mjs, seed-test-data.ts)
 ├── src/
@@ -609,7 +608,7 @@ water-customer-app/
 │   │   ├── booking.service.ts
 │   │   ├── subscription.service.ts
 │   │   ├── societyTrip.service.ts
-│   │   ├── phonepe.service.ts
+│   │   ├── razorpayCheckout.service.ts
 │   │   ├── user.service.ts
 │   │   ├── payment.service.ts
 │   │   ├── location.service.ts
@@ -685,7 +684,7 @@ The following describes the **shared database** used by this app and other clien
 8. **bank_accounts**: Bank account details
 9. **tanker_sizes**: Available tanker sizes
 10. **pricing**: Distance-based pricing configuration
-11. **subscription_plans**, **subscriptions**, **payment_transactions**: Subscription catalog, user subscriptions, and payment rows (PhonePe)
+11. **subscription_plans**, **subscriptions**, **payment_transactions**: Subscription catalog, user subscriptions, and payment rows (Razorpay)
 12. **society_trips** (and related columns/policies from migrations): Society trip records where applicable
 
 ### Row Level Security (RLS)
@@ -832,11 +831,12 @@ Add `subscriptions` / `payment_transactions` to your publication if the client s
 
 ### Version 2.0 (Planned Features)
 
-- [x] **Subscription checkout (PhonePe)** — Implemented for plan purchase/renewal via Supabase Edge Functions; see `SUBSCRIPTION_IMPLEMENTATION_GUIDE.md`
-- [ ] **Re-enable subscription gating (future enhancement)** — Re-enable subscription gating for bookings and society trips after PhonePe integration is completed
+- [x] **Razorpay foundation (Phase 0)** — SDK, types, checkout wrapper; see `docs/RAZORPAY_CUSTOMER_REPO_IMPLEMENTATION_PROMPT.md`
+- [ ] **Razorpay subscription + booking checkout (Phases 1–3)** — Edge Functions, PaySubscription/PayBooking screens
+- [ ] **Re-enable subscription gating** — Enable `FEATURE_FLAGS.enableSubscriptionGating` when Razorpay subscription flow is live
 - [ ] **Broader payment UX**
   - Full payment history and receipts in-app
-  - Refund management and additional gateways (e.g. Razorpay/Stripe) if product requires
+  - Refund management and additional gateways if product requires
 
 - [ ] **Push Notifications**
   - Real-time order updates

@@ -191,16 +191,6 @@ jest.mock('../../screens/customer/SubscriptionStatusScreen', () => {
   );
 });
 
-jest.mock('../../screens/customer/PaymentScreen', () => {
-  const React = require('react');
-  const { View, Text } = require('react-native');
-  return () => (
-    <View testID="PaymentScreen">
-      <Text>PaymentScreen</Text>
-    </View>
-  );
-});
-
 jest.mock('../../screens/customer/PaymentHistoryScreen', () => {
   const React = require('react');
   const { View, Text } = require('react-native');
