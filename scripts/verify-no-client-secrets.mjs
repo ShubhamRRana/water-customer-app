@@ -12,7 +12,8 @@ const srcDir = path.join(root, 'src');
 
 const FORBIDDEN = [
   { re: /SUPABASE_SERVICE_ROLE_KEY/gi, hint: 'Service role must not appear in app source' },
-  { re: /PHONEPE_CLIENT_SECRET/gi, hint: 'PhonePe secrets belong in Edge Function env only' },
+  { re: /RAZORPAY_KEY_SECRET/gi, hint: 'Razorpay key secret belongs in Edge Function env only' },
+  { re: /RAZORPAY_WEBHOOK_SECRET/gi, hint: 'Razorpay webhook secret belongs in Edge Function env only' },
   { re: /client_secret\s*[:=]/gi, hint: 'OAuth client_secret must not be in client bundle' },
 ];
 

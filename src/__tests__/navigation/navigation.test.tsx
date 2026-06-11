@@ -47,8 +47,12 @@ jest.mock('@react-navigation/bottom-tabs', () => {
 });
 
 jest.mock('../../store/authStore', () => ({
-  useAuthStore: (selector: (state: { showSocietySubscriptionIntro: boolean }) => unknown) =>
-    selector({ showSocietySubscriptionIntro: false }),
+  useAuthStore: (
+    selector: (state: {
+      showSocietySubscriptionIntro: boolean;
+      needsPasswordReset: boolean;
+    }) => unknown
+  ) => selector({ showSocietySubscriptionIntro: false, needsPasswordReset: false }),
 }));
 
 import React from 'react';
@@ -77,6 +81,36 @@ jest.mock('../../screens/auth/RegisterScreen', () => {
   const React = require('react');
   const { View, Text } = require('react-native');
   return () => <View testID="RegisterScreen"><Text>RegisterScreen</Text></View>;
+});
+
+jest.mock('../../screens/auth/RoleSelectionScreen', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return () => <View testID="RoleSelectionScreen"><Text>RoleSelectionScreen</Text></View>;
+});
+
+jest.mock('../../screens/auth/VerifyEmailScreen', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return () => <View testID="VerifyEmailScreen"><Text>VerifyEmailScreen</Text></View>;
+});
+
+jest.mock('../../screens/auth/ForgotPasswordScreen', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return () => <View testID="ForgotPasswordScreen"><Text>ForgotPasswordScreen</Text></View>;
+});
+
+jest.mock('../../screens/auth/SetNewPasswordScreen', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return () => <View testID="SetNewPasswordScreen"><Text>SetNewPasswordScreen</Text></View>;
+});
+
+jest.mock('../../screens/customer/ChangePasswordScreen', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return () => <View testID="ChangePasswordScreen"><Text>ChangePasswordScreen</Text></View>;
 });
 
 jest.mock('../../screens/customer/CustomerHomeScreen', () => {
@@ -153,16 +187,6 @@ jest.mock('../../screens/customer/SubscriptionStatusScreen', () => {
   return () => (
     <View testID="SubscriptionStatusScreen">
       <Text>SubscriptionStatusScreen</Text>
-    </View>
-  );
-});
-
-jest.mock('../../screens/customer/PaymentScreen', () => {
-  const React = require('react');
-  const { View, Text } = require('react-native');
-  return () => (
-    <View testID="PaymentScreen">
-      <Text>PaymentScreen</Text>
     </View>
   );
 });

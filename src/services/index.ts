@@ -10,5 +10,9 @@ export { UserService } from './user.service';
 export { VehicleService } from './vehicle.service';
 export { StorageService } from './storage.service';
 export { SubscriptionService } from './subscription.service';
-export { PhonePeService } from './phonepe.service';
-export type { VerifyPaymentResponse } from './phonepe.service';
+export { getRazorpayKeyId, openCheckout } from './razorpayCheckout.service';
+export type {
+  RazorpayCheckoutResult,
+  RazorpayVerifyPayload,
+  PaymentFlow,
+} from '../types/razorpay.types';

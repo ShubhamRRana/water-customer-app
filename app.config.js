@@ -10,6 +10,7 @@ module.exports = {
   expo: {
     name: 'WTC',
     slug: 'water-tanker-app',
+    scheme: 'wtccustomer',
     version: '1.0.0',
     orientation: 'default',
     icon: './assets/icon.png',
@@ -27,9 +28,15 @@ module.exports = {
     ios: {
       bundleIdentifier: 'in.tankerhub.admin',
       supportsTablet: true,
+      infoPlist: {
+        CFBundleDisplayName: 'WTC',
+        // UPI app URL schemes for Razorpay checkout deep links (not PhonePe integration)
+        LSApplicationQueriesSchemes: ['tez', 'phonepe', 'paytmmp'],
+      },
     },
     android: {
       package: 'in.tankerhub.admin',
+      label: 'WTC',
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#78B4E0',
@@ -46,6 +53,8 @@ module.exports = {
     extra: {
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      razorpayKeyId: process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID,
+      passwordResetRedirectUrl: process.env.EXPO_PUBLIC_PASSWORD_RESET_REDIRECT_URL,
       eas: {
         projectId: 'd87af120-6b69-4668-908e-002561c55444',
       },

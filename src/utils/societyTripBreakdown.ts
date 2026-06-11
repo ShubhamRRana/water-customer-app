@@ -28,6 +28,31 @@ export type AgencyTripBreakdownRow = {
   pendingCount: number;
 };
 
+export const SOCIETY_TRIP_DELETE_WINDOW_MS = 60 * 60 * 1000;
+
+export function isTripPaymentPending(
+  trip: SocietyTrip,
+  completedPaymentPeriods: CompletedPaymentPeriod[],
+  period: PeriodContext,
+): boolean {
+  const key = societyAgencyPaymentPeriodKey({
+    periodType: period.periodType,
+    year: period.year,
+    month: period.month,
+    agencyName: trip.agencyName,
+  });
+  const settlement = completedPaymentPeriods.find((p) => p.periodKey === key);
+  if (!settlement) return true;
+  return trip.createdAt > settlement.completedAt;
+}
+
+export function isTripWithinDeleteWindow(
+  trip: SocietyTrip,
+  now: Date = new Date(),
+): boolean {
+  return now.getTime() - trip.createdAt.getTime() < SOCIETY_TRIP_DELETE_WINDOW_MS;
+}
+
 export function filterTripsByPeriod(
   list: SocietyTrip[],
   periodType: 'month' | 'year',

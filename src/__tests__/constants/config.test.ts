@@ -489,6 +489,7 @@ describe('Configuration Constants', () => {
 
   describe('FEATURE_FLAGS', () => {
     it('should have all required feature flags', () => {
+      expect(FEATURE_FLAGS).toHaveProperty('enableRazorpaySubscription');
       expect(FEATURE_FLAGS).toHaveProperty('enableOnlinePayment');
       expect(FEATURE_FLAGS).toHaveProperty('enablePushNotifications');
       expect(FEATURE_FLAGS).toHaveProperty('enableRealTimeTracking');

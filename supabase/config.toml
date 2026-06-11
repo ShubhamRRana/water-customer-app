@@ -358,24 +358,6 @@ s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
 
-[functions.initiate-payment]
-enabled = true
-verify_jwt = true
-import_map = "./functions/deno.json"
-entrypoint = "./functions/initiate-payment/index.ts"
-
-[functions.payment-callback]
-enabled = true
-verify_jwt = false
-import_map = "./functions/deno.json"
-entrypoint = "./functions/payment-callback/index.ts"
-
-[functions.verify-payment]
-enabled = true
-verify_jwt = true
-import_map = "./functions/deno.json"
-entrypoint = "./functions/verify-payment/index.ts"
-
 [functions.delete-auth-user-on-account-deletion]
 enabled = true
 verify_jwt = true

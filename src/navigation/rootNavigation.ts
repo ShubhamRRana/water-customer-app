@@ -26,6 +26,7 @@ export type AppStackParamList = {
   SubscriptionComingSoon: undefined;
   Orders: undefined;
   Profile: undefined;
+  ChangePassword: undefined;
   Booking: undefined;
   AddTrip: undefined;
   TripDetails: undefined;
@@ -36,12 +37,6 @@ export type AppStackParamList = {
   PastOrders: undefined;
   SubscriptionPlans: undefined;
   SubscriptionStatus: undefined;
-  Payment: {
-    orderId: string;
-    planName: string;
-    amount: number;
-    subscriptionId: string;
-  };
   PaymentHistory: undefined;
 };
 

@@ -67,6 +67,15 @@ function createSocietyLoginStyles(colors: ThemeColors) {
       fontWeight: '600',
       textDecorationLine: 'underline',
     },
+    forgotPasswordRow: {
+      alignSelf: 'flex-end',
+      marginBottom: 4,
+    },
+    forgotPasswordText: {
+      fontSize: 14,
+      color: colors.accent,
+      fontWeight: '600',
+    },
   });
 }
 
@@ -167,7 +176,6 @@ const SocietyLoginScreen: React.FC<Props> = ({ navigation }) => {
       subtitle="Use your society account to coordinate water orders for your community"
       backLabel="Account type"
       onBack={() => navigation.navigate('RoleSelection')}
-      bottomNotice="Reset password is not available yet. Please keep your password safe."
     >
       <Card padding="large" style={styles.formCard}>
         <View style={styles.form}>
@@ -214,6 +222,15 @@ const SocietyLoginScreen: React.FC<Props> = ({ navigation }) => {
                 {errors.password}
               </Typography>
             ) : null}
+            <TouchableOpacity
+              style={styles.forgotPasswordRow}
+              onPress={() => navigation.navigate('ForgotPassword', { accountKind: 'society' })}
+              activeOpacity={0.7}
+            >
+              <Typography variant="caption" style={styles.forgotPasswordText}>
+                Forgot password?
+              </Typography>
+            </TouchableOpacity>
           </View>
 
           <Button

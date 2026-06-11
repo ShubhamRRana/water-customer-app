@@ -45,3 +45,6 @@ yarn-error.*
 # build error logs
 eas_error.txt
 *.error.txt
+
+# documentation
+docs/

@@ -7,8 +7,48 @@ import { supabase } from '../lib/supabaseClient';
 import { handleError } from '../utils/errorHandler';
 import { ErrorSeverity } from '../utils/errorLogger';
 import { isInvalidRefreshTokenError } from '../utils/authErrors';
+import { parseRecoveryTokensFromUrl } from '../utils/recoveryLink';
 
 const CUSTOMER_ACCOUNT_KIND_KEY = '@water_customer_account_kind';
+
+let linkingSubscription: { remove: () => void } | null = null;
+
+async function applyRecoverySessionFromUrl(
+  url: string,
+  set: (partial: Partial<AuthState>) => void,
+  subscribeToAuthChanges: () => void
+): Promise<boolean> {
+  const tokens = parseRecoveryTokensFromUrl(url);
+  if (!tokens) return false;
+
+  const { error } = await supabase.auth.setSession({
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token,
+  });
+  if (error) return false;
+
+  set({
+    user: null,
+    isAuthenticated: false,
+    needsPasswordReset: true,
+    isLoading: false,
+    showSocietySubscriptionIntro: false,
+    showPostRegisterWelcome: false,
+  });
+  subscribeToAuthChanges();
+  return true;
+}
+
+function subscribeToRecoveryDeepLinks(
+  set: (partial: Partial<AuthState>) => void,
+  get: () => AuthState
+): void {
+  if (linkingSubscription) return;
+
+  linkingSubscription = Linking.addEventListener('url', ({ url }) => {
+    void applyRecoverySessionFromUrl(url, set, () => get().subscribeToAuthChanges());
+  });
+}
 
 async function readStoredCustomerAccountKind(): Promise<CustomerAccountKind> {
   try {
@@ -75,6 +115,9 @@ interface AuthState {
   dismissSocietySubscriptionIntro: () => void;
   dismissPostRegisterWelcome: () => void;
   clearNeedsPasswordReset: () => void;
+  requestPasswordReset: (email: string) => Promise<{ success: boolean; error?: string }>;
+  updatePassword: (newPassword: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   loginWithRole: (email: string, role: UserRole) => Promise<void>;
   loginWithCredentialsAndRole: (
@@ -125,6 +168,60 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   clearNeedsPasswordReset: () => set({ needsPasswordReset: false }),
 
+  requestPasswordReset: async (email: string) => {
+    const result = await AuthService.requestPasswordReset(email);
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to send reset email');
+    }
+    return { success: true };
+  },
+
+  updatePassword: async (newPassword: string) => {
+    set({ isLoading: true });
+    try {
+      const result = await AuthService.updatePassword(newPassword);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update password');
+      }
+      await AuthService.logout();
+      set({
+        user: null,
+        isAuthenticated: false,
+        needsPasswordReset: false,
+        isLoading: false,
+        customerAccountKind: null,
+        showSocietySubscriptionIntro: false,
+        showPostRegisterWelcome: false,
+      });
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    const { user } = get();
+    if (!user?.email) {
+      throw new Error('You must be signed in to change your password.');
+    }
+    set({ isLoading: true });
+    try {
+      const verifyResult = await AuthService.verifyCurrentPassword(
+        user.email,
+        currentPassword
+      );
+      if (!verifyResult.success) {
+        throw new Error(verifyResult.error || 'Current password is incorrect.');
+      }
+      const updateResult = await AuthService.updatePassword(newPassword, user.id);
+      if (!updateResult.success) {
+        throw new Error(updateResult.error || 'Failed to update password.');
+      }
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
   initializeAuth: async () => {
     set({ isLoading: true });
     try {
@@ -164,33 +261,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         try {
           const url = await Linking.getInitialURL();
           if (url) {
-            const hashIndex = url.indexOf('#');
-            if (hashIndex !== -1) {
-              const fragment = url.slice(hashIndex + 1);
-              const params = fragment.split('&').reduce<Record<string, string>>((acc, pair) => {
-                const [k, v] = pair.split('=');
-                if (k && v) acc[decodeURIComponent(k)] = decodeURIComponent(v);
-                return acc;
-              }, {});
-              if (params.access_token && params.refresh_token && params.type === 'recovery') {
-                const { error } = await supabase.auth.setSession({
-                  access_token: params.access_token,
-                  refresh_token: params.refresh_token,
-                });
-                if (!error) {
-                  set({
-                    user: null,
-                    isAuthenticated: false,
-                    needsPasswordReset: true,
-                    isLoading: false,
-                    showSocietySubscriptionIntro: false,
-                    showPostRegisterWelcome: false,
-                  });
-                  get().subscribeToAuthChanges();
-                  return;
-                }
-              }
-            }
+            const handled = await applyRecoverySessionFromUrl(
+              url,
+              set,
+              () => get().subscribeToAuthChanges()
+            );
+            if (handled) return;
           }
         } catch (_) {
           // Ignore URL parse errors
@@ -528,6 +604,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   subscribeToAuthChanges: () => {
+    subscribeToRecoveryDeepLinks(set, get);
+
     const { unsubscribeAuth } = get();
     // Clean up existing subscription if any
     if (unsubscribeAuth) {

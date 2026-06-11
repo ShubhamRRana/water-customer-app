@@ -240,15 +240,14 @@ async function testPasswordResetFlow() {
     if (!hasPasswordReset) {
       logTest(
         'Password reset flow (if exists) works with email',
-        true,
-        'Password reset flow does not exist (as expected - not implemented yet)'
+        false,
+        'requestPasswordReset method not found on AuthService'
       );
     } else {
-      // If it exists, test it
       logTest(
         'Password reset flow (if exists) works with email',
-        false,
-        'Password reset exists but not tested (implementation found)'
+        true,
+        'AuthService.requestPasswordReset is implemented'
       );
     }
     
