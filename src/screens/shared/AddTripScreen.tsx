@@ -33,6 +33,11 @@ import { SocietyTripService } from '../../services/societyTrip.service';
 import { createScheduledDate as createScheduledDateFromUtils } from '../../utils/dateUtils';
 import { isAdminUser, isCustomerUser } from '../../types';
 import { handleError } from '../../utils/errorHandler';
+import {
+  ensureActiveSubscription,
+  isSubscriptionError,
+  showSubscriptionRequiredAlert,
+} from '../../utils/subscriptionGating';
 
 const MAX_TRIP_PHOTOS = 10;
 
@@ -326,6 +331,13 @@ const AddTripScreen: React.FC = () => {
       return;
     }
 
+    try {
+      await ensureActiveSubscription(user.id);
+    } catch {
+      showSubscriptionRequiredAlert(navigation);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const photoUrls = await Promise.all(
@@ -345,6 +357,10 @@ const AddTripScreen: React.FC = () => {
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
+      if (isSubscriptionError(error)) {
+        showSubscriptionRequiredAlert(navigation);
+        return;
+      }
       handleError(error, {
         context: { operation: 'addTripSubmit', userId: user.id },
         userFacing: true,

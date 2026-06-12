@@ -32,6 +32,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
 import { formatDateOnly } from '../../utils/dateUtils';
 import { invalidateAuthProfileQueries, useAuthProfileQuery } from '../../hooks/queries';
+import SubscriptionExpiryBanner from '../../components/customer/SubscriptionExpiryBanner';
 
 type ProfileScreenNavigationProp = StackNavigationProp<AppStackParamList, 'Profile'>;
 
@@ -349,6 +350,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             </Animated.View>
           </LinearGradient>
 
+          <SubscriptionExpiryBanner userId={displayUser?.id} navigation={navigation} />
+
           {/* Profile Info Card */}
           <Animated.View
             style={[
@@ -412,6 +415,20 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                 <Ionicons name="key-outline" size={22} color={colors.accent} />
                 <Typography variant="body" style={styles.actionButtonText}>
                   Change Password
+                </Typography>
+              </TouchableOpacity>
+            )}
+
+            {!isEditing && (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => navigation.navigate('PaymentHistory')}
+                activeOpacity={0.8}
+                disabled={isDeleting}
+              >
+                <Ionicons name="card-outline" size={22} color={colors.accent} />
+                <Typography variant="body" style={styles.actionButtonText}>
+                  Payment history
                 </Typography>
               </TouchableOpacity>
             )}

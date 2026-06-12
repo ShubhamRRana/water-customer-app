@@ -361,14 +361,14 @@ export const DATE_CONFIG = {
 
 // Feature Flags
 export const FEATURE_FLAGS = {
-  enableRazorpaySubscription: false, // Flow A — when false, subscription checkout is blocked
-  enableOnlinePayment: false, // Flow B booking checkout — disabled in MVP
+  enableRazorpaySubscription: true, // Flow A — when false, subscription checkout is blocked
+  enableOnlinePayment: true, // Flow B booking checkout
   enablePushNotifications: true, // ✅ Enabled - Phase 3 Item 2 Complete
   enableRealTimeTracking: true, // ✅ Enabled - Phase 3 Item 2 Complete
   enableDriverSelfRegistration: false, // Disabled in MVP
   enableRatingsAndReviews: false, // Disabled in MVP
   enableImmediateBookings: false, // Disabled in MVP
-  enableSubscriptionGating: false, // Temporarily disabled until subscription model go-live
+  enableSubscriptionGating: true,
 };
 
 // Development Configuration

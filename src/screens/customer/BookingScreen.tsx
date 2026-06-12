@@ -25,11 +25,16 @@ import DateTimeInput from '../../components/customer/DateTimeInput';
 import { Address, isAdminUser, isCustomerUser } from '../../types';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
-import { UI_CONFIG, LOCATION_CONFIG } from '../../constants/config';
+import { UI_CONFIG, LOCATION_CONFIG, FEATURE_FLAGS } from '../../constants/config';
 import type { ThemeColors } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { handleError } from '../../utils/errorHandler';
 import { createScheduledDate as createScheduledDateFromUtils } from '../../utils/dateUtils';
+import {
+  ensureActiveSubscription,
+  isSubscriptionError,
+  showSubscriptionRequiredAlert,
+} from '../../utils/subscriptionGating';
 
 type BookingScreenNavigationProp = StackNavigationProp<AppStackParamList, 'Booking'>;
 
@@ -349,6 +354,13 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
         return;
       }
 
+      try {
+        await ensureActiveSubscription(currentUser.id);
+      } catch {
+        showSubscriptionRequiredAlert(navigation);
+        return;
+      }
+
       if (!selectedAgency?.id || !selectedAgency?.name) {
         Alert.alert('Error', 'Agency information is missing. Please select an agency.');
         return;
@@ -406,24 +418,36 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
         canCancel: true,
       };
 
-      await createBookingMutation.mutateAsync(bookingData);
-      
-      // Show success alert
+      const bookingId = await createBookingMutation.mutateAsync(bookingData);
+
+      const shouldPayOnline =
+        FEATURE_FLAGS.enableOnlinePayment && priceBreakdown.totalPrice > 0;
+
+      if (shouldPayOnline) {
+        navigation.replace('PayBooking', { bookingId });
+        return;
+      }
+
+      const codMessage =
+        priceBreakdown.totalPrice > 0
+          ? 'You can pay online when your order is ready, or pay cash on delivery when the tanker arrives.'
+          : 'Amount will be determined at delivery. You can pay cash on delivery or online once the amount is confirmed.';
+
+      navigation.replace('OrderTracking', { orderId: bookingId });
       Alert.alert(
-        'Booking Successful!',
-        `Your booking has been placed successfully.\nAgency: ${selectedAgency.name}\nOrder ID: ${bookingData.customerId.slice(-6)}\nAmount: Will be determined at delivery`,
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
+        'Booking successful',
+        `Your booking has been placed.\nAgency: ${selectedAgency.name}\n\n${codMessage}`,
+        [{ text: 'OK' }]
       );
     } catch (error) {
+      if (isSubscriptionError(error)) {
+        showSubscriptionRequiredAlert(navigation);
+        return;
+      }
       handleError(error, {
-      context: { operation: 'createBooking', userId: user?.id, agencyId: selectedAgency?.id },
-      userFacing: true,
-    });
+        context: { operation: 'createBooking', userId: user?.id, agencyId: selectedAgency?.id },
+        userFacing: true,
+      });
     }
   }, [selectedVehicle, selectedAgency, user, deliveryAddress, deliveryDate, deliveryTime, timePeriod, priceBreakdown, createBookingMutation, refreshUserProfile, navigation]);
 

@@ -29,6 +29,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { PricingUtils } from '../../utils/pricing';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
+import SubscriptionExpiryBanner from '../../components/customer/SubscriptionExpiryBanner';
 
 type CustomerHomeScreenNavigationProp = StackNavigationProp<AppStackParamList, 'Home'>;
 
@@ -352,6 +353,8 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
             </TouchableOpacity>
           </View>
         ) : null}
+
+        <SubscriptionExpiryBanner navigation={navigation} userId={user?.id} />
 
         <View style={styles.section}>
           <Typography variant="h3" style={styles.sectionTitle}>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -6,8 +6,10 @@ import { Ionicons } from '@expo/vector-icons';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { Button, Card, Typography } from '../../components/common';
 import type { ThemeColors } from '../../constants/config';
+import { FEATURE_FLAGS } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useAuthStore } from '../../store/authStore';
+import { SubscriptionService } from '../../services/subscription.service';
 
 type SubscriptionComingSoonNavigationProp = StackNavigationProp<
   AppStackParamList,
@@ -50,6 +52,7 @@ function createSubscriptionComingSoonStyles(colors: ThemeColors) {
     button: {
       alignSelf: 'stretch',
       width: '100%',
+      marginBottom: 12,
     },
   });
 }
@@ -57,6 +60,7 @@ function createSubscriptionComingSoonStyles(colors: ThemeColors) {
 const SubscriptionComingSoonScreen: React.FC<Props> = ({ navigation }) => {
   const colors = useThemeColors();
   const styles = useMemo(() => createSubscriptionComingSoonStyles(colors), [colors]);
+  const [checkingPlans, setCheckingPlans] = useState(FEATURE_FLAGS.enableRazorpaySubscription);
 
   const goHome = useCallback(() => {
     useAuthStore.getState().dismissSocietySubscriptionIntro();
@@ -66,6 +70,42 @@ const SubscriptionComingSoonScreen: React.FC<Props> = ({ navigation }) => {
     });
   }, [navigation]);
 
+  const goToPlans = useCallback(() => {
+    useAuthStore.getState().dismissSocietySubscriptionIntro();
+    navigation.replace('SubscriptionPlans');
+  }, [navigation]);
+
+  useEffect(() => {
+    if (!FEATURE_FLAGS.enableRazorpaySubscription) {
+      setCheckingPlans(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const checkSocietyPlans = async () => {
+      try {
+        const plans = await SubscriptionService.getActivePlans();
+        const societyPlans = SubscriptionService.filterPlansForAccountKind(plans, 'society');
+        if (!cancelled && societyPlans.length > 0) {
+          goToPlans();
+          return;
+        }
+      } catch {
+        // Keep coming-soon UI on load failure
+      }
+      if (!cancelled) {
+        setCheckingPlans(false);
+      }
+    };
+
+    void checkSocietyPlans();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [goToPlans]);
+
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       goHome();
@@ -73,6 +113,22 @@ const SubscriptionComingSoonScreen: React.FC<Props> = ({ navigation }) => {
     });
     return () => sub.remove();
   }, [goHome]);
+
+  if (checkingPlans) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+          <Card padding="large" style={styles.card}>
+            <Typography variant="body" style={styles.message}>
+              Loading subscription plans…
+            </Typography>
+          </Card>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const razorpayEnabled = FEATURE_FLAGS.enableRazorpaySubscription;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -85,9 +141,24 @@ const SubscriptionComingSoonScreen: React.FC<Props> = ({ navigation }) => {
             Subscription
           </Typography>
           <Typography variant="body" style={styles.message}>
-            This feature is coming soon. We're working on subscription plans tailored for societies.
+            {razorpayEnabled
+              ? 'Society subscription plans are not available yet. Check back soon or browse plans when they are published.'
+              : 'This feature is coming soon. We\'re working on subscription plans tailored for societies.'}
           </Typography>
-          <Button title="OK" onPress={goHome} variant="primary" style={styles.button} />
+          {razorpayEnabled ? (
+            <Button
+              title="View subscription plans"
+              onPress={goToPlans}
+              variant="primary"
+              style={styles.button}
+            />
+          ) : null}
+          <Button
+            title="OK"
+            onPress={goHome}
+            variant={razorpayEnabled ? 'secondary' : 'primary'}
+            style={styles.button}
+          />
         </Card>
       </View>
     </SafeAreaView>
