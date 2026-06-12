@@ -4,7 +4,8 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
-    "start:dev": "expo start --dev-client",
+    "start:dev": "expo start --dev-client --lan",
+    "start:dev:tunnel": "expo start --dev-client --tunnel",
     "eas:dev:android": "eas build --profile development --platform android",
     "_eas_dev_ios": "eas build --profile development --platform ios",
     "start:tunnel": "expo start --tunnel",

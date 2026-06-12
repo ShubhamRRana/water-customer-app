@@ -1,10 +1,10 @@
-# Water Tanker Booking App
+# WTC — Water Tanker Customer App
 
-A **customer-facing** mobile app for on-demand water tanker delivery, built with **React Native (Expo)** and **TypeScript**, backed by **Supabase** (PostgreSQL, Auth, Realtime). Driver and admin tools live in **separate applications** that share the same Supabase project; see [Customer App Split](./docs/CUSTOMER_APP_SPLIT.md).
+A **customer-facing** mobile app (**WTC**) for on-demand water tanker delivery, built with **React Native (Expo)** and **TypeScript**, backed by **Supabase** (PostgreSQL, Auth, Realtime). Driver and admin tools live in **separate applications** that share the same Supabase project.
 
 This client only mounts **Auth** and **Customer** flows (`App.tsx`). Users restored as non-customer (e.g. staff) are sent back to sign-in.
 
-Customers can sign in as **individual** or **society** accounts (same customer role; account kind differs). **Active subscriptions** are required to create bookings and society trips; plan purchase and renewals use **Razorpay** via Supabase Edge Functions (see [Razorpay implementation guide](./docs/RAZORPAY_CUSTOMER_REPO_IMPLEMENTATION_PROMPT.md)).
+Customers can sign in as **individual** or **society** accounts (same customer role; account kind differs). **Active subscriptions** are required to create bookings and society trips (enforced in app and database). Subscription purchase/renewal (**Flow A**) and booking online payment (**Flow B**) use **Razorpay** via Supabase Edge Functions and `react-native-razorpay` (requires an **Expo dev client** or EAS build — not Expo Go).
 
 ## Table of Contents
 
@@ -31,9 +31,12 @@ Customers can sign in as **individual** or **society** accounts (same customer r
 - **Order History**: View past and current orders
 - **Price Calculation**: Automatic distance-based pricing with Indian numbering format
 - **Scheduled Deliveries**: Schedule deliveries for future dates
-- **Subscriptions**: Browse plans, subscribe or renew via Razorpay checkout, and view subscription status
-- **Society login & trips**: Society-specific login flow; record and manage society trips (subscription rules apply; see migrations and services)
-- **Delete Account**: Permanently delete account from the Profile screen (with confirmation); removes all customer data and bookings, then logs out
+- **Subscriptions**: Browse plans, subscribe or renew via Razorpay checkout (Flow A), view status, and free-trial provisioning where configured
+- **Online booking payment**: Pay for confirmed bookings via Razorpay Route checkout (Flow B); COD / pay-at-delivery when price is zero or online payment is off
+- **Payment history**: Filterable in-app history for subscription and booking payments (Razorpay order/payment ids)
+- **Society login & trips**: Society-specific login flow; record and manage society trips (subscription rules apply; society plans route to the same subscription checkout when available)
+- **Password reset**: Forgot-password email flow with in-app `SetNewPassword` via deep link (`wtccustomer://reset-password`)
+- **Delete Account**: Permanently delete account from the Profile screen (with confirmation); removes customer data and bookings, then logs out via `delete-auth-user-on-account-deletion` Edge Function
 
 ### Platform note
 
@@ -47,7 +50,10 @@ The same Supabase database supports drivers, admins, and agencies; **this reposi
 - **React Navigation** v6 (stack navigators for auth and customer)
 - **Zustand** (state management)
 - **Expo Location** (GPS and location helpers)
-- **react-native-webview** (e.g. payment / hosted flows where used)
+- **react-native-razorpay** (native Razorpay checkout — requires dev client / EAS build)
+- **@tanstack/react-query** (server-state for bookings and related data)
+- **expo-dev-client** (custom dev builds for native modules)
+- **react-native-webview** (hosted flows where used)
 
 ### Backend
 - **Supabase** (PostgreSQL Database)
@@ -222,6 +228,9 @@ graph TB
         B --> G[LoginScreen]
         B --> H[SocietyLoginScreen]
         B --> HS[RegisterScreen]
+        B --> VE[VerifyEmailScreen]
+        B --> FP[ForgotPasswordScreen]
+        B --> SNP[SetNewPasswordScreen]
         
         C --> I[CustomerHomeScreen]
         C --> J[BookingScreen]
@@ -230,6 +239,10 @@ graph TB
         C --> M[ProfileScreen]
         C --> N[SubscriptionPlansScreen]
         C --> NS[SubscriptionStatusScreen]
+        C --> PS[PaySubscriptionScreen]
+        C --> PB[PayBookingScreen]
+        C --> PR[PaymentResultScreen]
+        C --> PH[PaymentHistoryScreen]
         C --> AT[AddTripScreen]
         C --> TD[TripDetailsScreen]
     end
@@ -456,7 +469,8 @@ Before you begin, ensure you have the following installed:
 
 - **Node.js** 18+ and npm
 - **Expo** (use `npx expo` — a global `expo-cli` install is not required)
-- **EAS CLI** (optional, for cloud builds: `npm install -g eas-cli` or `npx eas-cli`)
+- **EAS CLI** (recommended for dev/production builds with Razorpay: `npx eas-cli`)
+- **Android Studio / Xcode** (optional, for local native builds after `npx expo prebuild`)
 - **Git** for version control
 - **Supabase Account** with a project created
 - **Google Maps API Key** (optional, for enhanced location features)
@@ -489,15 +503,30 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 
 Also configure (see `.env.example` for comments and optional keys):
 
+- `EXPO_PUBLIC_RAZORPAY_KEY_ID` — Razorpay Key ID (test or live); secret stays in Edge Function secrets
 - `EXPO_PUBLIC_AUTH_SUCCESS_URL` — redirect after email verification (must be listed in Supabase Auth URL configuration)
-- `EXPO_PUBLIC_PASSWORD_RESET_REDIRECT_URL` — where password-reset links should land
+- `EXPO_PUBLIC_PASSWORD_RESET_REDIRECT_URL` — where password-reset links should land (`wtccustomer://reset-password`)
 - `SUPABASE_SERVICE_ROLE_KEY` — **server-side and migration scripts only**; must not appear in client bundles (`npm run secrets:check` helps guard this)
 
-Razorpay subscription and booking checkout use **Supabase Edge Function secrets** (not `EXPO_PUBLIC_*`). Configure those in the Supabase Dashboard and follow [docs/RAZORPAY_CUSTOMER_REPO_IMPLEMENTATION_PROMPT.md](./docs/RAZORPAY_CUSTOMER_REPO_IMPLEMENTATION_PROMPT.md). Client uses `EXPO_PUBLIC_RAZORPAY_KEY_ID` only.
+Razorpay subscription and booking checkout use **Supabase Edge Function secrets** (not `EXPO_PUBLIC_*`). Configure those in the Supabase Dashboard (see `.env.example` comments). Client uses `EXPO_PUBLIC_RAZORPAY_KEY_ID` only.
 
 Optional: `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` for enhanced map features.
 
-### 4. Supabase Database Setup
+### 4. Dev client (required for Razorpay)
+
+`react-native-razorpay` is a native module and does **not** run in Expo Go. Use a custom dev client:
+
+```bash
+# One-time: cloud dev APK (Android)
+npm run eas:dev:android
+
+# After installing the dev build on device/emulator
+npm run start:dev
+```
+
+For remote devices off LAN: `npm run start:dev:tunnel`. iOS dev builds: `eas build --profile development --platform ios` (see `package.json` script `_eas_dev_ios`).
+
+### 5. Supabase Database Setup
 
 Apply SQL migrations from [`migrations/`](./migrations/) to your Supabase project (or ensure equivalent schema). Core tables include:
 
@@ -516,7 +545,7 @@ Apply SQL migrations from [`migrations/`](./migrations/) to your Supabase projec
 
 Apply every file in [`migrations/`](./migrations/) in **lexicographic (filename) order** (some numeric prefixes have more than one file, e.g. two `026_*` migrations—run both). Later payment migrations adjust gateway metadata and RLS for online payments.
 
-**Important**: Row Level Security (RLS) is enabled on all tables with comprehensive policies. Subscription gating for booking and society trip creation is controlled by `FEATURE_FLAGS.enableSubscriptionGating` (enable when Razorpay subscription flow is live). Configure realtime publications for:
+**Important**: Row Level Security (RLS) is enabled on all tables with comprehensive policies. Subscription gating for booking and society trip creation is enforced when `FEATURE_FLAGS.enableSubscriptionGating` is `true` (currently enabled in `src/constants/config.ts`). Configure realtime publications for:
 - `bookings`
 - `notifications`
 - `users`
@@ -534,10 +563,14 @@ Apply every file in [`migrations/`](./migrations/) in **lexicographic (filename)
 - `subscription_plans`, `subscriptions`, `payment_transactions` (if using subscriptions)
 - `society_trips` (if using society features)
 
-### 5. Start the Development Server
+### 6. Start the Development Server
 
 ```bash
+# Expo Go (no Razorpay checkout)
 npm start
+
+# Dev client with Razorpay (after EAS dev build is installed)
+npm run start:dev
 
 # Or use platform-specific commands
 npm run android
@@ -550,18 +583,15 @@ Then choose your platform:
 - Press `i` for iOS
 - Press `w` for Web
 
-Tunnel mode (e.g. testing on a physical device off LAN): `npm run start:tunnel`
+Tunnel mode: `npm run start:tunnel` (Expo Go) or `npm run start:dev:tunnel` (dev client).
 
 ## Additional documentation
 
 | Document | Purpose |
 |----------|---------|
-| [docs/CUSTOMER_APP_SPLIT.md](./docs/CUSTOMER_APP_SPLIT.md) | How this customer-only repo relates to staff apps and the shared backend |
-| [docs/RAZORPAY_CUSTOMER_REPO_IMPLEMENTATION_PROMPT.md](./docs/RAZORPAY_CUSTOMER_REPO_IMPLEMENTATION_PROMPT.md) | Razorpay subscription + booking flows, Edge Functions, phased implementation |
-| [docs/SUBSCRIPTION_GATING_REVIEW.md](./docs/SUBSCRIPTION_GATING_REVIEW.md) | Engineering notes on subscription gating for bookings and society trips |
-| [UI_REDESIGN_SPEC.md](./UI_REDESIGN_SPEC.md) | UI redesign notes and specifications |
-| [docs/CUSTOMER_PROFILE.md](./docs/CUSTOMER_PROFILE.md) | Inventory of customer flows, files, and schema touchpoints |
-| [docs/PRODUCTION_READINESS.md](./docs/PRODUCTION_READINESS.md) | Release checks, Supabase advisors, Play Console, subscription enforcement |
+| [MONITORING_PLAN.md](./MONITORING_PLAN.md) | Observability, error/security monitoring, and alert runbook (in repo) |
+
+Extended product and implementation notes may exist locally under `docs/` (that folder is **gitignored** and not shipped with clones). Common local-only files include Razorpay phase guides, production readiness checklists, and customer-flow inventories.
 
 Database changes are versioned under [`migrations/`](./migrations/); apply them to your Supabase project in order when bootstrapping a new environment.
 
@@ -569,12 +599,15 @@ Database changes are versioned under [`migrations/`](./migrations/); apply them 
 
 | Script | Purpose |
 |--------|---------|
-| `npm start` | Start Expo dev server |
+| `npm start` | Start Expo dev server (Expo Go) |
+| `npm run start:dev` | Dev client — LAN (`expo start --dev-client --lan`) |
+| `npm run start:dev:tunnel` | Dev client — tunnel for remote devices |
+| `npm run start:tunnel` | Expo Go with tunnel |
+| `npm run eas:dev:android` | EAS development APK (Android) for Razorpay native module |
 | `npm run android` / `ios` / `web` | Start and open a platform |
-| `npm run start:tunnel` | Expo with tunnel for remote devices |
 | `npm run lint` | ESLint (`expo lint`) |
 | `npm test` | Full Jest suite |
-| `npm run test:release` | Focused tests (booking + society trip services; used in CI-style checks) |
+| `npm run test:release` | Focused release tests (booking, society trips, payments, Razorpay checkout, payment flows) |
 | `npm run secrets:check` | Fails if forbidden patterns (e.g. service role, Razorpay key secret) appear under `src/` |
 | `npm run prebuild:check` | `secrets:check` + `lint` + `test:release` — recommended before release builds |
 
@@ -586,7 +619,7 @@ water-customer-app/
 ├── index.ts                # Expo entry (registers App)
 ├── eas.json                # EAS Build profiles (use Dashboard secrets for production keys)
 ├── migrations/             # Supabase SQL migrations (apply in lexicographic order)
-├── supabase/functions/     # Edge Functions (Razorpay — Phase 1+; delete-auth-user-on-account-deletion)
+├── supabase/functions/     # Edge Functions (Razorpay orders/verify/webhook, free trial, delete-auth-user)
 ├── docs/                   # Operational and product notes (see Additional documentation)
 ├── scripts/                # Utilities (e.g. verify-no-client-secrets.mjs, seed-test-data.ts)
 ├── src/
@@ -594,10 +627,10 @@ water-customer-app/
 │   │   ├── customer/
 │   │   └── common/
 │   ├── screens/
-│   │   ├── customer/       # Booking, orders, profile, subscriptions, payments
-│   │   ├── shared/         # Cross-role stack screens: add trip, trip details, settle payment
-│   │   ├── society/        # Society-only flows (e.g. subscription intro)
-│   │   └── auth/           # Role selection, login, society login, register
+│   │   ├── customer/       # Booking, orders, profile, subscriptions, PaySubscription/PayBooking, payment history
+│   │   ├── shared/         # Add trip, trip details, payment result, settle payment placeholder
+│   │   ├── society/        # Society-only flows (subscription intro when no society plans)
+│   │   └── auth/           # Role selection, login, register, verify email, forgot/set password
 │   ├── navigation/
 │   │   ├── AuthNavigator.tsx
 │   │   ├── MainNavigator.tsx
@@ -650,7 +683,7 @@ npm run test:coverage
 npm run test:release
 ```
 
-Before release builds, run `npm run prebuild:check` (secrets + lint + `test:release`). See [docs/PRODUCTION_READINESS.md](./docs/PRODUCTION_READINESS.md) for the full checklist.
+Before release builds, run `npm run prebuild:check` (secrets + lint + `test:release`). Deploy Razorpay Edge Functions and set Supabase secrets before testing payments in staging/production.
 
 ### Test Structure
 
@@ -817,6 +850,17 @@ Add `subscriptions` / `payment_transactions` to your publication if the client s
 - Check that policies allow the required operations (SELECT, INSERT, UPDATE, DELETE)
 - Review Supabase logs for specific policy violations
 
+### Razorpay / Payment Issues
+
+**Problem**: Checkout does not open or payment stays pending
+
+**Solutions**:
+- Confirm you are on a **dev client or EAS build**, not Expo Go (`npm run start:dev` after `npm run eas:dev:android`)
+- Set `EXPO_PUBLIC_RAZORPAY_KEY_ID` in `.env` and matching `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` in Supabase Edge Function secrets
+- Deploy Edge Functions (`create-customer-subscription-order`, `create-customer-booking-order`, `verify-*`, `razorpay-webhook`) and register the webhook URL in Razorpay Dashboard
+- Check `FEATURE_FLAGS` in `src/constants/config.ts` (`enableRazorpaySubscription`, `enableOnlinePayment`)
+- Run `npm run test:release` to verify payment service tests pass locally
+
 ### Build Issues
 
 **Problem**: Build fails or app crashes on startup
@@ -829,15 +873,22 @@ Add `subscriptions` / `payment_transactions` to your publication if the client s
 
 ## Roadmap
 
-### Version 2.0 (Planned Features)
+### Version 2.0
 
-- [x] **Razorpay foundation (Phase 0)** — SDK, types, checkout wrapper; see `docs/RAZORPAY_CUSTOMER_REPO_IMPLEMENTATION_PROMPT.md`
-- [x] **Razorpay Edge Functions (Phase 1)** — Six functions in repo; deploy + webhook secrets pending
-- [ ] **Razorpay subscription + booking checkout (Phases 2–3)** — PaySubscription/PayBooking screens
-- [ ] **Re-enable subscription gating** — Enable `FEATURE_FLAGS.enableSubscriptionGating` when Razorpay flow is live
-- [ ] **Broader payment UX**
-  - Full payment history and receipts in-app
-  - Refund management and additional gateways if product requires
+**Payments (Razorpay)**
+
+- [x] **Phase 0** — SDK, types, `razorpayCheckout.service`, env example
+- [x] **Phase 1** — Edge Functions in repo (`create-*-order`, `verify-*-payment`, `razorpay-webhook`, `provision-free-trial-subscription`, legacy PhonePe helpers)
+- [x] **Phase 2** — Flow A subscription checkout (`PaySubscriptionScreen`, plans/status)
+- [x] **Phase 3** — Flow B booking checkout (`PayBookingScreen`, Route transfers)
+- [x] **Phase 4** — Screen wiring and subscription gating (`enableSubscriptionGating: true`)
+- [x] **Phase 5** — Payment history, order payment chips, Pay now on list/tracking
+- [x] **Phase 6** — Payment unit/flow tests, error mapping, polish
+- [ ] **Production Razorpay** — Deploy Edge Functions, register webhook, set live keys and secrets
+
+**Planned / follow-up**
+
+- [ ] **Broader payment UX** — Refunds, receipts export, additional gateways if required
 
 - [ ] **Push Notifications**
   - Real-time order updates
