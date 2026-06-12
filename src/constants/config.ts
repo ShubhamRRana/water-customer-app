@@ -257,6 +257,13 @@ export const ERROR_MESSAGES = {
     razorpayNetworkError: 'Network error during payment. Check your connection and try again.',
     agencyNotOnboarded:
       'This agency is not set up for online payments yet. You can pay cash on delivery when your order arrives.',
+    signatureMismatch:
+      'Payment verification failed. Please try again or contact support if the amount was deducted.',
+    trialActive:
+      'Your free trial is still active. Paid subscription checkout is not available until the trial ends.',
+    bookingAlreadyPaid: 'This booking has already been paid.',
+    subscriptionNotEligible:
+      'This subscription is not eligible for payment. Please check your plan status and try again.',
   },
   general: {
     unexpected: 'An unexpected error occurred.',

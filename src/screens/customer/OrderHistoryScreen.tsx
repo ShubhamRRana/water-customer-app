@@ -27,6 +27,11 @@ import type { ThemeColors } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
+import {
+  canPayBookingOnline,
+  getBookingPaymentChip,
+  getBookingPaymentChipLabel,
+} from '../../utils/paymentDisplay';
 
 type OrderHistoryScreenNavigationProp = StackNavigationProp<AppStackParamList, 'Orders'>;
 
@@ -163,6 +168,27 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
     }
   }, []);
 
+  const getPaymentChipColor = useCallback(
+    (booking: Booking) => {
+      const chip = getBookingPaymentChip(booking);
+      switch (chip) {
+        case 'paid':
+          return colors.success;
+        case 'failed':
+          return colors.error;
+        case 'unpaid':
+          return colors.warning;
+        case 'cod':
+          return colors.secondary;
+        case 'refunded':
+          return colors.textSecondary;
+        default:
+          return colors.textSecondary;
+      }
+    },
+    [colors]
+  );
+
   const getStatusIcon = useCallback((status: BookingStatus) => {
     switch (status) {
       case 'pending': return 'time-outline';
@@ -280,14 +306,21 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
                 <View style={styles.orderInfo}>
                   <Typography variant="caption" style={styles.orderDate}>{formatDate(booking.scheduledFor || booking.createdAt)}</Typography>
                 </View>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
-                  <Ionicons 
-                    name={getStatusIcon(booking.status)} 
-                    size={16} 
-                    color={colors.textLight} 
-                    style={styles.statusIcon}
-                  />
-                  <Typography variant="caption" style={styles.statusText}>{getStatusText(booking.status)}</Typography>
+                <View style={styles.headerBadges}>
+                  <View style={[styles.paymentChip, { backgroundColor: getPaymentChipColor(booking) }]}>
+                    <Typography variant="caption" style={styles.paymentChipText}>
+                      {getBookingPaymentChipLabel(getBookingPaymentChip(booking))}
+                    </Typography>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
+                    <Ionicons 
+                      name={getStatusIcon(booking.status)} 
+                      size={16} 
+                      color={colors.textLight} 
+                      style={styles.statusIcon}
+                    />
+                    <Typography variant="caption" style={styles.statusText}>{getStatusText(booking.status)}</Typography>
+                  </View>
                 </View>
               </View>
 
@@ -328,15 +361,26 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
                 </View>
               )}
 
-              {booking.canCancel && booking.status === 'pending' && (
+              {(canPayBookingOnline(booking) || (booking.canCancel && booking.status === 'pending')) && (
                 <View style={styles.orderActions}>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.cancelButton]}
-                    onPress={() => handleCancelBooking(booking)}
-                  >
-                    <Ionicons name="close-outline" size={16} color={colors.error} />
-                    <Typography variant="caption" style={[styles.actionText, styles.cancelText]}>Cancel</Typography>
-                  </TouchableOpacity>
+                  {canPayBookingOnline(booking) && (
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.payButton]}
+                      onPress={() => navigation.navigate('PayBooking', { bookingId: booking.id })}
+                    >
+                      <Ionicons name="card-outline" size={16} color={colors.textLight} />
+                      <Typography variant="caption" style={[styles.actionText, styles.payText]}>Pay now</Typography>
+                    </TouchableOpacity>
+                  )}
+                  {booking.canCancel && booking.status === 'pending' && (
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.cancelButton]}
+                      onPress={() => handleCancelBooking(booking)}
+                    >
+                      <Ionicons name="close-outline" size={16} color={colors.error} />
+                      <Typography variant="caption" style={[styles.actionText, styles.cancelText]}>Cancel</Typography>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
             </Card>
@@ -491,6 +535,21 @@ function createOrderHistoryStyles(colors: ThemeColors) {
   orderInfo: {
     flex: 1,
   },
+  headerBadges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  paymentChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  paymentChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textLight,
+  },
   orderDate: {
     fontSize: 14,
     color: colors.textSecondary,
@@ -558,6 +617,12 @@ function createOrderHistoryStyles(colors: ThemeColors) {
     paddingVertical: 6,
     backgroundColor: colors.background,
     borderRadius: 16,
+  },
+  payButton: {
+    backgroundColor: colors.accent,
+  },
+  payText: {
+    color: colors.textLight,
   },
   cancelButton: {
     backgroundColor: colors.surfaceLight,

@@ -2,6 +2,14 @@
  * Booking Service Tests (in-memory dataAccess; aligns with Supabase-backed implementation)
  */
 
+jest.mock('../../lib/supabaseClient', () => ({
+  supabase: {
+    functions: {
+      invoke: jest.fn(),
+    },
+  },
+}));
+
 jest.mock('../../lib/index', () => {
   const { inMemoryDataAccessForBookingTests } = require('../helpers/inMemoryBookingDataAccess');
   return { dataAccess: inMemoryDataAccessForBookingTests };
@@ -92,16 +100,16 @@ describe('BookingService', () => {
       await expect(BookingService.createBooking(mockBookingData)).rejects.toThrow('Storage error');
     });
 
-    it('allows booking even when subscription is inactive (gating temporarily disabled)', async () => {
+    it('rejects booking when subscription is inactive and gating is enabled', async () => {
       jest.spyOn(SubscriptionService, 'hasActiveSubscription').mockResolvedValueOnce(false);
 
-      const bookingId = await BookingService.createBooking({
-        ...mockBookingData,
-        agencyId: 'agency-1',
-        agencyName: 'Test Agency',
-      });
-
-      expect(bookingId).toBeTruthy();
+      await expect(
+        BookingService.createBooking({
+          ...mockBookingData,
+          agencyId: 'agency-1',
+          agencyName: 'Test Agency',
+        })
+      ).rejects.toThrow(ERROR_MESSAGES.booking.subscriptionRequired);
     });
   });
 

@@ -22,6 +22,11 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { LocationTrackingService, DriverLocation } from '../../services/locationTracking.service';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
+import Button from '../../components/common/Button';
+import {
+  canPayBookingOnline,
+  getBookingPaymentStatusLabel,
+} from '../../utils/paymentDisplay';
 
 type OrderTrackingScreenNavigationProp = StackNavigationProp<AppStackParamList, 'OrderTracking'>;
 type OrderTrackingScreenRouteProp = RouteProp<AppStackParamList, 'OrderTracking'>;
@@ -259,6 +264,14 @@ function createOrderTrackingStyles(colors: ThemeColors) {
       fontWeight: '600',
       color: colors.error,
       marginLeft: 8,
+    },
+    payButton: {
+      marginTop: 12,
+    },
+    paymentIdText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 4,
     },
   });
 }
@@ -584,6 +597,39 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
                   {formatDate(booking.deliveredAt)}
                 </Typography>
               </View>
+            )}
+          </Card>
+        </View>
+
+        <View style={styles.section}>
+          <Typography variant="h3" style={styles.sectionTitle}>
+            Payment
+          </Typography>
+          <Card style={styles.detailsCard}>
+            <View style={styles.detailRow}>
+              <Typography variant="body" style={styles.detailLabel}>
+                Status
+              </Typography>
+              <Typography variant="body" style={styles.detailValue}>
+                {getBookingPaymentStatusLabel(booking)}
+              </Typography>
+            </View>
+            {booking.paymentId && booking.paymentId.startsWith('pay_') && (
+              <View style={styles.detailRow}>
+                <Typography variant="body" style={styles.detailLabel}>
+                  Razorpay ID
+                </Typography>
+                <Typography variant="body" style={[styles.detailValue, styles.paymentIdText]} numberOfLines={1}>
+                  {booking.paymentId}
+                </Typography>
+              </View>
+            )}
+            {canPayBookingOnline(booking) && (
+              <Button
+                title="Pay now"
+                onPress={() => navigation.navigate('PayBooking', { bookingId: booking.id })}
+                style={styles.payButton}
+              />
             )}
           </Card>
         </View>

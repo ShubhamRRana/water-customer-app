@@ -48,13 +48,13 @@ describe('SocietyTripService.createTrip', () => {
     expect(insert).toHaveBeenCalled();
   });
 
-  it('inserts even when subscription is inactive (gating temporarily disabled)', async () => {
+  it('rejects when subscription is inactive and gating is enabled', async () => {
     (SubscriptionService.hasActiveSubscription as jest.Mock).mockResolvedValueOnce(false);
     const insert = jest.fn().mockResolvedValue({ error: null });
     mockFrom.mockReturnValue({ insert });
 
-    await expect(SocietyTripService.createTrip(baseInput)).resolves.toBeUndefined();
-    expect(mockFrom).toHaveBeenCalledWith('society_trips');
-    expect(insert).toHaveBeenCalled();
+    await expect(SocietyTripService.createTrip(baseInput)).rejects.toThrow(
+      ERROR_MESSAGES.societyTrip.subscriptionRequired
+    );
   });
 });

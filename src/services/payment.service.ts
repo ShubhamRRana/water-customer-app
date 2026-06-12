@@ -4,18 +4,58 @@ import { supabase } from '../lib/supabaseClient';
 import { ERROR_MESSAGES } from '../constants/config';
 import { handleError } from '../utils/errorHandler';
 import { getErrorMessage } from '../utils/errors';
+import { mapPaymentErrorCode } from '../utils/paymentErrors';
 import type {
   BookingPaymentVerifyResult,
+  PaymentFlow,
   RazorpayBookingOrder,
   RazorpaySubscriptionOrder,
   RazorpayVerifyPayload,
   SubscriptionPaymentVerifyResult,
 } from '../types/razorpay.types';
+import type { PaymentTransaction, PaymentTransactionStatus } from '../types/subscription.types';
 
 export interface PaymentResult {
   success: boolean;
   paymentId?: string;
   error?: string;
+}
+
+export interface PaymentHistoryOptions {
+  flow?: PaymentFlow;
+  status?: PaymentTransactionStatus;
+}
+
+export interface PaymentHistoryItem extends PaymentTransaction {
+  flow: PaymentFlow | null;
+  flowLabel: string;
+  bookingId: string | null;
+}
+
+function inferPaymentFlow(tx: PaymentTransaction): PaymentFlow | null {
+  const metaFlow = tx.metadata?.flow;
+  if (metaFlow === 'customer_subscription' || metaFlow === 'customer_booking') {
+    return metaFlow;
+  }
+  if (tx.subscriptionId) {
+    return 'customer_subscription';
+  }
+  const bookingId = tx.metadata?.booking_id;
+  if (typeof bookingId === 'string' && bookingId.length > 0) {
+    return 'customer_booking';
+  }
+  return null;
+}
+
+function flowLabel(flow: PaymentFlow | null): string {
+  switch (flow) {
+    case 'customer_subscription':
+      return 'Subscription';
+    case 'customer_booking':
+      return 'Delivery';
+    default:
+      return 'Payment';
+  }
 }
 
 function paymentVerifyFailure(
@@ -61,13 +101,6 @@ async function parseEdgeFunctionError(error: unknown, fallback: string): Promise
   return message;
 }
 
-function mapBookingOrderError(message: string, code?: string): string {
-  if (code === 'agency_not_onboarded') {
-    return ERROR_MESSAGES.payment.agencyNotOnboarded;
-  }
-  return message;
-}
-
 async function parseEdgeFunctionBody<T>(data: unknown, error: unknown, fallback: string): Promise<T> {
   if (error) {
     throw new Error(await parseEdgeFunctionError(error, fallback));
@@ -83,6 +116,46 @@ async function parseEdgeFunctionBody<T>(data: unknown, error: unknown, fallback:
 }
 
 export class PaymentService {
+  /**
+   * Unified payment history for subscription (Flow A) and delivery (Flow B) transactions.
+   */
+  static async getPaymentHistory(
+    customerId: string,
+    options?: PaymentHistoryOptions
+  ): Promise<PaymentHistoryItem[]> {
+    try {
+      const rows = await dataAccess.subscriptions.getPaymentTransactionsByUser(customerId);
+      const items: PaymentHistoryItem[] = rows.map((tx) => {
+        const flow = inferPaymentFlow(tx);
+        const bookingIdRaw = tx.metadata?.booking_id;
+        const bookingId =
+          typeof bookingIdRaw === 'string' && bookingIdRaw.length > 0 ? bookingIdRaw : null;
+        return {
+          ...tx,
+          flow,
+          flowLabel: flowLabel(flow),
+          bookingId,
+        };
+      });
+
+      return items.filter((item) => {
+        if (options?.flow && item.flow !== options.flow) {
+          return false;
+        }
+        if (options?.status && item.status !== options.status) {
+          return false;
+        }
+        return true;
+      });
+    } catch (error) {
+      handleError(error, {
+        context: { operation: 'getPaymentHistory', customerId, options },
+        userFacing: false,
+      });
+      throw error;
+    }
+  }
+
   /**
    * Process Cash on Delivery payment - marks payment as pending in local storage
    */
@@ -174,12 +247,21 @@ export class PaymentService {
       body: { subscriptionId, planId },
     });
 
-    const order = await parseEdgeFunctionBody<RazorpaySubscriptionOrder>(
-      data,
-      error,
-      ERROR_MESSAGES.payment.failed
-    );
+    if (error) {
+      const { message, code } = await parseEdgeFunctionErrorBody(error, ERROR_MESSAGES.payment.failed);
+      throw new Error(mapPaymentErrorCode(code, message));
+    }
 
+    if (!data || typeof data !== 'object') {
+      throw new Error(ERROR_MESSAGES.payment.failed);
+    }
+
+    const body = data as { error?: string; code?: string };
+    if (body.error) {
+      throw new Error(mapPaymentErrorCode(body.code, body.error));
+    }
+
+    const order = data as RazorpaySubscriptionOrder;
     if (!order.orderId || !order.keyId || !order.amount) {
       throw new Error(ERROR_MESSAGES.payment.failed);
     }
@@ -208,17 +290,15 @@ export class PaymentService {
       );
 
       if (error) {
-        const message = await parseEdgeFunctionError(error, ERROR_MESSAGES.payment.failed);
-        let code: string | undefined;
-        if (error instanceof FunctionsHttpError) {
-          try {
-            const body = (await error.context.json()) as { code?: string };
-            code = body?.code;
-          } catch {
-            // ignore
-          }
-        }
-        return { success: false, error: message, code };
+        const { message, code } = await parseEdgeFunctionErrorBody(
+          error,
+          ERROR_MESSAGES.payment.failed
+        );
+        return {
+          success: false,
+          error: mapPaymentErrorCode(code, message),
+          code,
+        };
       }
 
       const body = data as {
@@ -230,7 +310,11 @@ export class PaymentService {
       };
 
       if (body?.error) {
-        return { success: false, error: body.error, code: body.code };
+        return {
+          success: false,
+          error: mapPaymentErrorCode(body.code, body.error),
+          code: body.code,
+        };
       }
 
       return {
@@ -260,7 +344,7 @@ export class PaymentService {
 
     if (error) {
       const { message, code } = await parseEdgeFunctionErrorBody(error, ERROR_MESSAGES.payment.failed);
-      throwBookingPaymentError(mapBookingOrderError(message, code), code);
+      throwBookingPaymentError(mapPaymentErrorCode(code, message), code);
     }
 
     if (!data || typeof data !== 'object') {
@@ -269,7 +353,7 @@ export class PaymentService {
 
     const body = data as { error?: string; code?: string };
     if (body.error) {
-      throwBookingPaymentError(mapBookingOrderError(body.error, body.code), body.code);
+      throwBookingPaymentError(mapPaymentErrorCode(body.code, body.error), body.code);
     }
 
     const order = data as RazorpayBookingOrder;
@@ -302,7 +386,7 @@ export class PaymentService {
           error,
           ERROR_MESSAGES.payment.failed
         );
-        return paymentVerifyFailure(message, code);
+        return paymentVerifyFailure(mapPaymentErrorCode(code, message), code);
       }
 
       const body = data as {
@@ -314,7 +398,7 @@ export class PaymentService {
       };
 
       if (body?.error) {
-        return paymentVerifyFailure(body.error, body.code);
+        return paymentVerifyFailure(mapPaymentErrorCode(body.code, body.error), body.code);
       }
 
       return {

@@ -59,6 +59,8 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 import AuthNavigator from '../../navigation/AuthNavigator';
 import MainNavigator from '../../navigation/MainNavigator';
+import type { AppStackParamList } from '../../navigation/rootNavigation';
+import type { PaymentResultParams } from '../../types/razorpay.types';
 
 // Mock all screen components
 jest.mock('../../screens/auth/LoginScreen', () => {
@@ -201,6 +203,36 @@ jest.mock('../../screens/customer/PaymentHistoryScreen', () => {
   );
 });
 
+jest.mock('../../screens/customer/PaySubscriptionScreen', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return () => (
+    <View testID="PaySubscriptionScreen">
+      <Text>PaySubscriptionScreen</Text>
+    </View>
+  );
+});
+
+jest.mock('../../screens/customer/PayBookingScreen', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return () => (
+    <View testID="PayBookingScreen">
+      <Text>PayBookingScreen</Text>
+    </View>
+  );
+});
+
+jest.mock('../../screens/shared/PaymentResultScreen', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return () => (
+    <View testID="PaymentResultScreen">
+      <Text>PaymentResultScreen</Text>
+    </View>
+  );
+});
+
 jest.mock('../../screens/customer/OrderTrackingScreen', () => {
   const React = require('react');
   const { View, Text } = require('react-native');
@@ -272,8 +304,24 @@ describe('Navigation Configuration', () => {
     });
 
     it('should export AppStackParamList shape for main stack', () => {
-      const testParams: { Home: undefined } = { Home: undefined };
-      expect(testParams).toBeDefined();
+      const paySubscription: AppStackParamList['PaySubscription'] = {
+        subscriptionId: 'sub-1',
+        planId: 'plan-1',
+        planName: 'Monthly',
+      };
+      const payBooking: AppStackParamList['PayBooking'] = {
+        bookingId: 'book-1',
+      };
+      const paymentResult: PaymentResultParams = {
+        type: 'booking',
+        status: 'success',
+        referenceId: 'book-1',
+      };
+      const paymentResultRoute: AppStackParamList['PaymentResult'] = paymentResult;
+
+      expect(paySubscription.subscriptionId).toBe('sub-1');
+      expect(payBooking.bookingId).toBe('book-1');
+      expect(paymentResultRoute.status).toBe('success');
     });
   });
 });

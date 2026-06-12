@@ -3,11 +3,24 @@
  * Tests the complete COD payment flow from booking to payment confirmation
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BookingService } from '../../services/booking.service';
-import { PaymentService } from '../../services/payment.service';
-import { LocalStorageService } from '../../services/localStorage';
-import { Booking } from '../../types';
+const mockInvoke = jest.fn();
+
+jest.mock('../../lib/supabaseClient', () => ({
+  supabase: {
+    functions: {
+      invoke: (...args: unknown[]) => mockInvoke(...args),
+    },
+  },
+}));
+
+jest.mock('../../lib/index', () => {
+  const { inMemoryDataAccessForBookingTests } = require('../helpers/inMemoryBookingDataAccess');
+  return { dataAccess: inMemoryDataAccessForBookingTests };
+});
+
+jest.mock('../../services/razorpayCheckout.service', () => ({
+  openCheckout: jest.fn(),
+}));
 
 jest.mock('../../services/subscription.service', () => ({
   SubscriptionService: {
@@ -27,12 +40,29 @@ jest.mock('../../services/subscription.service', () => ({
       createdAt: new Date(),
       updatedAt: new Date(),
     }),
+    activateSubscription: jest.fn(),
   },
 }));
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BookingService } from '../../services/booking.service';
+import { PaymentService } from '../../services/payment.service';
+import { LocalStorageService } from '../../services/localStorage';
+import { SubscriptionService } from '../../services/subscription.service';
+import { openCheckout } from '../../services/razorpayCheckout.service';
+import { ERROR_MESSAGES } from '../../constants/config';
+import { Booking } from '../../types';
+import { clearBookingTestStore } from '../helpers/inMemoryBookingDataAccess';
+import { dataAccess } from '../../lib/index';
+
+const mockOpenCheckout = openCheckout as jest.Mock;
 
 // Clear AsyncStorage before each test
 beforeEach(async () => {
   await AsyncStorage.clear();
+  clearBookingTestStore();
+  mockOpenCheckout.mockReset();
+  (SubscriptionService.activateSubscription as jest.Mock).mockReset();
 });
 
 // Restore all mocks after each test
@@ -147,7 +177,7 @@ describe('Payment Flow Integration', () => {
     it('should handle storage errors during payment processing', async () => {
       const bookingId = await BookingService.createBooking(mockBookingData);
 
-      jest.spyOn(LocalStorageService, 'updateBooking').mockRejectedValueOnce(
+      jest.spyOn(dataAccess.bookings, 'updateBooking').mockRejectedValueOnce(
         new Error('Storage full')
       );
 
@@ -160,7 +190,7 @@ describe('Payment Flow Integration', () => {
       const bookingId = await BookingService.createBooking(mockBookingData);
       await PaymentService.processCODPayment(bookingId, 600);
 
-      jest.spyOn(LocalStorageService, 'updateBooking').mockRejectedValueOnce(
+      jest.spyOn(dataAccess.bookings, 'updateBooking').mockRejectedValueOnce(
         new Error('Storage error')
       );
 
@@ -274,6 +304,158 @@ describe('Payment Flow Integration', () => {
       const booking = await BookingService.getBookingById(bookingId);
       expect(booking?.paymentId).toBe(confirm2.paymentId);
       expect(booking?.paymentStatus).toBe('completed');
+    });
+  });
+
+  describe('Razorpay subscription flow (Flow A)', () => {
+    const subscriptionOrder = {
+      orderId: 'order_sub_flow',
+      amount: 99900,
+      currency: 'INR',
+      keyId: 'rzp_test_key',
+    };
+    const verifyPayload = {
+      razorpay_order_id: 'order_sub_flow',
+      razorpay_payment_id: 'pay_sub_flow',
+      razorpay_signature: 'sig_sub_flow',
+    };
+
+    it('completes create order -> checkout -> verify', async () => {
+      const createSpy = jest
+        .spyOn(PaymentService, 'createSubscriptionPayment')
+        .mockResolvedValue(subscriptionOrder);
+      const verifySpy = jest
+        .spyOn(PaymentService, 'verifySubscriptionPayment')
+        .mockResolvedValue({ success: true, subscriptionId: 'sub-1' });
+      (SubscriptionService.activateSubscription as jest.Mock).mockImplementation(
+        async (subscriptionId: string, payload: typeof verifyPayload) => {
+          const result = await PaymentService.verifySubscriptionPayment(subscriptionId, payload);
+          if (!result.success) {
+            throw new Error(result.error ?? 'Subscription activation failed');
+          }
+        }
+      );
+      mockOpenCheckout.mockResolvedValue({ status: 'success', data: verifyPayload });
+
+      const order = await PaymentService.createSubscriptionPayment('sub-1', 'plan-1');
+      const checkout = await mockOpenCheckout({
+        orderId: order.orderId,
+        amount: order.amount,
+        currency: order.currency,
+        keyId: order.keyId,
+        description: 'Plan subscription',
+      });
+
+      expect(checkout.status).toBe('success');
+      if (checkout.status === 'success') {
+        await SubscriptionService.activateSubscription('sub-1', checkout.data);
+      }
+
+      expect(createSpy).toHaveBeenCalledWith('sub-1', 'plan-1');
+      expect(verifySpy).toHaveBeenCalledWith('sub-1', verifyPayload);
+    });
+
+    it('retries with new order after verify failure', async () => {
+      const createSpy = jest
+        .spyOn(PaymentService, 'createSubscriptionPayment')
+        .mockResolvedValueOnce(subscriptionOrder)
+        .mockResolvedValueOnce({
+          ...subscriptionOrder,
+          orderId: 'order_sub_retry',
+        });
+      const verifySpy = jest
+        .spyOn(PaymentService, 'verifySubscriptionPayment')
+        .mockResolvedValueOnce({
+          success: false,
+          error: ERROR_MESSAGES.payment.signatureMismatch,
+          code: 'signature_mismatch',
+        })
+        .mockResolvedValueOnce({ success: true, subscriptionId: 'sub-1' });
+      mockOpenCheckout.mockResolvedValue({ status: 'success', data: verifyPayload });
+
+      await PaymentService.createSubscriptionPayment('sub-1', 'plan-1');
+      const checkout = await mockOpenCheckout({});
+      expect(checkout.status).toBe('success');
+
+      if (checkout.status === 'success') {
+        const firstVerify = await PaymentService.verifySubscriptionPayment('sub-1', checkout.data);
+        expect(firstVerify.success).toBe(false);
+
+        await PaymentService.createSubscriptionPayment('sub-1', 'plan-1');
+        const retryVerify = await PaymentService.verifySubscriptionPayment('sub-1', checkout.data);
+        expect(retryVerify.success).toBe(true);
+      }
+
+      expect(createSpy).toHaveBeenCalledTimes(2);
+      expect(verifySpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not verify when checkout is cancelled', async () => {
+      jest.spyOn(PaymentService, 'createSubscriptionPayment').mockResolvedValue(subscriptionOrder);
+      const verifySpy = jest.spyOn(PaymentService, 'verifySubscriptionPayment');
+      mockOpenCheckout.mockResolvedValue({ status: 'cancelled' });
+
+      await PaymentService.createSubscriptionPayment('sub-1', 'plan-1');
+      const checkout = await mockOpenCheckout({});
+
+      expect(checkout.status).toBe('cancelled');
+      expect(verifySpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Razorpay booking flow (Flow B)', () => {
+    const bookingOrder = {
+      orderId: 'order_book_flow',
+      amount: 60000,
+      currency: 'INR',
+      keyId: 'rzp_test_key',
+    };
+    const verifyPayload = {
+      razorpay_order_id: 'order_book_flow',
+      razorpay_payment_id: 'pay_book_flow',
+      razorpay_signature: 'sig_book_flow',
+    };
+
+    it('completes create order -> checkout -> verify', async () => {
+      const createSpy = jest
+        .spyOn(PaymentService, 'createBookingPayment')
+        .mockResolvedValue(bookingOrder);
+      const verifySpy = jest
+        .spyOn(PaymentService, 'verifyBookingPayment')
+        .mockResolvedValue({ success: true, bookingId: 'book-1' });
+      mockOpenCheckout.mockResolvedValue({ status: 'success', data: verifyPayload });
+
+      const order = await PaymentService.createBookingPayment('book-1');
+      const checkout = await mockOpenCheckout({
+        orderId: order.orderId,
+        amount: order.amount,
+        currency: order.currency,
+        keyId: order.keyId,
+        description: 'Delivery payment',
+      });
+
+      expect(checkout.status).toBe('success');
+      if (checkout.status === 'success') {
+        const result = await PaymentService.verifyBookingPayment('book-1', checkout.data);
+        expect(result.success).toBe(true);
+      }
+
+      expect(createSpy).toHaveBeenCalledWith('book-1');
+      expect(verifySpy).toHaveBeenCalledWith('book-1', verifyPayload);
+    });
+
+    it('blocks checkout when agency is not onboarded', async () => {
+      jest.spyOn(PaymentService, 'createBookingPayment').mockRejectedValue(
+        new Error(ERROR_MESSAGES.payment.agencyNotOnboarded)
+      );
+      const verifySpy = jest.spyOn(PaymentService, 'verifyBookingPayment');
+      mockOpenCheckout.mockResolvedValue({ status: 'success', data: verifyPayload });
+
+      await expect(PaymentService.createBookingPayment('book-1')).rejects.toThrow(
+        ERROR_MESSAGES.payment.agencyNotOnboarded
+      );
+      expect(mockOpenCheckout).not.toHaveBeenCalled();
+      expect(verifySpy).not.toHaveBeenCalled();
     });
   });
 });

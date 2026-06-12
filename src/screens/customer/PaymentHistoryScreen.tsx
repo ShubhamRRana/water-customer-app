@@ -14,8 +14,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Typography, CustomerMenuDrawer, ScreenLoading } from '../../components/common';
 import Card from '../../components/common/Card';
 import { useAuthStore } from '../../store/authStore';
-import { SubscriptionService } from '../../services/subscription.service';
-import type { PaymentTransaction, PaymentTransactionStatus } from '../../types/subscription.types';
+import { PaymentService, type PaymentHistoryItem } from '../../services/payment.service';
+import type { PaymentTransactionStatus } from '../../types/subscription.types';
+import type { PaymentFlow } from '../../types/razorpay.types';
 import { navigateCustomerMenuRoute } from '../../navigation/customerMenuNavigation';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { UI_CONFIG, PRICING_CONFIG } from '../../constants/config';
@@ -30,10 +31,17 @@ interface Props {
   navigation: Nav;
 }
 
-type FilterKey = 'all' | PaymentTransactionStatus;
+type FlowFilterKey = 'all' | PaymentFlow;
+type StatusFilterKey = 'all' | PaymentTransactionStatus;
 
-const FILTERS: { key: FilterKey; label: string }[] = [
+const FLOW_FILTERS: { key: FlowFilterKey; label: string }[] = [
   { key: 'all', label: 'All' },
+  { key: 'customer_subscription', label: 'Subscription' },
+  { key: 'customer_booking', label: 'Delivery' },
+];
+
+const STATUS_FILTERS: { key: StatusFilterKey; label: string }[] = [
+  { key: 'all', label: 'All statuses' },
   { key: 'success', label: 'Success' },
   { key: 'failed', label: 'Failed' },
   { key: 'pending', label: 'Pending' },
@@ -46,14 +54,15 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
   const { user, logout, customerAccountKind } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [rows, setRows] = useState<PaymentTransaction[]>([]);
-  const [filter, setFilter] = useState<FilterKey>('all');
+  const [rows, setRows] = useState<PaymentHistoryItem[]>([]);
+  const [flowFilter, setFlowFilter] = useState<FlowFilterKey>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilterKey>('all');
   const [menuVisible, setMenuVisible] = useState(false);
 
   const load = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const list = await SubscriptionService.getPaymentTransactionsByUser(user.id);
+      const list = await PaymentService.getPaymentHistory(user.id);
       setRows(list);
     } catch (e) {
       errorLogger.medium('Failed to load payment history', e, { userId: user.id });
@@ -72,9 +81,16 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
   );
 
   const filtered = useMemo(() => {
-    if (filter === 'all') return rows;
-    return rows.filter((r) => r.status === filter);
-  }, [rows, filter]);
+    return rows.filter((row) => {
+      if (flowFilter !== 'all' && row.flow !== flowFilter) {
+        return false;
+      }
+      if (statusFilter !== 'all' && row.status !== statusFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [rows, flowFilter, statusFilter]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -86,13 +102,14 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
     navigateCustomerMenuRoute(navigation, route);
   };
 
-  const showDetails = (tx: PaymentTransaction) => {
+  const showDetails = (tx: PaymentHistoryItem) => {
     const lines = [
+      `Type: ${tx.flowLabel}`,
       `Amount: ${PRICING_CONFIG.currencySymbol}${tx.amount.toFixed(2)}`,
       `Status: ${tx.status}`,
       `Gateway: ${tx.paymentGateway}`,
       tx.gatewayOrderId ? `Order ID: ${tx.gatewayOrderId}` : '',
-      tx.gatewayTransactionId ? `Txn ID: ${tx.gatewayTransactionId}` : '',
+      tx.gatewayTransactionId ? `Payment ID: ${tx.gatewayTransactionId}` : '',
       tx.gatewayResponseMessage ? `Message: ${tx.gatewayResponseMessage}` : '',
       `Initiated: ${tx.initiatedAt.toLocaleString()}`,
       tx.completedAt ? `Completed: ${tx.completedAt.toLocaleString()}` : '',
@@ -122,13 +139,35 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
         style={styles.chips}
         contentContainerStyle={styles.chipsInner}
       >
-        {FILTERS.map((f) => {
-          const on = filter === f.key;
+        {FLOW_FILTERS.map((f) => {
+          const on = flowFilter === f.key;
           return (
             <TouchableOpacity
               key={f.key}
               style={[styles.chip, on && styles.chipOn]}
-              onPress={() => setFilter(f.key)}
+              onPress={() => setFlowFilter(f.key)}
+            >
+              <Typography variant="caption" style={on ? styles.chipTextOn : styles.chipText}>
+                {f.label}
+              </Typography>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.chipsSecondary}
+        contentContainerStyle={styles.chipsInner}
+      >
+        {STATUS_FILTERS.map((f) => {
+          const on = statusFilter === f.key;
+          return (
+            <TouchableOpacity
+              key={f.key}
+              style={[styles.chip, on && styles.chipOn]}
+              onPress={() => setStatusFilter(f.key)}
             >
               <Typography variant="caption" style={on ? styles.chipTextOn : styles.chipText}>
                 {f.label}
@@ -156,7 +195,19 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
               <Card key={tx.id} padding="medium" style={styles.card} onPress={() => showDetails(tx)}>
                 <View style={styles.cardRow}>
                   <View style={{ flex: 1 }}>
-                    <Typography variant="h4">
+                    <View style={styles.flowRow}>
+                      <View style={[styles.flowPill, flowPillStyle(tx.flow, colors)]}>
+                        <Typography variant="caption" style={styles.flowPillText}>
+                          {tx.flowLabel}
+                        </Typography>
+                      </View>
+                      <View style={[styles.pill, statusStyle(tx.status, colors)]}>
+                        <Typography variant="caption" style={styles.pillText}>
+                          {tx.status}
+                        </Typography>
+                      </View>
+                    </View>
+                    <Typography variant="h4" style={styles.amountText}>
                       {PRICING_CONFIG.currencySymbol}
                       {tx.amount.toFixed(2)}
                     </Typography>
@@ -164,15 +215,15 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
                       {tx.initiatedAt.toLocaleString()}
                     </Typography>
                   </View>
-                  <View style={[styles.pill, statusStyle(tx.status, colors)]}>
-                    <Typography variant="caption" style={styles.pillText}>
-                      {tx.status}
-                    </Typography>
-                  </View>
                 </View>
                 {tx.gatewayOrderId ? (
                   <Typography variant="caption" style={{ marginTop: 8, color: colors.textSecondary }}>
                     Order: {tx.gatewayOrderId}
+                  </Typography>
+                ) : null}
+                {tx.gatewayTransactionId ? (
+                  <Typography variant="caption" style={{ color: colors.textSecondary }}>
+                    Payment: {tx.gatewayTransactionId}
                   </Typography>
                 ) : null}
               </Card>
@@ -193,6 +244,17 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
   );
 };
 
+function flowPillStyle(flow: PaymentFlow | null, colors: ThemeColors) {
+  switch (flow) {
+    case 'customer_subscription':
+      return { backgroundColor: 'rgba(99, 102, 241, 0.2)' };
+    case 'customer_booking':
+      return { backgroundColor: 'rgba(34, 197, 94, 0.2)' };
+    default:
+      return { backgroundColor: colors.surfaceLight };
+  }
+}
+
 function statusStyle(s: PaymentTransactionStatus, colors: ThemeColors) {
   switch (s) {
     case 'success':
@@ -209,35 +271,45 @@ function statusStyle(s: PaymentTransactionStatus, colors: ThemeColors) {
 
 function createPaymentHistoryStyles(colors: ThemeColors) {
   return StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.primary },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: UI_CONFIG.spacing.md,
-    paddingVertical: UI_CONFIG.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  iconBtn: { padding: UI_CONFIG.spacing.xs },
-  headerTitle: { flex: 1, textAlign: 'center' },
-  chips: { maxHeight: 48, borderBottomWidth: 1, borderBottomColor: colors.border },
-  chipsInner: { paddingHorizontal: UI_CONFIG.spacing.md, paddingVertical: UI_CONFIG.spacing.sm, gap: 8, alignItems: 'center' },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    marginRight: 8,
-  },
-  chipOn: { backgroundColor: colors.accent },
-  chipText: { color: colors.textSecondary },
-  chipTextOn: { color: colors.primary, fontWeight: '600' },
-  scroll: { padding: UI_CONFIG.spacing.md, paddingBottom: UI_CONFIG.spacing.xl },
-  card: { marginBottom: UI_CONFIG.spacing.sm },
-  cardRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  pillText: { textTransform: 'capitalize' },
+    safe: { flex: 1, backgroundColor: colors.primary },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: UI_CONFIG.spacing.md,
+      paddingVertical: UI_CONFIG.spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    iconBtn: { padding: UI_CONFIG.spacing.xs },
+    headerTitle: { flex: 1, textAlign: 'center' },
+    chips: { maxHeight: 48, borderBottomWidth: 1, borderBottomColor: colors.border },
+    chipsSecondary: { maxHeight: 44 },
+    chipsInner: {
+      paddingHorizontal: UI_CONFIG.spacing.md,
+      paddingVertical: UI_CONFIG.spacing.sm,
+      gap: 8,
+      alignItems: 'center',
+    },
+    chip: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 20,
+      backgroundColor: colors.surface,
+      marginRight: 8,
+    },
+    chipOn: { backgroundColor: colors.accent },
+    chipText: { color: colors.textSecondary },
+    chipTextOn: { color: colors.primary, fontWeight: '600' },
+    scroll: { padding: UI_CONFIG.spacing.md, paddingBottom: UI_CONFIG.spacing.xl },
+    card: { marginBottom: UI_CONFIG.spacing.sm },
+    cardRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    flowRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+    flowPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+    flowPillText: { fontWeight: '600', textTransform: 'capitalize' },
+    amountText: { marginBottom: 2 },
+    pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+    pillText: { textTransform: 'capitalize' },
   });
 }
 

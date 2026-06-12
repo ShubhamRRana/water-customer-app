@@ -388,6 +388,16 @@ describe('Configuration Constants', () => {
       expect(paymentErrors).toHaveProperty('failed');
       expect(paymentErrors).toHaveProperty('cancelled');
       expect(paymentErrors).toHaveProperty('networkError');
+      expect(paymentErrors).toHaveProperty('razorpayNotConfigured');
+      expect(paymentErrors).toHaveProperty('razorpayRequiresDevBuild');
+      expect(paymentErrors).toHaveProperty('razorpayCheckoutFailed');
+      expect(paymentErrors).toHaveProperty('razorpayCancelled');
+      expect(paymentErrors).toHaveProperty('razorpayNetworkError');
+      expect(paymentErrors).toHaveProperty('agencyNotOnboarded');
+      expect(paymentErrors).toHaveProperty('signatureMismatch');
+      expect(paymentErrors).toHaveProperty('trialActive');
+      expect(paymentErrors).toHaveProperty('bookingAlreadyPaid');
+      expect(paymentErrors).toHaveProperty('subscriptionNotEligible');
       Object.values(paymentErrors).forEach(value => {
         expect(typeof value).toBe('string');
         expect(value.length).toBeGreaterThan(0);

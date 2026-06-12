@@ -25,6 +25,14 @@ import {
 } from '../../utils/reportCalculations';
 import { errorLogger } from '../../utils/errorLogger';
 import { exportReportToExcel } from '../../utils/excelExport';
+import Card from '../../components/common/Card';
+import { formatDateTime } from '../../utils/dateUtils';
+import {
+  canPayBookingOnline,
+  getBookingPaymentChip,
+  getBookingPaymentChipLabel,
+} from '../../utils/paymentDisplay';
+import type { Booking } from '../../types';
 
 type PastOrdersScreenNavigationProp = StackNavigationProp<AppStackParamList, 'PastOrders'>;
 
@@ -87,6 +95,38 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
   const totalRevenue = monthlyData.totalRevenue;
   const totalOrders = monthlyData.totalOrders;
   const dailyBreakdown = calculateDailyBreakdown(bookings, selectedYear, selectedMonth);
+
+  const monthlyOrders = useMemo(() => {
+    return bookings
+      .filter((booking) => {
+        const date = booking.scheduledFor || booking.createdAt;
+        const d = date instanceof Date ? date : new Date(date);
+        return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth;
+      })
+      .sort((a, b) => {
+        const aDate = a.scheduledFor || a.createdAt;
+        const bDate = b.scheduledFor || b.createdAt;
+        return new Date(bDate).getTime() - new Date(aDate).getTime();
+      });
+  }, [bookings, selectedYear, selectedMonth]);
+
+  const getPaymentChipColor = (booking: Booking) => {
+    const chip = getBookingPaymentChip(booking);
+    switch (chip) {
+      case 'paid':
+        return colors.success;
+      case 'failed':
+        return colors.error;
+      case 'unpaid':
+        return colors.warning;
+      case 'cod':
+        return colors.secondary;
+      case 'refunded':
+        return colors.textSecondary;
+      default:
+        return colors.textSecondary;
+    }
+  };
 
   const handleDownloadExcel = async () => {
     try {
@@ -215,6 +255,55 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
               </Typography>
             </View>
           ))}
+        </View>
+
+        <View style={styles.ordersSection}>
+          <Typography variant="h3" style={styles.ordersSectionTitle}>
+            Orders this month
+          </Typography>
+          {monthlyOrders.length === 0 ? (
+            <Typography variant="body" style={styles.emptyOrdersText}>
+              No orders in {monthLabels[selectedMonth]} {selectedYear}.
+            </Typography>
+          ) : (
+            monthlyOrders.map((booking) => (
+              <Card
+                key={booking.id}
+                style={styles.orderCard}
+                onPress={() => navigation.navigate('OrderTracking', { orderId: booking.id })}
+              >
+                <View style={styles.orderCardHeader}>
+                  <Typography variant="body" style={styles.orderCardDate}>
+                    {formatDateTime(booking.scheduledFor || booking.createdAt)}
+                  </Typography>
+                  <View style={[styles.paymentChip, { backgroundColor: getPaymentChipColor(booking) }]}>
+                    <Typography variant="caption" style={styles.paymentChipText}>
+                      {getBookingPaymentChipLabel(getBookingPaymentChip(booking))}
+                    </Typography>
+                  </View>
+                </View>
+                <Typography variant="body" style={styles.orderCardDetail}>
+                  {booking.tankerSize}L · {booking.deliveryAddress.address}
+                </Typography>
+                <View style={styles.orderCardFooter}>
+                  <Typography variant="body" style={styles.orderCardAmount}>
+                    {booking.totalPrice > 0
+                      ? PricingUtils.formatPrice(booking.totalPrice)
+                      : 'Amount at delivery'}
+                  </Typography>
+                  {canPayBookingOnline(booking) && (
+                    <TouchableOpacity
+                      style={styles.payNowButton}
+                      onPress={() => navigation.navigate('PayBooking', { bookingId: booking.id })}
+                    >
+                      <Ionicons name="card-outline" size={14} color={colors.textLight} />
+                      <Typography variant="caption" style={styles.payNowText}>Pay now</Typography>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </Card>
+            ))
+          )}
         </View>
 
         {/* Bottom Spacing */}
@@ -370,6 +459,73 @@ function createPastOrdersStyles(colors: ThemeColors) {
     fontSize: 14,
     color: colors.text,
     textAlign: 'right',
+  },
+  ordersSection: {
+    paddingHorizontal: UI_CONFIG.spacing.lg,
+    paddingBottom: UI_CONFIG.spacing.lg,
+  },
+  ordersSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: UI_CONFIG.spacing.md,
+  },
+  emptyOrdersText: {
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  orderCard: {
+    marginBottom: UI_CONFIG.spacing.sm,
+    padding: UI_CONFIG.spacing.md,
+  },
+  orderCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  orderCardDate: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    flex: 1,
+  },
+  paymentChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  paymentChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textLight,
+  },
+  orderCardDetail: {
+    fontSize: 14,
+    color: colors.text,
+    marginBottom: 8,
+  },
+  orderCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  orderCardAmount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.accent,
+  },
+  payNowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.accent,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  payNowText: {
+    color: colors.textLight,
+    fontWeight: '600',
   },
   bottomSpacing: {
     height: 40,
