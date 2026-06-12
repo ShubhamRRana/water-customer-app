@@ -19,7 +19,8 @@ import { SubscriptionService } from '../../services/subscription.service';
 import type { UserSubscription, SubscriptionPlan } from '../../types/subscription.types';
 import { navigateCustomerMenuRoute } from '../../navigation/customerMenuNavigation';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
-import { UI_CONFIG } from '../../constants/config';
+import { FEATURE_FLAGS, UI_CONFIG } from '../../constants/config';
+import type { PaymentTransaction } from '../../types/subscription.types';
 import type { ThemeColors } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { errorLogger } from '../../utils/errorLogger';
@@ -45,6 +46,7 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [sub, setSub] = useState<UserSubscription | null>(null);
   const [plan, setPlan] = useState<SubscriptionPlan | null>(null);
+  const [latestPayment, setLatestPayment] = useState<PaymentTransaction | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
 
   const load = useCallback(async () => {
@@ -58,6 +60,8 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
       } else {
         setPlan(null);
       }
+      const payment = await SubscriptionService.getLatestSubscriptionPayment(user.id, s?.id);
+      setLatestPayment(payment);
     } catch (e) {
       errorLogger.medium('Failed to load subscription', e, { userId: user.id });
       Alert.alert('Error', 'Could not load subscription details.');
@@ -108,6 +112,20 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
   const remain = sub?.endDate ? daysRemaining(sub.endDate) : null;
   const isActive =
     sub?.status === 'active' && sub.endDate && sub.endDate.getTime() > Date.now();
+  const canRenew =
+    FEATURE_FLAGS.enableRazorpaySubscription &&
+    sub &&
+    plan &&
+    (sub.status === 'expired' || sub.status === 'pending' || !isActive);
+
+  const handleRenew = () => {
+    if (!sub || !plan) return;
+    navigation.navigate('PaySubscription', {
+      subscriptionId: sub.id,
+      planId: plan.id,
+      planName: plan.name,
+    });
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -155,18 +173,30 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
                 {sub.startDate.toLocaleDateString()} — {sub.endDate.toLocaleDateString()}
               </Typography>
             ) : null}
+            {sub?.endDate && isActive ? (
+              <Typography variant="caption" style={{ color: colors.textSecondary, marginTop: 8 }}>
+                Renews / ends on {sub.endDate.toLocaleDateString()}
+              </Typography>
+            ) : null}
+            {latestPayment?.gatewayTransactionId ? (
+              <Typography variant="caption" style={{ color: colors.textSecondary, marginTop: 8 }}>
+                Razorpay payment ID: {latestPayment.gatewayTransactionId}
+              </Typography>
+            ) : null}
           </Card>
+
+          {canRenew ? (
+            <Button title="Renew with Razorpay" onPress={handleRenew} style={styles.btn} />
+          ) : null}
 
           <Button
             title="Plans & upgrade"
-            disabled
             onPress={() => navigation.navigate('SubscriptionPlans')}
             style={styles.btn}
           />
           <Button
             title="Payment history"
             variant="secondary"
-            disabled
             onPress={() => navigation.navigate('PaymentHistory')}
             style={styles.btn}
           />

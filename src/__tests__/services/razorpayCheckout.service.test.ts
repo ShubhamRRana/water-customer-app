@@ -5,12 +5,16 @@
 const mockOpen = jest.fn();
 
 const mockExpoConfig: { extra?: Record<string, unknown> } = { extra: {} };
+const mockAppOwnership: { value: string | null } = { value: null };
 
 jest.mock('expo-constants', () => ({
   __esModule: true,
   default: {
     get expoConfig() {
       return mockExpoConfig;
+    },
+    get appOwnership() {
+      return mockAppOwnership.value;
     },
   },
 }));
@@ -32,6 +36,7 @@ describe('razorpayCheckout.service', () => {
     jest.clearAllMocks();
     delete process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID;
     mockExpoConfig.extra = {};
+    mockAppOwnership.value = null;
   });
 
   afterAll(() => {
@@ -133,6 +138,18 @@ describe('razorpayCheckout.service', () => {
         message: ERROR_MESSAGES.payment.razorpayNetworkError,
         code: undefined,
       });
+    });
+
+    it('returns dev-build error when running in Expo Go', async () => {
+      mockAppOwnership.value = 'expo';
+
+      const result = await openCheckout(baseParams);
+
+      expect(result).toEqual({
+        status: 'error',
+        message: ERROR_MESSAGES.payment.razorpayRequiresDevBuild,
+      });
+      expect(mockOpen).not.toHaveBeenCalled();
     });
   });
 });

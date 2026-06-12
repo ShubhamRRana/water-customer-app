@@ -1,4 +1,7 @@
 import { dataAccess } from '../lib/index';
+import { FEATURE_FLAGS } from '../constants/config';
+import { PaymentService } from './payment.service';
+import type { RazorpayVerifyPayload } from '../types/razorpay.types';
 import type {
   SubscriptionPlan,
   UserSubscription,
@@ -8,6 +11,7 @@ import type {
   CreatePaymentTransactionData,
   UpdatePaymentTransactionData,
 } from '../types/subscription.types';
+import type { CustomerAccountKind } from '../types/index';
 import { handleAsyncOperationWithRethrow } from '../utils/errorHandler';
 
 /**
@@ -19,6 +23,14 @@ export class SubscriptionService {
       () => dataAccess.subscriptions.getSubscriptionPlans(),
       { context: { operation: 'getActivePlans' }, userFacing: false }
     );
+  }
+
+  static filterPlansForAccountKind(
+    plans: SubscriptionPlan[],
+    accountKind: CustomerAccountKind | null | undefined
+  ): SubscriptionPlan[] {
+    if (!accountKind) return plans;
+    return plans.filter((plan) => !plan.accountKind || plan.accountKind === accountKind);
   }
 
   static async getPlanById(planId: string): Promise<SubscriptionPlan | null> {
@@ -50,15 +62,72 @@ export class SubscriptionService {
   }
 
   /**
-   * Activates subscription after Razorpay payment verify (Phase 2 — `verify-customer-subscription-payment`).
+   * Ensures a pending or expired subscription row exists for checkout (Flow A).
+   */
+  static async prepareSubscriptionCheckout(
+    userId: string,
+    planId: string
+  ): Promise<UserSubscription> {
+    return handleAsyncOperationWithRethrow(
+      async () => {
+        const existing = await dataAccess.subscriptions.getUserSubscription(userId);
+        const now = Date.now();
+
+        if (
+          existing?.status === 'active' &&
+          !existing.isTrial &&
+          existing.endDate &&
+          existing.endDate.getTime() > now
+        ) {
+          throw new Error('You already have an active subscription.');
+        }
+
+        if (existing?.status === 'pending') {
+          if (existing.planId !== planId) {
+            await dataAccess.subscriptions.updateSubscription(existing.id, { planId });
+            return { ...existing, planId };
+          }
+          return existing;
+        }
+
+        if (existing?.status === 'expired') {
+          if (existing.planId !== planId) {
+            await dataAccess.subscriptions.updateSubscription(existing.id, {
+              planId,
+              status: 'pending',
+            });
+            return { ...existing, planId, status: 'pending' };
+          }
+          return existing;
+        }
+
+        return dataAccess.subscriptions.createSubscription({
+          userId,
+          planId,
+          status: 'pending',
+        });
+      },
+      { context: { operation: 'prepareSubscriptionCheckout', userId, planId }, userFacing: false }
+    );
+  }
+
+  /**
+   * Activates subscription after Razorpay SDK success (`verify-customer-subscription-payment`).
    */
   static async activateSubscription(
-    _subscriptionId: string,
-    _gatewayOrderId: string
+    subscriptionId: string,
+    verifyPayload: RazorpayVerifyPayload
   ): Promise<void> {
-    throw new Error(
-      'Subscription activation via Razorpay verify is not wired yet. Complete Phase 2 implementation.'
-    );
+    if (!FEATURE_FLAGS.enableRazorpaySubscription) {
+      throw new Error(
+        'Razorpay subscription checkout is disabled. Set enableRazorpaySubscription to enable.'
+      );
+    }
+
+    const result = await PaymentService.verifySubscriptionPayment(subscriptionId, verifyPayload);
+    if (!result.success) {
+      throw new Error(result.error ?? 'Subscription activation failed');
+    }
   }
 
   static async cancelSubscription(subscriptionId: string, reason: string): Promise<void> {
@@ -106,6 +175,27 @@ export class SubscriptionService {
     return handleAsyncOperationWithRethrow(
       () => dataAccess.subscriptions.getPaymentTransactionsByUser(userId),
       { context: { operation: 'getPaymentTransactionsByUser', userId }, userFacing: false }
+    );
+  }
+
+  static async getLatestSubscriptionPayment(
+    userId: string,
+    subscriptionId?: string
+  ): Promise<PaymentTransaction | null> {
+    return handleAsyncOperationWithRethrow(
+      async () => {
+        const rows = await dataAccess.subscriptions.getPaymentTransactionsByUser(userId);
+        const subscriptionRows = rows.filter((row) => {
+          const flow = row.metadata?.flow;
+          const isSubscriptionFlow =
+            flow === 'customer_subscription' || row.subscriptionId != null;
+          if (!isSubscriptionFlow) return false;
+          if (subscriptionId && row.subscriptionId !== subscriptionId) return false;
+          return true;
+        });
+        return subscriptionRows[0] ?? null;
+      },
+      { context: { operation: 'getLatestSubscriptionPayment', userId }, userFacing: false }
     );
   }
 

@@ -1,5 +1,4 @@
 import Constants from 'expo-constants';
-import RazorpayCheckout from 'react-native-razorpay';
 import { APP_CONFIG, DARK_THEME_COLORS, ERROR_MESSAGES } from '../constants/config';
 import type {
   RazorpayCheckoutParams,
@@ -11,6 +10,34 @@ interface RazorpaySdkError {
   code?: string | number;
   description?: string;
   message?: string;
+}
+
+interface RazorpayNativeModule {
+  open(options: Record<string, unknown>): Promise<Record<string, unknown>>;
+}
+
+let razorpayNativeModule: RazorpayNativeModule | null = null;
+
+function getRazorpayCheckout(): RazorpayNativeModule {
+  if (Constants.appOwnership === 'expo') {
+    throw new Error(ERROR_MESSAGES.payment.razorpayRequiresDevBuild);
+  }
+
+  if (razorpayNativeModule) {
+    return razorpayNativeModule;
+  }
+
+  try {
+    // Lazy load: react-native-razorpay is not available in Expo Go.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const module = require('react-native-razorpay') as {
+      default?: RazorpayNativeModule;
+    };
+    razorpayNativeModule = module.default ?? (module as unknown as RazorpayNativeModule);
+    return razorpayNativeModule;
+  } catch {
+    throw new Error(ERROR_MESSAGES.payment.razorpayRequiresDevBuild);
+  }
 }
 
 function isUserCancelled(error: RazorpaySdkError): boolean {
@@ -58,6 +85,19 @@ export async function openCheckout(
     prefill: params.prefill,
     theme: { color: DARK_THEME_COLORS.accent },
   };
+
+  let RazorpayCheckout: RazorpayNativeModule;
+  try {
+    RazorpayCheckout = getRazorpayCheckout();
+  } catch (error: unknown) {
+    return {
+      status: 'error',
+      message:
+        error instanceof Error
+          ? error.message
+          : ERROR_MESSAGES.payment.razorpayRequiresDevBuild,
+    };
+  }
 
   try {
     const data = (await RazorpayCheckout.open(options)) as Record<string, unknown>;

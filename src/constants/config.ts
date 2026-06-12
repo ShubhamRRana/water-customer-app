@@ -250,9 +250,13 @@ export const ERROR_MESSAGES = {
     cancelled: 'Payment was cancelled.',
     networkError: 'Network error during payment.',
     razorpayNotConfigured: 'Payment is not configured. Please contact support.',
+    razorpayRequiresDevBuild:
+      'Razorpay payments require a development build. Run npm run start:dev and open the dev client app instead of Expo Go.',
     razorpayCheckoutFailed: 'Payment could not be completed. Please try again.',
     razorpayCancelled: 'Payment was cancelled.',
     razorpayNetworkError: 'Network error during payment. Check your connection and try again.',
+    agencyNotOnboarded:
+      'This agency is not set up for online payments yet. You can pay cash on delivery when your order arrives.',
   },
   general: {
     unexpected: 'An unexpected error occurred.',

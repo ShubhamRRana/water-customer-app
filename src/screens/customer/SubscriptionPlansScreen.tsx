@@ -44,7 +44,8 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
     if (!user?.id) return;
     try {
       const list = await SubscriptionService.getActivePlans();
-      setPlans(list.sort((a, b) => a.displayOrder - b.displayOrder));
+      const filtered = SubscriptionService.filterPlansForAccountKind(list, customerAccountKind);
+      setPlans(filtered.sort((a, b) => a.displayOrder - b.displayOrder));
     } catch (e) {
       errorLogger.medium('Failed to load subscription plans', e, { userId: user.id });
       Alert.alert('Error', 'Could not load plans. Pull to refresh.');
@@ -52,7 +53,7 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.id]);
+  }, [user?.id, customerAccountKind]);
 
   useFocusEffect(
     useCallback(() => {
@@ -66,7 +67,7 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
     return m?.price ?? null;
   }, [plans]);
 
-  const handleSubscribe = (plan: SubscriptionPlan) => {
+  const handleSubscribe = async (plan: SubscriptionPlan) => {
     if (!user?.id) return;
     if (!FEATURE_FLAGS.enableRazorpaySubscription) {
       Alert.alert(
@@ -75,10 +76,19 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
       );
       return;
     }
-    Alert.alert(
-      'Not available yet',
-      'Razorpay subscription checkout is not wired yet. Complete Phase 2 implementation.'
-    );
+
+    try {
+      const subscription = await SubscriptionService.prepareSubscriptionCheckout(user.id, plan.id);
+      navigation.navigate('PaySubscription', {
+        subscriptionId: subscription.id,
+        planId: plan.id,
+        planName: plan.name,
+      });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Could not start checkout.';
+      errorLogger.medium('prepare subscription checkout failed', e, { userId: user.id, planId: plan.id });
+      Alert.alert('Unable to subscribe', message);
+    }
   };
 
   const savingsLabel = (plan: SubscriptionPlan): string | null => {
@@ -158,8 +168,12 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
                   ))}
                 </View>
                 <Button
-                  title="Subscribe now"
-                  onPress={() => handleSubscribe(plan)}
+                  title={
+                    FEATURE_FLAGS.enableRazorpaySubscription
+                      ? 'Subscribe with Razorpay'
+                      : 'Subscribe now'
+                  }
+                  onPress={() => void handleSubscribe(plan)}
                 />
               </Card>
             );

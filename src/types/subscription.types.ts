@@ -28,6 +28,8 @@ export interface SubscriptionPlan {
   maxBookingsPerMonth: number | null;
   isActive: boolean;
   displayOrder: number;
+  /** When set, plan is shown only to matching customer account kind. */
+  accountKind?: 'individual' | 'society' | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -79,6 +81,7 @@ export interface CreateSubscriptionData {
 }
 
 export interface UpdateSubscriptionData {
+  planId?: string;
   status?: SubscriptionStatus;
   startDate?: Date | null;
   endDate?: Date | null;

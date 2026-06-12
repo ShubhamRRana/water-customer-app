@@ -1,4 +1,5 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
+import type { PaymentResultParams } from '../types/razorpay.types';
 
 /** Period context for society trip payment settlement (month view uses month 0–11; year view ignores month). */
 export type SocietyPaymentCompletePeriod = {
@@ -37,6 +38,15 @@ export type AppStackParamList = {
   PastOrders: undefined;
   SubscriptionPlans: undefined;
   SubscriptionStatus: undefined;
+  PaySubscription: {
+    subscriptionId: string;
+    planId: string;
+    planName: string;
+  };
+  PayBooking: {
+    bookingId: string;
+  };
+  PaymentResult: PaymentResultParams;
   PaymentHistory: undefined;
 };
 

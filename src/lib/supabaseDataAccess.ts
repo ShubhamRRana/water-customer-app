@@ -148,6 +148,7 @@ interface SubscriptionPlanRow {
   max_bookings_per_month: number | null;
   is_active: boolean;
   display_order: number;
+  account_kind?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -468,6 +469,10 @@ function parsePlanFeatures(raw: unknown): string[] {
 }
 
 function mapSubscriptionPlanFromDb(row: SubscriptionPlanRow): SubscriptionPlan {
+  const accountKind =
+    row.account_kind === 'society' || row.account_kind === 'individual'
+      ? row.account_kind
+      : null;
   return {
     id: row.id,
     name: row.name,
@@ -479,6 +484,7 @@ function mapSubscriptionPlanFromDb(row: SubscriptionPlanRow): SubscriptionPlan {
     maxBookingsPerMonth: row.max_bookings_per_month,
     isActive: row.is_active,
     displayOrder: row.display_order,
+    accountKind,
     createdAt: deserializeDate(row.created_at) || new Date(),
     updatedAt: deserializeDate(row.updated_at) || new Date(),
   };
@@ -2058,6 +2064,7 @@ class SupabaseSubscriptionDataAccess implements ISubscriptionDataAccess {
   async updateSubscription(id: string, data: UpdateSubscriptionData): Promise<void> {
     try {
       const updateRow: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (data.planId !== undefined) updateRow.plan_id = data.planId;
       if (data.status !== undefined) updateRow.status = data.status;
       if (data.startDate !== undefined) updateRow.start_date = data.startDate ? serializeDate(data.startDate) : null;
       if (data.endDate !== undefined) updateRow.end_date = data.endDate ? serializeDate(data.endDate) : null;
