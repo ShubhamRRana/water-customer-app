@@ -498,7 +498,7 @@ Minimum for the app:
 
 ```env
 EXPO_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your-key-here
 ```
 
 Also configure (see `.env.example` for comments and optional keys):
@@ -506,7 +506,9 @@ Also configure (see `.env.example` for comments and optional keys):
 - `EXPO_PUBLIC_RAZORPAY_KEY_ID` — Razorpay Key ID (test or live); secret stays in Edge Function secrets
 - `EXPO_PUBLIC_AUTH_SUCCESS_URL` — redirect after email verification (must be listed in Supabase Auth URL configuration)
 - `EXPO_PUBLIC_PASSWORD_RESET_REDIRECT_URL` — where password-reset links should land (`wtccustomer://reset-password`)
-- `SUPABASE_SERVICE_ROLE_KEY` — **server-side and migration scripts only**; must not appear in client bundles (`npm run secrets:check` helps guard this)
+- `SUPABASE_SECRET_KEY` — **server-side and migration scripts only**; must not appear in client bundles (`npm run secrets:check` helps guard this)
+
+**Supabase API keys (migration):** In Dashboard → Settings → API Keys, create **Publishable and secret API keys** if prompted. Use the `default` publishable key (`sb_publishable_...`) for `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and the secret key (`sb_secret_...`) for `SUPABASE_SECRET_KEY`. Legacy `EXPO_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` still work as fallbacks during transition. Edge Functions on hosted Supabase receive `SUPABASE_PUBLISHABLE_KEYS` / `SUPABASE_SECRET_KEYS` automatically. Update `eas.json` build env (or EAS secrets) with the publishable key when ready.
 
 Razorpay subscription and booking checkout use **Supabase Edge Function secrets** (not `EXPO_PUBLIC_*`). Configure those in the Supabase Dashboard (see `.env.example` comments). Client uses `EXPO_PUBLIC_RAZORPAY_KEY_ID` only.
 
@@ -825,7 +827,7 @@ Add `subscriptions` / `payment_transactions` to your publication if the client s
 **Problem**: Login fails or user not found
 
 **Solutions**:
-- Verify `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` in `.env`
+- Verify `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `.env` (legacy: `EXPO_PUBLIC_SUPABASE_ANON_KEY`)
 - Ensure Email provider is enabled in Supabase Auth settings
 - Check that user exists in `users` table with corresponding `user_roles` entry
 - Verify RLS policies allow user access

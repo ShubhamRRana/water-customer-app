@@ -1,6 +1,7 @@
 // supabase/functions/delete-auth-user-on-account-deletion/index.ts
 /// <reference path="./deno.d.ts" />
 import { createClient } from "@supabase/supabase-js";
+import { getPublishableKey, getSecretKey } from "../_shared/keys.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,7 +33,7 @@ Deno.serve(async (req: Request) => {
       const token = authHeader.slice(7);
       const supabaseAuth = createClient(
         Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        getPublishableKey(),
         { global: { headers: { Authorization: `Bearer ${token}` } } }
       );
       const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
@@ -59,7 +60,7 @@ Deno.serve(async (req: Request) => {
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      getSecretKey(),
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 

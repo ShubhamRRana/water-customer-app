@@ -10,7 +10,7 @@
  * Usage:
  *   Set environment variables:
  *     - EXPO_PUBLIC_SUPABASE_URL (test project URL)
- *     - SUPABASE_SERVICE_ROLE_KEY (test project service role key)
+ *     - SUPABASE_SECRET_KEY (test project secret key; legacy: SUPABASE_SERVICE_ROLE_KEY)
  *   Then run: npx ts-node scripts/seed-test-data.ts
  */
 
@@ -20,21 +20,22 @@ import { randomUUID } from 'crypto';
 
 // Configuration
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseSecretKey =
+  process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BOOKING_COUNT = 50000;
 
 // Configurable counts
 const CUSTOMER_COUNT = 100;
 const DRIVER_COUNT = 50;
 
-if (!supabaseUrl || !supabaseServiceKey) {
+if (!supabaseUrl || !supabaseSecretKey) {
   throw new Error(
-    'Missing Supabase configuration. Please set EXPO_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your environment.'
+    'Missing Supabase configuration. Please set EXPO_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY in your environment.'
   );
 }
 
-// Create Supabase client with service role key (bypasses RLS)
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+// Create Supabase client with secret key (bypasses RLS)
+const supabase = createClient(supabaseUrl, supabaseSecretKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,

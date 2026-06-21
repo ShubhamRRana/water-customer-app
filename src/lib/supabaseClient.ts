@@ -10,12 +10,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, Platform } from 'react-native';
 import Constants from 'expo-constants';
 
-// Get Supabase URL and anon key from environment variables
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const supabasePublishableKey =
+  Constants.expoConfig?.extra?.supabasePublishableKey ||
+  Constants.expoConfig?.extra?.supabaseAnonKey ||
+  process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  const errorMessage = 'Missing Supabase configuration. Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in your .env file, app.config.js, or EAS build secrets.';
+if (!supabaseUrl || !supabasePublishableKey) {
+  const errorMessage =
+    'Missing Supabase configuration. Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY in your .env file, app.config.js, or EAS build secrets (EXPO_PUBLIC_SUPABASE_ANON_KEY is supported as a legacy fallback).';
   if (__DEV__) {
     console.error('CRITICAL ERROR:', errorMessage);
     console.error('Environment check:', {
@@ -36,7 +40,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
  * - Persistent sessions
  * - No URL detection (for React Native)
  */
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,

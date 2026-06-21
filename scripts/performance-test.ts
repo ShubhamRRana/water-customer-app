@@ -11,7 +11,7 @@
  * Usage:
  *   Set environment variables:
  *     - EXPO_PUBLIC_SUPABASE_URL (test project URL)
- *     - SUPABASE_SERVICE_ROLE_KEY (test project service role key)
+ *     - SUPABASE_SECRET_KEY (test project secret key; legacy: SUPABASE_SERVICE_ROLE_KEY)
  *   Then run: npx ts-node scripts/performance-test.ts
  */
 
@@ -23,18 +23,19 @@ import * as path from 'path';
 
 // Configuration
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseSecretKey =
+  process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 const PROJECT_ID = process.env.SUPABASE_PROJECT_ID || 'colnjazenkydvvrstilu'; // WaterTankerApp-PerfTest
 const BOOKING_COUNT = 50000;
 
-if (!supabaseUrl || !supabaseServiceKey) {
+if (!supabaseUrl || !supabaseSecretKey) {
   throw new Error(
-    'Missing Supabase configuration. Please set EXPO_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your environment.'
+    'Missing Supabase configuration. Please set EXPO_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY in your environment.'
   );
 }
 
-// Create Supabase client with service role key (bypasses RLS)
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+// Create Supabase client with secret key (bypasses RLS)
+const supabase = createClient(supabaseUrl, supabaseSecretKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,

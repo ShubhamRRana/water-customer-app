@@ -52,6 +52,9 @@ module.exports = {
     plugins: ['expo-dev-client', 'expo-font'],
     extra: {
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
+      supabasePublishableKey:
+        process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+        process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
       razorpayKeyId: process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID,
       passwordResetRedirectUrl: process.env.EXPO_PUBLIC_PASSWORD_RESET_REDIRECT_URL,
