@@ -28,8 +28,8 @@ export interface SubscriptionPlan {
   maxBookingsPerMonth: number | null;
   isActive: boolean;
   displayOrder: number;
-  /** When set, plan is shown only to matching customer account kind. */
-  accountKind?: 'individual' | 'society' | null;
+  /** When set, plan audience; agency plans are admin-only and hidden from customer app. */
+  accountKind?: 'individual' | 'society' | 'agency' | null;
   createdAt: Date;
   updatedAt: Date;
 }

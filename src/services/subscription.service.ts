@@ -14,6 +14,21 @@ import type {
 import type { CustomerAccountKind } from '../types/index';
 import { handleAsyncOperationWithRethrow } from '../utils/errorHandler';
 
+/** Standard society billing periods shown on the subscription screen. */
+export const SOCIETY_VISIBLE_DURATIONS = [1, 12] as const;
+
+export function computeYearlySavingsFromMonthly(
+  monthlyPrice: number,
+  yearlyPrice: number
+): { fullYearPrice: number; savingsAmount: number; discountPercent: number } | null {
+  const fullYearPrice = monthlyPrice * 12;
+  if (fullYearPrice <= yearlyPrice) return null;
+  const savingsAmount = fullYearPrice - yearlyPrice;
+  const discountPercent = Math.round((1 - yearlyPrice / fullYearPrice) * 100);
+  if (discountPercent <= 0) return null;
+  return { fullYearPrice, savingsAmount, discountPercent };
+}
+
 /**
  * Subscription lifecycle and plan queries for the customer app.
  */
@@ -29,8 +44,29 @@ export class SubscriptionService {
     plans: SubscriptionPlan[],
     accountKind: CustomerAccountKind | null | undefined
   ): SubscriptionPlan[] {
-    if (!accountKind) return plans;
-    return plans.filter((plan) => !plan.accountKind || plan.accountKind === accountKind);
+    const customerPlans = plans.filter((plan) => plan.accountKind !== 'agency');
+
+    if (!accountKind) {
+      return customerPlans;
+    }
+
+    const matchingKind = customerPlans.filter(
+      (plan) => !plan.accountKind || plan.accountKind === accountKind
+    );
+
+    if (accountKind === 'society') {
+      const societyOnly = matchingKind.filter((plan) => plan.accountKind === 'society');
+      const societyPlans =
+        societyOnly.length > 0
+          ? societyOnly
+          : matchingKind.filter((plan) => !plan.accountKind);
+
+      return societyPlans.filter((plan) =>
+        (SOCIETY_VISIBLE_DURATIONS as readonly number[]).includes(plan.durationMonths)
+      );
+    }
+
+    return matchingKind;
   }
 
   static async getPlanById(planId: string): Promise<SubscriptionPlan | null> {

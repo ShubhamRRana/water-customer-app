@@ -66,13 +66,17 @@ Deno.serve(async (req: Request) => {
 
     const { data: plan, error: planError } = await admin
       .from("subscription_plans")
-      .select("id, price, currency, is_active")
+      .select("id, price, currency, is_active, account_kind")
       .eq("id", planId)
       .eq("is_active", true)
       .single();
 
     if (planError || !plan) {
       return errorResponse("Plan not found", 404);
+    }
+
+    if (plan.account_kind === "agency") {
+      return errorResponse("Plan not available for customer checkout", 403);
     }
 
     const amountPaise = rupeesToPaise(Number(plan.price));

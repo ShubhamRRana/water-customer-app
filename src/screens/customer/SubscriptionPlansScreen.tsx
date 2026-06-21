@@ -15,12 +15,13 @@ import { Typography, CustomerMenuDrawer, ScreenLoading } from '../../components/
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import { useAuthStore } from '../../store/authStore';
-import { SubscriptionService } from '../../services/subscription.service';
+import { SubscriptionService, computeYearlySavingsFromMonthly } from '../../services/subscription.service';
 import type { SubscriptionPlan } from '../../types/subscription.types';
-import { UI_CONFIG, PRICING_CONFIG, FEATURE_FLAGS } from '../../constants/config';
+import { UI_CONFIG, FEATURE_FLAGS } from '../../constants/config';
 import type { ThemeColors } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { errorLogger } from '../../utils/errorLogger';
+import { PricingUtils } from '../../utils/pricing';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import { navigateCustomerMenuRoute } from '../../navigation/customerMenuNavigation';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
@@ -93,11 +94,25 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
 
   const savingsLabel = (plan: SubscriptionPlan): string | null => {
     if (!monthlyEquivalent || plan.durationMonths <= 1) return null;
+
+    if (plan.durationMonths === 12) {
+      const yearly = computeYearlySavingsFromMonthly(monthlyEquivalent, plan.price);
+      if (!yearly) return null;
+      return `Save ~${yearly.discountPercent}% vs paying monthly`;
+    }
+
     const full = monthlyEquivalent * plan.durationMonths;
     if (full <= plan.price) return null;
     const pct = Math.round((1 - plan.price / full) * 100);
     if (pct <= 0) return null;
     return `Save ~${pct}% vs paying monthly`;
+  };
+
+  const yearlyCalculationLine = (plan: SubscriptionPlan): string | null => {
+    if (!monthlyEquivalent || plan.durationMonths !== 12) return null;
+    const yearly = computeYearlySavingsFromMonthly(monthlyEquivalent, plan.price);
+    if (!yearly) return null;
+    return `${PricingUtils.formatPrice(monthlyEquivalent)} × 12 = ${PricingUtils.formatPrice(yearly.fullYearPrice)}`;
   };
 
   const handleMenuNavigate = (route: CustomerMenuRoute) => {
@@ -131,12 +146,13 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
           contentContainerStyle={styles.scroll}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
         >
-          <Typography variant="body" style={[styles.intro, { color: colors.textSecondary }]}>
+          {/* <Typography variant="body" style={[styles.intro, { color: colors.textSecondary }]}>
             Choose a plan to keep booking water deliveries. Secure payment via Razorpay.
-          </Typography>
+          </Typography> */}
 
           {plans.map((plan) => {
             const saving = savingsLabel(plan);
+            const calculationLine = yearlyCalculationLine(plan);
             return (
               <Card key={plan.id} padding="large" style={styles.card}>
                 <View style={styles.cardTop}>
@@ -155,18 +171,16 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
                   </Typography>
                 ) : null}
                 <Typography variant="h2" style={styles.price}>
-                  {`${PRICING_CONFIG.currencySymbol}${plan.price.toFixed(0)}`}
+                  {PricingUtils.formatPrice(plan.price)}
                 </Typography>
-                <View style={styles.features}>
-                  {plan.features.map((f) => (
-                    <View key={f} style={styles.featureRow}>
-                      <Ionicons name="checkmark-circle" size={18} color={colors.accent} />
-                      <Typography variant="body" style={styles.featureText}>
-                        {f}
-                      </Typography>
-                    </View>
-                  ))}
-                </View>
+                {calculationLine ? (
+                  <Typography
+                    variant="body"
+                    style={[styles.savingsCalc, { color: colors.textSecondary }]}
+                  >
+                    {calculationLine}
+                  </Typography>
+                ) : null}
                 <Button
                   title={
                     FEATURE_FLAGS.enableRazorpaySubscription
@@ -221,9 +235,7 @@ function createSubscriptionPlansStyles(colors: ThemeColors) {
   badgeText: { color: colors.accent },
   desc: { marginTop: UI_CONFIG.spacing.xs, marginBottom: UI_CONFIG.spacing.sm },
   price: { marginVertical: UI_CONFIG.spacing.sm },
-  features: { marginBottom: UI_CONFIG.spacing.md },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  featureText: { flex: 1 },
+  savingsCalc: { marginBottom: UI_CONFIG.spacing.sm },
   });
 }
 

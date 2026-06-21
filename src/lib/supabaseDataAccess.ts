@@ -470,7 +470,9 @@ function parsePlanFeatures(raw: unknown): string[] {
 
 function mapSubscriptionPlanFromDb(row: SubscriptionPlanRow): SubscriptionPlan {
   const accountKind =
-    row.account_kind === 'society' || row.account_kind === 'individual'
+    row.account_kind === 'society' ||
+    row.account_kind === 'individual' ||
+    row.account_kind === 'agency'
       ? row.account_kind
       : null;
   return {
