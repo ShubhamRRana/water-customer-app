@@ -17,6 +17,7 @@ import Button from '../../components/common/Button';
 import { useAuthStore } from '../../store/authStore';
 import { SubscriptionService, computeYearlySavingsFromMonthly } from '../../services/subscription.service';
 import type { SubscriptionPlan } from '../../types/subscription.types';
+import type { UserSubscription } from '../../types/subscription.types';
 import { UI_CONFIG, FEATURE_FLAGS } from '../../constants/config';
 import type { ThemeColors } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -37,6 +38,7 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
   const styles = useMemo(() => createSubscriptionPlansStyles(colors), [colors]);
   const { user, logout, customerAccountKind } = useAuthStore();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -47,6 +49,8 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
       const list = await SubscriptionService.getActivePlans();
       const filtered = SubscriptionService.filterPlansForAccountKind(list, customerAccountKind);
       setPlans(filtered.sort((a, b) => a.displayOrder - b.displayOrder));
+      const subscription = await SubscriptionService.getUserSubscription(user.id);
+      setUserSubscription(subscription);
     } catch (e) {
       errorLogger.medium('Failed to load subscription plans', e, { userId: user.id });
       Alert.alert('Error', 'Could not load plans. Pull to refresh.');
@@ -68,8 +72,22 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
     return m?.price ?? null;
   }, [plans]);
 
+  const activeTrial = useMemo(() => {
+    if (!userSubscription?.isTrial || userSubscription.status !== 'active') return null;
+    const end = userSubscription.trialEndDate ?? userSubscription.endDate;
+    if (!end || end.getTime() <= Date.now()) return null;
+    return end;
+  }, [userSubscription]);
+
   const handleSubscribe = async (plan: SubscriptionPlan) => {
     if (!user?.id) return;
+    if (activeTrial) {
+      Alert.alert(
+        'Free trial active',
+        `Your free trial is active until ${activeTrial.toLocaleDateString()}. Paid checkout opens after the trial ends.`
+      );
+      return;
+    }
     if (!FEATURE_FLAGS.enableRazorpaySubscription) {
       Alert.alert(
         'Coming soon',
@@ -146,9 +164,17 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
           contentContainerStyle={styles.scroll}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
         >
-          {/* <Typography variant="body" style={[styles.intro, { color: colors.textSecondary }]}>
-            Choose a plan to keep booking water deliveries. Secure payment via Razorpay.
-          </Typography> */}
+          {activeTrial ? (
+            <Card padding="large" style={styles.trialBanner}>
+              <Typography variant="h3" style={styles.trialTitle}>
+                Free trial active
+              </Typography>
+              <Typography variant="body" style={{ color: colors.textSecondary }}>
+                Your trial ends on {activeTrial.toLocaleDateString()}. You can subscribe with Razorpay after
+                that date.
+              </Typography>
+            </Card>
+          ) : null}
 
           {plans.map((plan) => {
             const saving = savingsLabel(plan);
@@ -183,11 +209,14 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
                 ) : null}
                 <Button
                   title={
-                    FEATURE_FLAGS.enableRazorpaySubscription
-                      ? 'Subscribe with Razorpay'
-                      : 'Subscribe now'
+                    activeTrial
+                      ? 'Trial active'
+                      : FEATURE_FLAGS.enableRazorpaySubscription
+                        ? 'Subscribe with Razorpay'
+                        : 'Subscribe now'
                   }
                   onPress={() => void handleSubscribe(plan)}
+                  disabled={!!activeTrial}
                 />
               </Card>
             );
@@ -223,6 +252,8 @@ function createSubscriptionPlansStyles(colors: ThemeColors) {
   menuBtn: { padding: UI_CONFIG.spacing.xs },
   headerTitle: { flex: 1, textAlign: 'center' },
   scroll: { padding: UI_CONFIG.spacing.md, paddingBottom: UI_CONFIG.spacing.xl },
+  trialBanner: { marginBottom: UI_CONFIG.spacing.md, borderColor: colors.accent, borderWidth: 1 },
+  trialTitle: { marginBottom: UI_CONFIG.spacing.xs },
   intro: { marginBottom: UI_CONFIG.spacing.md, textAlign: 'center' },
   card: { marginBottom: UI_CONFIG.spacing.md },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 },

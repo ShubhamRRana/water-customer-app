@@ -8,6 +8,7 @@ import { handleError } from '../utils/errorHandler';
 import { ErrorSeverity } from '../utils/errorLogger';
 import { isInvalidRefreshTokenError } from '../utils/authErrors';
 import { parseRecoveryTokensFromUrl } from '../utils/recoveryLink';
+import { maybeProvisionCustomerTrial } from '../utils/provisionCustomerTrial';
 
 const CUSTOMER_ACCOUNT_KIND_KEY = '@water_customer_account_kind';
 
@@ -309,6 +310,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           showSocietySubscriptionIntro: false,
           showPostRegisterWelcome: false,
         });
+        maybeProvisionCustomerTrial(userData);
       } else {
         set({
           user: null,
@@ -372,6 +374,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             isAuthenticated: true,
             isLoading: false,
           });
+          maybeProvisionCustomerTrial(result.user);
         } else {
           set({ isLoading: false });
           throw new Error(result.error || 'Login failed');
@@ -403,6 +406,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isLoading: false,
           pendingLoginRole: null,
         });
+        maybeProvisionCustomerTrial(result.user);
       } else {
         set({ isLoading: false, pendingLoginRole: null });
         throw new Error(result.error || 'Login failed');
@@ -442,6 +446,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           customerAccountKind: isCustomerUser(result.user) ? kind : null,
           showSocietySubscriptionIntro: kind === 'society',
         });
+        maybeProvisionCustomerTrial(result.user);
       } else {
         // Login failed - sign out to clean up and clear pending role
         await AuthService.logout();
@@ -504,6 +509,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           showSocietySubscriptionIntro: resolvedKind === 'society',
           showPostRegisterWelcome: true,
         });
+        maybeProvisionCustomerTrial(result.user);
         return;
       }
       if (result.success && result.needsEmailConfirmation) {
@@ -639,6 +645,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               customerAccountKind: kind,
               showSocietySubscriptionIntro: showIntro,
             });
+            maybeProvisionCustomerTrial(userData);
           }
         } catch (err) {
           if (!isNetworkFailure(err)) handleError(err, { context: { operation: 'onAuthStateChange' }, userFacing: false, severity: ErrorSeverity.MEDIUM });

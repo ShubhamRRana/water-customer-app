@@ -4,10 +4,26 @@ jest.mock('../../lib/index', () => ({
   },
 }));
 
+jest.mock('../../lib/supabaseClient', () => ({
+  supabase: {
+    functions: {
+      invoke: jest.fn(),
+    },
+  },
+}));
+
 jest.mock('../../services/payment.service', () => ({
   PaymentService: {},
 }));
 
+jest.mock('../../utils/errorLogger', () => ({
+  errorLogger: {
+    medium: jest.fn(),
+    low: jest.fn(),
+  },
+}));
+
+import { supabase } from '../../lib/supabaseClient';
 import { SubscriptionService, computeYearlySavingsFromMonthly } from '../../services/subscription.service';
 import type { SubscriptionPlan } from '../../types/subscription.types';
 
@@ -119,5 +135,45 @@ describe('computeYearlySavingsFromMonthly', () => {
 
   it('returns null when yearly price exceeds monthly × 12', () => {
     expect(computeYearlySavingsFromMonthly(100, 1500)).toBeNull();
+  });
+});
+
+describe('SubscriptionService.provisionFreeTrial', () => {
+  const mockInvoke = supabase.functions.invoke as jest.Mock;
+
+  beforeEach(() => {
+    mockInvoke.mockReset();
+  });
+
+  it('returns success when trial is provisioned', async () => {
+    mockInvoke.mockResolvedValue({
+      data: {
+        success: true,
+        subscriptionId: 'sub-trial-1',
+        trialEndDate: '2026-07-25',
+      },
+      error: null,
+    });
+
+    const result = await SubscriptionService.provisionFreeTrial();
+
+    expect(mockInvoke).toHaveBeenCalledWith('provision-free-trial-subscription', { body: {} });
+    expect(result).toEqual({
+      success: true,
+      subscriptionId: 'sub-trial-1',
+      trialEndDate: '2026-07-25',
+      alreadyProvisioned: undefined,
+    });
+  });
+
+  it('returns ineligible when edge function reports failure', async () => {
+    mockInvoke.mockResolvedValue({
+      data: { success: false, reason: 'not_customer' },
+      error: null,
+    });
+
+    const result = await SubscriptionService.provisionFreeTrial();
+
+    expect(result).toEqual({ success: false, reason: 'not_customer' });
   });
 });

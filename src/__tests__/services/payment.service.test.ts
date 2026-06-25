@@ -219,16 +219,30 @@ describe('PaymentService', () => {
   });
 
   describe('processOnlinePayment', () => {
-    it('should throw error indicating online payments are not implemented', async () => {
-      await expect(
-        PaymentService.processOnlinePayment('booking-1', 600, 'razorpay')
-      ).rejects.toThrow('Online booking payments are not wired yet. Complete Phase 3 implementation.');
+    it('creates a Razorpay booking order and returns order id', async () => {
+      mockInvoke.mockResolvedValue({
+        data: {
+          orderId: 'order_book_1',
+          amount: 60000,
+          currency: 'INR',
+          keyId: 'rzp_test_key',
+        },
+        error: null,
+      });
+
+      const result = await PaymentService.processOnlinePayment('booking-1', 600, 'razorpay');
+
+      expect(mockInvoke).toHaveBeenCalledWith('create-customer-booking-order', {
+        body: { bookingId: 'booking-1' },
+      });
+      expect(result).toEqual({ success: true, paymentId: 'order_book_1' });
     });
 
-    it('should throw error for stripe payment method', async () => {
-      await expect(
-        PaymentService.processOnlinePayment('booking-1', 600, 'stripe')
-      ).rejects.toThrow('Online booking payments are not wired yet. Complete Phase 3 implementation.');
+    it('returns error for stripe payment method', async () => {
+      const result = await PaymentService.processOnlinePayment('booking-1', 600, 'stripe');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Stripe payments are not supported.');
     });
   });
 

@@ -230,10 +230,29 @@ export class PaymentService {
 
   static async processOnlinePayment(
     bookingId: string,
-    amount: number,
+    _amount: number,
     paymentMethod: 'razorpay' | 'stripe'
   ): Promise<PaymentResult> {
-    throw new Error('Online booking payments are not wired yet. Complete Phase 3 implementation.');
+    if (paymentMethod === 'stripe') {
+      return { success: false, error: 'Stripe payments are not supported.' };
+    }
+
+    try {
+      const order = await PaymentService.createBookingPayment(bookingId);
+      return {
+        success: true,
+        paymentId: order.orderId,
+      };
+    } catch (error) {
+      handleError(error, {
+        context: { operation: 'processOnlinePayment', bookingId },
+        userFacing: false,
+      });
+      return {
+        success: false,
+        error: getErrorMessage(error, ERROR_MESSAGES.payment.failed),
+      };
+    }
   }
 
   /**

@@ -110,12 +110,16 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const remain = sub?.endDate ? daysRemaining(sub.endDate) : null;
+  const trialEnd = sub?.trialEndDate ?? (sub?.isTrial ? sub.endDate : null);
+  const trialRemain = trialEnd ? daysRemaining(trialEnd) : null;
   const isActive =
     sub?.status === 'active' && sub.endDate && sub.endDate.getTime() > Date.now();
+  const isTrialActive = Boolean(sub?.isTrial && isActive);
   const canRenew =
     FEATURE_FLAGS.enableRazorpaySubscription &&
     sub &&
     plan &&
+    !isTrialActive &&
     (sub.status === 'expired' || sub.status === 'pending' || !isActive);
 
   const handleRenew = () => {
@@ -155,12 +159,27 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
               Status
             </Typography>
             <Typography variant="h3">{sub ? sub.status.toUpperCase() : 'NONE'}</Typography>
+            {isTrialActive ? (
+              <View style={styles.trialBadge}>
+                <Typography variant="caption" style={styles.trialBadgeText}>
+                  Free trial
+                </Typography>
+              </View>
+            ) : null}
             {plan ? (
               <Typography variant="body" style={styles.planName}>
                 {plan.name}
               </Typography>
             ) : null}
-            {isActive && remain !== null ? (
+            {isTrialActive && trialRemain !== null ? (
+              <View style={styles.row}>
+                <Ionicons name="gift-outline" size={22} color={colors.accent} />
+                <Typography variant="body" style={styles.rowText}>
+                  Trial: {trialRemain} day{trialRemain === 1 ? '' : 's'} remaining
+                </Typography>
+              </View>
+            ) : null}
+            {isActive && remain !== null && !isTrialActive ? (
               <View style={styles.row}>
                 <Ionicons name="time-outline" size={22} color={colors.accent} />
                 <Typography variant="body" style={styles.rowText}>
@@ -173,7 +192,12 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
                 {sub.startDate.toLocaleDateString()} — {sub.endDate.toLocaleDateString()}
               </Typography>
             ) : null}
-            {sub?.endDate && isActive ? (
+            {trialEnd && isTrialActive ? (
+              <Typography variant="caption" style={{ color: colors.textSecondary, marginTop: 8 }}>
+                Trial ends on {trialEnd.toLocaleDateString()}
+              </Typography>
+            ) : null}
+            {sub?.endDate && isActive && !isTrialActive ? (
               <Typography variant="caption" style={{ color: colors.textSecondary, marginTop: 8 }}>
                 Renews / ends on {sub.endDate.toLocaleDateString()}
               </Typography>
@@ -243,6 +267,15 @@ function createSubscriptionStatusStyles(colors: ThemeColors) {
   card: { marginBottom: UI_CONFIG.spacing.md },
   label: { color: colors.textSecondary, marginBottom: 4 },
   planName: { marginTop: 8, color: colors.textSecondary },
+  trialBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.surfaceLight,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  trialBadgeText: { color: colors.accent },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
   rowText: { flex: 1 },
   btn: { marginBottom: UI_CONFIG.spacing.sm },

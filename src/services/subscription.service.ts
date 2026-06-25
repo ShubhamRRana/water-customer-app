@@ -1,6 +1,8 @@
 import { dataAccess } from '../lib/index';
+import { supabase } from '../lib/supabaseClient';
 import { FEATURE_FLAGS } from '../constants/config';
 import { PaymentService } from './payment.service';
+import { errorLogger } from '../utils/errorLogger';
 import type { RazorpayVerifyPayload } from '../types/razorpay.types';
 import type {
   SubscriptionPlan,
@@ -16,6 +18,14 @@ import { handleAsyncOperationWithRethrow } from '../utils/errorHandler';
 
 /** Standard society billing periods shown on the subscription screen. */
 export const SOCIETY_VISIBLE_DURATIONS = [1, 12] as const;
+
+export interface ProvisionFreeTrialResult {
+  success: boolean;
+  subscriptionId?: string;
+  trialEndDate?: string;
+  alreadyProvisioned?: boolean;
+  reason?: string;
+}
 
 export function computeYearlySavingsFromMonthly(
   monthlyPrice: number,
@@ -88,6 +98,39 @@ export class SubscriptionService {
       () => dataAccess.subscriptions.hasActiveSubscription(userId),
       { context: { operation: 'hasActiveSubscription', userId }, userFacing: false }
     );
+  }
+
+  /**
+   * Provision 1-month free trial via Edge Function (idempotent for returning users).
+   */
+  static async provisionFreeTrial(): Promise<ProvisionFreeTrialResult> {
+    const { data, error } = await supabase.functions.invoke('provision-free-trial-subscription', {
+      body: {},
+    });
+
+    if (error) {
+      errorLogger.medium('provision-free-trial-subscription failed', error);
+      return { success: false, reason: error.message };
+    }
+
+    const body = data as {
+      success?: boolean;
+      subscriptionId?: string;
+      trialEndDate?: string;
+      alreadyProvisioned?: boolean;
+      reason?: string;
+    };
+
+    if (!body?.success) {
+      return { success: false, reason: body?.reason ?? 'ineligible' };
+    }
+
+    return {
+      success: true,
+      subscriptionId: body.subscriptionId,
+      trialEndDate: body.trialEndDate,
+      alreadyProvisioned: body.alreadyProvisioned,
+    };
   }
 
   static async createSubscription(data: CreateSubscriptionData): Promise<UserSubscription> {

@@ -35,7 +35,14 @@ interface Props {
   navigation: Nav;
 }
 
-type PayPhase = 'loading' | 'ready' | 'checkout' | 'verifying' | 'error';
+type PayPhase =
+  | 'loading'
+  | 'ready'
+  | 'checkout'
+  | 'verifying'
+  | 'error'
+  | 'agency_not_onboarded'
+  | 'cod_confirming';
 
 const PayBookingScreen: React.FC<Props> = ({ navigation }) => {
   const route = useRoute<Route>();
@@ -50,9 +57,10 @@ const PayBookingScreen: React.FC<Props> = ({ navigation }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const displayAmount = useMemo(() => {
-    if (!order) return null;
-    return order.amount / 100;
-  }, [order]);
+    if (order) return order.amount / 100;
+    if (booking?.totalPrice != null) return booking.totalPrice;
+    return null;
+  }, [order, booking?.totalPrice]);
 
   const summarySchedule = useMemo(() => {
     if (!booking?.scheduledFor) return { date: undefined, time: undefined, timePeriod: undefined };
@@ -81,8 +89,17 @@ const PayBookingScreen: React.FC<Props> = ({ navigation }) => {
       setOrder(created);
       setPhase('ready');
     } catch (e) {
+      const code =
+        e && typeof e === 'object' && 'code' in e
+          ? (e as Error & { code?: string }).code
+          : undefined;
       const message = e instanceof Error ? e.message : ERROR_MESSAGES.payment.failed;
       errorLogger.medium('create booking payment order failed', e, { bookingId });
+      if (code === 'agency_not_onboarded') {
+        setErrorMessage(ERROR_MESSAGES.payment.agencyNotOnboarded);
+        setPhase('agency_not_onboarded');
+        return;
+      }
       setErrorMessage(message);
       setPhase('error');
     }
@@ -155,6 +172,20 @@ const PayBookingScreen: React.FC<Props> = ({ navigation }) => {
     void loadOrder();
   };
 
+  const handlePayOnDelivery = async () => {
+    if (!booking) return;
+    const amount = booking.totalPrice ?? displayAmount ?? 0;
+    setPhase('cod_confirming');
+    const result = await PaymentService.processCODPayment(bookingId, amount);
+    if (!result.success) {
+      setErrorMessage(result.error ?? ERROR_MESSAGES.payment.failed);
+      setPhase('agency_not_onboarded');
+      Alert.alert('Could not confirm', result.error ?? ERROR_MESSAGES.payment.failed);
+      return;
+    }
+    navigation.replace('OrderTracking', { orderId: bookingId });
+  };
+
   const agencyName = booking?.agencyName ?? 'Delivery agency';
 
   if (!FEATURE_FLAGS.enableOnlinePayment) {
@@ -177,12 +208,15 @@ const PayBookingScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.iconBtn} />
       </View>
 
-      {phase === 'loading' || phase === 'checkout' || phase === 'verifying' ? (
+      {phase === 'loading' ||
+      phase === 'checkout' ||
+      phase === 'verifying' ||
+      phase === 'cod_confirming' ? (
         <ScreenLoading
           message={
             phase === 'verifying'
               ? LOADING_MESSAGES.payment.confirming
-              : phase === 'checkout'
+              : phase === 'checkout' || phase === 'cod_confirming'
                 ? LOADING_MESSAGES.payment.processing
                 : LOADING_MESSAGES.payment.processing
           }
@@ -217,6 +251,12 @@ const PayBookingScreen: React.FC<Props> = ({ navigation }) => {
             </Typography>
           </Card>
 
+          {phase === 'agency_not_onboarded' && errorMessage ? (
+            <Typography variant="body" style={styles.infoText}>
+              {errorMessage}
+            </Typography>
+          ) : null}
+
           {phase === 'error' && errorMessage ? (
             <Typography variant="body" style={styles.errorText}>
               {errorMessage}
@@ -227,14 +267,26 @@ const PayBookingScreen: React.FC<Props> = ({ navigation }) => {
             <Button title="Pay with Razorpay" onPress={() => void runCheckout()} style={styles.btn} />
           ) : null}
 
+          {phase === 'agency_not_onboarded' ? (
+            <Button
+              title="Pay on delivery"
+              onPress={() => void handlePayOnDelivery()}
+              style={styles.btn}
+            />
+          ) : null}
+
           {phase === 'error' ? (
             <Button title="Try again" onPress={handleRetry} style={styles.btn} />
           ) : null}
 
           <Button
-            title="Back"
+            title={phase === 'agency_not_onboarded' ? 'View order' : 'Back'}
             variant="secondary"
-            onPress={() => navigation.goBack()}
+            onPress={() =>
+              phase === 'agency_not_onboarded'
+                ? navigation.replace('OrderTracking', { orderId: bookingId })
+                : navigation.goBack()
+            }
             style={styles.btn}
           />
         </ScrollView>
@@ -266,6 +318,13 @@ function createPayBookingStyles(colors: ThemeColors) {
       marginHorizontal: UI_CONFIG.spacing.md,
       marginBottom: UI_CONFIG.spacing.md,
       textAlign: 'center',
+    },
+    infoText: {
+      color: colors.textSecondary,
+      marginHorizontal: UI_CONFIG.spacing.md,
+      marginBottom: UI_CONFIG.spacing.md,
+      textAlign: 'center',
+      lineHeight: 22,
     },
     btn: { marginHorizontal: UI_CONFIG.spacing.md, marginBottom: UI_CONFIG.spacing.sm },
   });
