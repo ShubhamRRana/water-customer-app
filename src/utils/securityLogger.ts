@@ -68,10 +68,15 @@ export interface SecurityEvent {
   metadata?: Record<string, any>;
 }
 
+interface SuspiciousPatternEntry {
+  count: number;
+  firstSeen: number;
+}
+
 class SecurityLogger {
   private events: SecurityEvent[] = [];
   private maxEvents = 500; // Keep last 500 security events
-  private suspiciousPatterns: Map<string, number> = new Map(); // Track patterns for detection
+  private suspiciousPatterns: Map<string, SuspiciousPatternEntry> = new Map();
 
   /**
    * Log a security event
@@ -376,39 +381,48 @@ class SecurityLogger {
    * Detect suspicious patterns in security events
    */
   private detectSuspiciousPatterns(event: SecurityEvent): void {
-    // Track failed login attempts
-    if (event.type === SecurityEventType.LOGIN_FAILURE) {
-      const key = `login_failure_${event.userId || 'unknown'}`;
-      const count = (this.suspiciousPatterns.get(key) || 0) + 1;
-      this.suspiciousPatterns.set(key, count);
+    const oneHourMs = 60 * 60 * 1000;
+    const now = Date.now();
 
-      // Alert if too many failures
-      if (count >= 5) {
-        this.logBruteForceAttempt(
-          event.userId || 'unknown',
-          count
-        );
+    // Purge entries older than 1 hour
+    for (const [key, entry] of this.suspiciousPatterns.entries()) {
+      if (now - entry.firstSeen > oneHourMs) {
+        this.suspiciousPatterns.delete(key);
+      }
+    }
+
+    // Track failed login attempts keyed by masked email (not userId, which is unknown pre-auth)
+    if (event.type === SecurityEventType.LOGIN_FAILURE) {
+      const emailKey = event.details?.email as string | undefined;
+      const key = `login_failure_${emailKey || event.userId || 'unknown'}`;
+      const existing = this.suspiciousPatterns.get(key);
+      const entry: SuspiciousPatternEntry = existing
+        ? { count: existing.count + 1, firstSeen: existing.firstSeen }
+        : { count: 1, firstSeen: now };
+      this.suspiciousPatterns.set(key, entry);
+
+      if (entry.count >= 5) {
+        this.logBruteForceAttempt(emailKey || event.userId || 'unknown', entry.count);
       }
     }
 
     // Track unauthorized access attempts
     if (event.type === SecurityEventType.UNAUTHORIZED_ACCESS_ATTEMPT) {
       const key = `unauthorized_${event.userId || 'unknown'}`;
-      const count = (this.suspiciousPatterns.get(key) || 0) + 1;
-      this.suspiciousPatterns.set(key, count);
+      const existing = this.suspiciousPatterns.get(key);
+      const entry: SuspiciousPatternEntry = existing
+        ? { count: existing.count + 1, firstSeen: existing.firstSeen }
+        : { count: 1, firstSeen: now };
+      this.suspiciousPatterns.set(key, entry);
 
-      if (count >= 3) {
+      if (entry.count >= 3) {
         this.logSuspiciousPattern(
           'Multiple unauthorized access attempts',
-          { userId: event.userId, count },
+          { userId: event.userId, count: entry.count },
           event.userId
         );
       }
     }
-
-    // Clean up old patterns (keep only last hour)
-    const oneHourAgo = Date.now() - 60 * 60 * 1000;
-    // Note: In a real implementation, you'd track timestamps for each pattern
   }
 
   /**

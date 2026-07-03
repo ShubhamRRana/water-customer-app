@@ -85,6 +85,11 @@ const PayBookingScreen: React.FC<Props> = ({ navigation }) => {
       }
       setBooking(loadedBooking);
 
+      if (loadedBooking.paymentStatus === 'completed') {
+        navigation.replace('OrderTracking', { orderId: bookingId });
+        return;
+      }
+
       const created = await PaymentService.createBookingPayment(bookingId);
       setOrder(created);
       setPhase('ready');
@@ -179,7 +184,7 @@ const PayBookingScreen: React.FC<Props> = ({ navigation }) => {
     const result = await PaymentService.processCODPayment(bookingId, amount);
     if (!result.success) {
       setErrorMessage(result.error ?? ERROR_MESSAGES.payment.failed);
-      setPhase('agency_not_onboarded');
+      setPhase('error');
       Alert.alert('Could not confirm', result.error ?? ERROR_MESSAGES.payment.failed);
       return;
     }

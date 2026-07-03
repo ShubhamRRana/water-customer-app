@@ -51,11 +51,14 @@ export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
 
 // Manage token refresh when app returns to foreground (React Native only)
 if (Platform.OS !== 'web') {
-  AppState.addEventListener('change', (state) => {
+  const subscription = AppState.addEventListener('change', (state) => {
     if (state === 'active') {
       supabase.auth.startAutoRefresh();
     } else {
       supabase.auth.stopAutoRefresh();
     }
   });
+
+  // Expose for cleanup if needed (e.g., in tests)
+  (supabase as any)._appStateSubscription = subscription;
 }

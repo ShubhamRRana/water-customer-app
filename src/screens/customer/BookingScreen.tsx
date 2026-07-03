@@ -92,15 +92,16 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
     }
   }, [user, authLoading, initializeAuth, refreshUserProfile]);
 
-  // Load default address when user data is available
+  // Load default address when user data is available (only on initial mount)
   useEffect(() => {
     if (user && isCustomerUser(user) && user.savedAddresses && user.savedAddresses.length > 0) {
       const defaultAddress = user.savedAddresses.find(addr => addr.isDefault);
-      if (defaultAddress && !deliveryAddress) {
+      if (defaultAddress) {
         setDeliveryAddress(defaultAddress.address);
       }
     }
-  }, [user, deliveryAddress]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   useEffect(() => {
     setSelectedVehicle(null);
@@ -366,7 +367,7 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
         return;
       }
 
-      if (!selectedVehicle?.capacity) {
+      if (selectedVehicle?.capacity == null) {
         Alert.alert('Error', 'Vehicle information is missing. Please select a vehicle.');
         return;
       }
@@ -433,11 +434,10 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
           ? 'You can pay online when your order is ready, or pay cash on delivery when the tanker arrives.'
           : 'Amount will be determined at delivery. You can pay cash on delivery or online once the amount is confirmed.';
 
-      navigation.replace('OrderTracking', { orderId: bookingId });
       Alert.alert(
         'Booking successful',
         `Your booking has been placed.\nAgency: ${selectedAgency.name}\n\n${codMessage}`,
-        [{ text: 'OK' }]
+        [{ text: 'OK', onPress: () => navigation.replace('OrderTracking', { orderId: bookingId }) }]
       );
     } catch (error) {
       if (isSubscriptionError(error)) {

@@ -39,7 +39,6 @@ export interface LocationUpdate {
  */
 export class LocationTrackingService {
   private static activeWatchers = new Map<string, Location.LocationSubscription>();
-  private static updateIntervals = new Map<string, NodeJS.Timeout>();
 
   /**
    * Start tracking location for a driver
@@ -85,35 +84,6 @@ export class LocationTrackingService {
       );
 
       this.activeWatchers.set(driverId, subscription);
-
-      // Also set up periodic updates as backup
-      const interval = setInterval(async () => {
-        try {
-          const currentLocation = await LocationService.getCurrentLocation();
-          await this.updateLocation({
-            driverId,
-            bookingId,
-            latitude: currentLocation.latitude,
-            longitude: currentLocation.longitude,
-          });
-        } catch (error) {
-          handleError(error, {
-            context: { operation: 'startTracking', phase: 'periodicUpdate', driverId, bookingId },
-            userFacing: false,
-          });
-        }
-      }, updateInterval);
-
-      this.updateIntervals.set(driverId, interval);
-
-      // Send initial location
-      const initialLocation = await LocationService.getCurrentLocation();
-      await this.updateLocation({
-        driverId,
-        bookingId,
-        latitude: initialLocation.latitude,
-        longitude: initialLocation.longitude,
-      });
     } catch (error) {
       handleError(error, {
         context: { operation: 'startTracking', driverId, bookingId },
@@ -135,12 +105,6 @@ export class LocationTrackingService {
         this.activeWatchers.delete(driverId);
       }
 
-      // Clear interval
-      const interval = this.updateIntervals.get(driverId);
-      if (interval) {
-        clearInterval(interval);
-        this.updateIntervals.delete(driverId);
-      }
     } catch (error) {
       handleError(error, {
         context: { operation: 'stopTracking', driverId },
@@ -156,19 +120,28 @@ export class LocationTrackingService {
   static async updateLocation(update: LocationUpdate): Promise<void> {
     return handleAsyncOperationWithRethrow(
       async () => {
-        const { error } = await supabase
-          .from('driver_locations')
-          .upsert({
-            driver_id: update.driverId,
-            booking_id: update.bookingId || null,
-            latitude: update.latitude,
-            longitude: update.longitude,
-            accuracy: update.accuracy || null,
-            heading: update.heading || null,
-            speed: update.speed || null,
-          }, {
-            onConflict: 'driver_id,booking_id',
-          });
+        const payload = {
+          driver_id: update.driverId,
+          booking_id: update.bookingId || null,
+          latitude: update.latitude,
+          longitude: update.longitude,
+          accuracy: update.accuracy || null,
+          heading: update.heading || null,
+          speed: update.speed || null,
+        };
+
+        let error;
+        if (update.bookingId) {
+          // booking_id is non-null — the unique constraint (driver_id, booking_id) handles the upsert
+          ({ error } = await supabase
+            .from('driver_locations')
+            .upsert(payload, { onConflict: 'driver_id,booking_id' }));
+        } else {
+          // booking_id is null — PostgreSQL unique constraints ignore NULLs, so use explicit update-or-insert
+          ({ error } = await supabase
+            .from('driver_locations')
+            .upsert(payload, { onConflict: 'driver_id' }));
+        }
 
         if (error) {
           throw error;

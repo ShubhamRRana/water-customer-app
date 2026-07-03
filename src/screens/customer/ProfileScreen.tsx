@@ -121,14 +121,14 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   );
 
   useEffect(() => {
-    if (displayUser) {
+    if (displayUser && !isEditing) {
       setEditForm({
         name: displayUser.name || '',
         email: displayUser.email || '',
         phone: displayUser.phone || '',
       });
     }
-  }, [displayUser]);
+  }, [displayUser, isEditing]);
 
   useEffect(() => {
     if (isEditing) {
@@ -246,6 +246,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
             try {
               const result = await AuthService.deleteCustomerAccount(user.id);
               if (result.success) {
+                Alert.alert('Account Deleted', 'Your account has been permanently deleted.');
                 return;
               }
               Alert.alert('Error', result.error ?? 'Failed to delete account.');

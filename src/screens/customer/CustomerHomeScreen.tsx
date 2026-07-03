@@ -450,7 +450,7 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
                   <Typography variant="caption" style={styles.deliveredDate}>
                     {booking.status === 'delivered' && booking.deliveredAt
                       ? `Delivered: ${formatDate(booking.deliveredAt)}`
-                      : `Delivery Date: ${formatDate(booking.scheduledFor || booking.createdAt)}`}
+                      : booking.scheduledFor ? `Scheduled: ${formatDate(booking.scheduledFor)}` : `Placed: ${formatDate(booking.createdAt)}`}
                   </Typography>
                   <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status, colors) }]}>
                     <Typography variant="caption" style={styles.statusText}>

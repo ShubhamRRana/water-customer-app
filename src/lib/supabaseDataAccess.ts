@@ -253,7 +253,6 @@ function mapUserFromDb(
   const baseUser = {
     id: userRow.id,
     email: userRow.email,
-    password: userRow.password_hash, // Temporary, will be removed after auth migration
     name: userRow.name,
     ...(userRow.phone && { phone: userRow.phone }),
     createdAt: deserializeDate(userRow.created_at) || new Date(),
@@ -322,7 +321,6 @@ async function mapUserToDb(user: User): Promise<{
   const userRow: Partial<UserRow> = {
     id: user.id,
     email: user.email,
-    password_hash: user.password, // Temporary
     name: user.name,
     phone: user.phone || null,
     created_at: serializeDate(user.createdAt) || new Date().toISOString(),
@@ -1177,7 +1175,7 @@ class SupabaseUserDataAccess implements IUserDataAccess {
         } else if (payload.eventType === 'DELETE') {
           const userId = payload.old?.id;
           if (userId) {
-            callback(null as any, 'DELETE');
+            callback({ id: userId } as any, 'DELETE');
           }
         }
       }
@@ -2022,17 +2020,40 @@ class SupabaseSubscriptionDataAccess implements ISubscriptionDataAccess {
       const activeValid = data.find(
         (s) =>
           s.status === 'active' &&
+          !s.is_trial &&
           s.end_date &&
           new Date(s.end_date).getTime() > now
       );
       if (activeValid) {
         return mapSubscriptionFromDb(activeValid as SubscriptionRow);
       }
+      const activeTrial = data.find(
+        (s) =>
+          s.status === 'active' &&
+          s.is_trial &&
+          s.trial_end_date &&
+          new Date(s.trial_end_date).getTime() > now
+      );
+      if (activeTrial) {
+        return mapSubscriptionFromDb(activeTrial as SubscriptionRow);
+      }
       const pending = data.find((s) => s.status === 'pending');
       if (pending) {
         return mapSubscriptionFromDb(pending as SubscriptionRow);
       }
-      return mapSubscriptionFromDb(data[0] as SubscriptionRow);
+      const nonExpiredTrial = data.find(
+        (s) => s.status !== 'expired' && s.is_trial
+      );
+      if (nonExpiredTrial) {
+        return mapSubscriptionFromDb(nonExpiredTrial as SubscriptionRow);
+      }
+      const nonTrialNonExpired = data.find(
+        (s) => s.status !== 'expired' && !s.is_trial
+      );
+      if (nonTrialNonExpired) {
+        return mapSubscriptionFromDb(nonTrialNonExpired as SubscriptionRow);
+      }
+      return null;
     } catch (error) {
       throw new DataAccessError('Failed to get user subscription', 'getUserSubscription', { error, userId });
     }
@@ -2215,14 +2236,12 @@ export class SupabaseDataAccess implements IDataAccessLayer {
   }
 
   generateId(): string {
-    // Use UUID v4 (Supabase uses UUIDs)
-    // For compatibility, we can use a simple UUID generator
-    // In production, you might want to use a library like 'uuid'
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = (Math.random() * 16) | 0;
-      const v = c === 'x' ? r : (r & 0x3) | 0x8;
-      return v.toString(16);
-    });
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+    bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+    const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   }
 
   async initialize(): Promise<void> {

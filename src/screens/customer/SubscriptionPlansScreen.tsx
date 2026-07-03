@@ -62,9 +62,13 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
+      if (plans.length === 0) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
       void load();
-    }, [load])
+    }, [load, plans.length])
   );
 
   const monthlyEquivalent = useMemo(() => {

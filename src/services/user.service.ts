@@ -83,14 +83,14 @@ export class UserService {
   static async getUsersByIds(userIds: string[]): Promise<Map<string, User>> {
     return handleAsyncOperationWithRethrow(
       async () => {
-        const allUsers = await dataAccess.users.getUsers();
         const userMap = new Map<string, User>();
-        userIds.forEach(id => {
-          const user = allUsers.find(u => u.id === id);
-          if (user) {
-            userMap.set(id, user);
-          }
-        });
+        if (userIds.length === 0) return userMap;
+        await Promise.all(
+          userIds.map(async (id) => {
+            const user = await dataAccess.users.getUserById(id);
+            if (user) userMap.set(id, user);
+          })
+        );
         return userMap;
       },
       {

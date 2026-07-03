@@ -27,7 +27,7 @@ export interface Address {
 interface BaseUser {
   id: string;
   email: string; // Required: primary identifier for authentication
-  password: string; // hashed
+  password?: string;
   name: string;
   phone?: string; // Optional: kept for contact purposes
   createdAt: Date;

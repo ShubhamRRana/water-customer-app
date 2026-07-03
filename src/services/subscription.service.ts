@@ -170,14 +170,11 @@ export class SubscriptionService {
         }
 
         if (existing?.status === 'expired') {
-          if (existing.planId !== planId) {
-            await dataAccess.subscriptions.updateSubscription(existing.id, {
-              planId,
-              status: 'pending',
-            });
-            return { ...existing, planId, status: 'pending' };
-          }
-          return existing;
+          await dataAccess.subscriptions.updateSubscription(existing.id, {
+            planId,
+            status: 'pending',
+          });
+          return { ...existing, planId, status: 'pending' };
         }
 
         return dataAccess.subscriptions.createSubscription({

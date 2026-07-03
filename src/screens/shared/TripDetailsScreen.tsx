@@ -115,7 +115,9 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
       let cancelled = false;
       setIsLoading(true);
       loadTripDetailsData()
-        .catch(() => {})
+        .catch(() => {
+          if (!cancelled) Alert.alert('Error', 'Could not load trip details. Try again.');
+        })
         .finally(() => {
           if (!cancelled) setIsLoading(false);
         });
@@ -189,7 +191,10 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
         const trip = trips.find((t) => t.id === id);
         return trip != null && isTripWithinDeleteWindow(trip, nowDate);
       });
-      if (deletableIds.length === 0) return;
+      if (deletableIds.length === 0) {
+        Alert.alert('Cannot Delete', 'The delete window for the selected trip(s) has expired.');
+        return;
+      }
       setDeleting(true);
       try {
         await SocietyTripService.deleteTripsForCustomer(user.id, deletableIds);
@@ -578,13 +583,12 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
               {tripsByAgency.length > 0 ? (
                 <View style={styles.agencyBreakdownList}>
                   {tripsByAgency.map((agency, index) => {
-                    const agencyKey = agency.agencyName.toLowerCase();
                     const agencyComplete = isAgencyPaymentComplete(agency.agencyName);
                     const hasBillableAmount = agency.tripsWithAmount > 0;
                     const isLast = index === tripsByAgency.length - 1;
                     return (
                       <TouchableOpacity
-                        key={agencyKey}
+                        key={`${agency.agencyName}-${index}`}
                         style={[
                           styles.agencyBreakdownRow,
                           !isLast && styles.agencyBreakdownRowDivider,

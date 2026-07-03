@@ -1,17 +1,18 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
-import { useBookingByIdQuery, useBookingRealtimeSubscription } from '../../hooks/queries';
+import { useBookingByIdQuery, useBookingRealtimeSubscription, useCancelBookingMutation } from '../../hooks/queries';
 import Card from '../../components/common/Card';
 import { Typography, ScreenLoading, ScreenError, ScreenEmpty } from '../../components/common';
 import { BookingStatus } from '../../types';
@@ -298,6 +299,7 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
   const colors = useThemeColors();
   const styles = useMemo(() => createOrderTrackingStyles(colors), [colors]);
   const { user } = useAuthStore();
+  const cancelBookingMutation = useCancelBookingMutation();
   const {
     data: booking,
     isPending,
@@ -340,26 +342,6 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
 
   const estimatedDeliveryTime = booking?.distance ? PricingUtils.calculateDeliveryTime(booking.distance) : null;
   const trackingStatus: BookingStatus = booking?.status ?? 'pending';
-
-  useEffect(() => {
-    if (!booking || (booking.status !== 'in_transit' && booking.status !== 'accepted')) {
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const location = await LocationTrackingService.getBookingLocation(orderId);
-        if (!cancelled && location) {
-          setDriverLocation(location);
-        }
-      } catch (error) {
-        errorLogger.medium('Failed to load driver location', error, { orderId, status: booking.status });
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [orderId, booking?.id, booking?.status]);
 
   const getStatusText = (status: BookingStatus) => {
     switch (status) {
@@ -425,21 +407,15 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
     return `${hours}h ${remainingMinutes}m`;
   };
 
-  const handleCallDriver = () => {
+  const handleCallDriver = useCallback(() => {
     if (booking?.driverPhone) {
-      Alert.alert('Call Driver', `Call ${booking.driverName} at ${booking.driverPhone}?`, [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Call',
-          onPress: () => {
-            Alert.alert('Calling...', `Calling ${booking.driverPhone}`);
-          },
-        },
-      ]);
+      Linking.openURL(`tel:${booking.driverPhone}`).catch(() => {
+        Alert.alert('Error', 'Could not open the phone dialer.');
+      });
     }
-  };
+  }, [booking?.driverPhone]);
 
-  const handleCancelOrder = () => {
+  const handleCancelOrder = useCallback(() => {
     if (!booking?.canCancel) {
       Alert.alert(
         'Cannot Cancel',
@@ -453,13 +429,22 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
       {
         text: 'Yes, Cancel',
         style: 'destructive',
-        onPress: () => {
-          Alert.alert('Order Cancelled', 'Your order has been cancelled successfully');
-          navigation.goBack();
+        onPress: async () => {
+          try {
+            await cancelBookingMutation.mutateAsync({
+              bookingId: orderId,
+              reason: 'customer_cancelled',
+              customerId: user?.id ?? '',
+            });
+            Alert.alert('Order Cancelled', 'Your order has been cancelled successfully.');
+            navigation.goBack();
+          } catch {
+            Alert.alert('Error', 'Could not cancel the order. Please try again.');
+          }
         },
       },
     ]);
-  };
+  }, [booking?.canCancel, cancelBookingMutation, orderId, user?.id, navigation]);
 
   if (isPending) {
     return (

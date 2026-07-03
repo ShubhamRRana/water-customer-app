@@ -47,10 +47,11 @@ export interface SubscriptionMetrics {
 export class SubscriptionManager {
   private static channels: Map<string, RealtimeChannel> = new Map();
   private static metrics: Map<string, SubscriptionMetrics> = new Map();
+  private static callbacks: Map<string, Set<(payload: RealtimePayload<any>) => void | Promise<void>>> = new Map();
 
   /**
    * Subscribe to real-time database changes
-   * 
+   *
    * @param config - Subscription configuration
    * @param callback - Callback function to handle payload updates
    * @returns Unsubscribe function
@@ -59,9 +60,17 @@ export class SubscriptionManager {
     config: SubscriptionConfig,
     callback: (payload: RealtimePayload<T>) => void | Promise<void>
   ): () => void {
+    // Register this callback for the channel
+    let callbackSet = this.callbacks.get(config.channelName);
+    if (!callbackSet) {
+      callbackSet = new Set();
+      this.callbacks.set(config.channelName, callbackSet);
+    }
+    callbackSet.add(callback as (payload: RealtimePayload<any>) => void | Promise<void>);
+
     // Get or create channel for this subscription
     let channel = this.channels.get(config.channelName);
-    
+
     if (!channel) {
       // Initialize metrics for this subscription
       const metrics: SubscriptionMetrics = {
@@ -99,40 +108,27 @@ export class SubscriptionManager {
               old: payload.old as T,
             };
             
-            try {
-              const callbackStartTime = Date.now();
-              const result = callback(realtimePayload);
-              
-              // Handle async callbacks
-              if (result instanceof Promise) {
-                result
-                  .then(() => {
-                    const callbackEndTime = Date.now();
-                    this.updateMetrics(config.channelName, callbackEndTime - callbackStartTime, null);
-                  })
-                  .catch((error) => {
-                    const callbackEndTime = Date.now();
-                    this.updateMetrics(config.channelName, callbackEndTime - callbackStartTime, error);
-                    if (config.onError) {
-                      config.onError(error instanceof Error ? error : new Error(String(error)));
-                    } else {
-                      // Subscription callback error
-                    }
-                  });
-              } else {
-                const callbackEndTime = Date.now();
-                this.updateMetrics(config.channelName, callbackEndTime - callbackStartTime, null);
-              }
-            } catch (error) {
-              const callbackEndTime = Date.now();
-              const errorObj = error instanceof Error ? error : new Error(String(error));
-              this.updateMetrics(config.channelName, callbackEndTime - eventStartTime, errorObj);
-              if (config.onError) {
-                config.onError(error instanceof Error ? error : new Error(String(error)));
-              } else {
-                // Subscription callback error
+            const callbackStartTime = Date.now();
+            const activeCallbacks = this.callbacks.get(config.channelName);
+            if (activeCallbacks) {
+              for (const cb of activeCallbacks) {
+                try {
+                  const result = cb(realtimePayload);
+                  if (result instanceof Promise) {
+                    result.catch((error) => {
+                      if (config.onError) {
+                        config.onError(error instanceof Error ? error : new Error(String(error)));
+                      }
+                    });
+                  }
+                } catch (error) {
+                  if (config.onError) {
+                    config.onError(error instanceof Error ? error : new Error(String(error)));
+                  }
+                }
               }
             }
+            this.updateMetrics(config.channelName, Date.now() - callbackStartTime, null);
           }
         )
         .subscribe((status) => {
@@ -162,15 +158,22 @@ export class SubscriptionManager {
       this.channels.set(config.channelName, channel);
     }
 
-    // Return unsubscribe function
+    // Return unsubscribe function that removes only this callback
     return () => {
-      const channel = this.channels.get(config.channelName);
-      if (channel) {
-        supabase.removeChannel(channel);
-        this.channels.delete(config.channelName);
-        const metrics = this.metrics.get(config.channelName);
-        if (metrics) {
-          metrics.status = 'CLOSED';
+      const cbs = this.callbacks.get(config.channelName);
+      if (cbs) {
+        cbs.delete(callback as (payload: RealtimePayload<any>) => void | Promise<void>);
+        if (cbs.size === 0) {
+          this.callbacks.delete(config.channelName);
+          const ch = this.channels.get(config.channelName);
+          if (ch) {
+            supabase.removeChannel(ch);
+            this.channels.delete(config.channelName);
+            const metrics = this.metrics.get(config.channelName);
+            if (metrics) {
+              metrics.status = 'CLOSED';
+            }
+          }
         }
       }
     };

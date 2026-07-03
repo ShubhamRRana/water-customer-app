@@ -339,10 +339,13 @@ const AddTripScreen: React.FC = () => {
     }
 
     setIsSubmitting(true);
+    let uploadedPaths: string[] = [];
     try {
-      const photoUrls = await Promise.all(
-        photoUris.map(uri => StorageService.uploadSocietyTripPhoto(uri, user.id).then(r => r.url)),
+      const uploadResults = await Promise.all(
+        photoUris.map(uri => StorageService.uploadSocietyTripPhoto(uri, user.id)),
       );
+      uploadedPaths = uploadResults.map(r => r.path);
+      const photoUrls = uploadResults.map(r => r.url);
       const agencyAdminId = selectedAgency?.id;
       await SocietyTripService.createTrip({
         customerId: user.id,
@@ -357,6 +360,12 @@ const AddTripScreen: React.FC = () => {
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
+      // Clean up any photos that were uploaded before the trip creation failed
+      if (uploadedPaths.length > 0) {
+        uploadedPaths.forEach(path => {
+          StorageService.deleteQRCodeImage(path).catch(() => {});
+        });
+      }
       if (isSubscriptionError(error)) {
         showSubscriptionRequiredAlert(navigation);
         return;

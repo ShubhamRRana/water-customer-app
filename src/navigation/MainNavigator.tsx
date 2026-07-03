@@ -31,12 +31,14 @@ const Stack = createStackNavigator<AppStackParamList>();
 
 const MainNavigator: React.FC = () => {
   const showSocietySubscriptionIntro = useAuthStore(s => s.showSocietySubscriptionIntro);
+  const dismissSocietySubscriptionIntro = useAuthStore(s => s.dismissSocietySubscriptionIntro);
   const rootNavigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   useEffect(() => {
     if (!showSocietySubscriptionIntro) return;
+    dismissSocietySubscriptionIntro();
     rootNavigation.navigate('Main', { screen: 'SubscriptionComingSoon' });
-  }, [showSocietySubscriptionIntro]);
+  }, [showSocietySubscriptionIntro, dismissSocietySubscriptionIntro, rootNavigation]);
 
   return (
     <ErrorBoundary resetKeys={['Main']}>

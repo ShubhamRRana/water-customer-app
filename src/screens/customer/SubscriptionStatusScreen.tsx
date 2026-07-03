@@ -73,9 +73,13 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
+      if (sub === null) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
       void load();
-    }, [load])
+    }, [load, sub])
   );
 
   const onRefresh = () => {
@@ -112,8 +116,9 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
   const remain = sub?.endDate ? daysRemaining(sub.endDate) : null;
   const trialEnd = sub?.trialEndDate ?? (sub?.isTrial ? sub.endDate : null);
   const trialRemain = trialEnd ? daysRemaining(trialEnd) : null;
-  const isActive =
-    sub?.status === 'active' && sub.endDate && sub.endDate.getTime() > Date.now();
+  const isActive = Boolean(
+    sub?.status === 'active' && sub.endDate && sub.endDate.getTime() > Date.now()
+  );
   const isTrialActive = Boolean(sub?.isTrial && isActive);
   const canRenew =
     FEATURE_FLAGS.enableRazorpaySubscription &&

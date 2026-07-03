@@ -37,25 +37,6 @@ async function resolveAndSyncCustomerAccountKind(userId: string): Promise<Custom
     .maybeSingle();
 
   const dbKind = normalizeCustomerAccountKind(row?.account_kind);
-
-  const { data: sessionData } = await supabase.auth.getSession();
-  const sessionUser = sessionData?.session?.user;
-  const metaRaw =
-    sessionUser?.id === userId ? sessionUser.user_metadata?.customer_account_kind : undefined;
-  const metaKind = metaRaw !== undefined && metaRaw !== null
-    ? normalizeCustomerAccountKind(metaRaw)
-    : null;
-
-  if (metaKind !== null && metaKind !== dbKind) {
-    const { error } = await supabase
-      .from('customers')
-      .update({ account_kind: metaKind })
-      .eq('user_id', userId);
-    if (!error) {
-      return metaKind;
-    }
-  }
-
   return dbKind;
 }
 
@@ -461,7 +442,7 @@ export class AuthService {
           securityLogger.logRegistrationAttempt(sanitizedEmail, role, false, authError?.message || 'Invalid password for existing account');
           return {
             success: false,
-            error: authError?.message || 'Invalid password. Please use the correct password for this email address.'
+            error: 'An account with this email already exists. Please sign in instead.'
           };
         }
 
@@ -561,7 +542,7 @@ export class AuthService {
             securityLogger.logRegistrationAttempt(sanitizedEmail, role, false, signInError?.message || 'Invalid password for existing account');
             return {
               success: false,
-              error: signInError?.message || 'Invalid password. Please use the correct password for this email address.'
+              error: 'An account with this email already exists. Please sign in instead.'
             };
           }
 
@@ -1154,8 +1135,6 @@ export class AuthService {
           return kindReject;
         }
 
-        // Record successful login
-        rateLimiter.record('login', sanitizedEmail);
         securityLogger.logAuthAttempt(sanitizedEmail, true, undefined, appUser.id);
 
         const extra =
@@ -1191,8 +1170,6 @@ export class AuthService {
           return kindRejectSingle;
         }
 
-        // Record successful login
-        rateLimiter.record('login', sanitizedEmail);
         securityLogger.logAuthAttempt(sanitizedEmail, true, undefined, appUser.id);
 
         const extra =
@@ -1372,8 +1349,11 @@ export class AuthService {
    */
   static async getCurrentUserData(id?: string): Promise<AppUser | null> {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       if (id) {
-        // Fetch by id (no role specified, will use first role)
+        if (!session?.user || session.user.id !== id) {
+          return null;
+        }
         return await fetchUserWithRole(id);
       } else {
         // Get from current session
@@ -1489,8 +1469,13 @@ export class AuthService {
       const { error: fnError } = await supabase.functions.invoke('delete-auth-user-on-account-deletion', {
         body: { user_id: customerId },
       });
-      if (fnError && __DEV__) {
-        console.warn('Auth user cleanup failed (DB already deleted):', fnError);
+      if (fnError) {
+        securityLogger.log(
+          SecurityEventType.SECURITY_POLICY_VIOLATION,
+          SecuritySeverity.CRITICAL,
+          { message: 'Auth user cleanup failed after customer account deletion', error: fnError.message },
+          customerId
+        );
       }
       await AuthService.logout();
       return { success: true };
@@ -1522,8 +1507,13 @@ export class AuthService {
       const { error: fnError } = await supabase.functions.invoke('delete-auth-user-on-account-deletion', {
         body: { user_id: adminId },
       });
-      if (fnError && __DEV__) {
-        console.warn('Auth user cleanup failed (DB already deleted):', fnError);
+      if (fnError) {
+        securityLogger.log(
+          SecurityEventType.SECURITY_POLICY_VIOLATION,
+          SecuritySeverity.CRITICAL,
+          { message: 'Auth user cleanup failed after admin account deletion', error: fnError.message },
+          adminId
+        );
       }
       await AuthService.logout();
       return { success: true };

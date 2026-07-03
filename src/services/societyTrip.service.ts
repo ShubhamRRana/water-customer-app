@@ -83,6 +83,11 @@ export class SocietyTripService {
 
   static async createTrip(input: CreateSocietyTripInput): Promise<void> {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user || session.user.id !== input.customerId) {
+        throw new Error('Unauthorized: cannot create trip for another user.');
+      }
+
       if (FEATURE_FLAGS.enableSubscriptionGating) {
         const allowed = await SubscriptionService.hasActiveSubscription(input.customerId);
         if (!allowed) {

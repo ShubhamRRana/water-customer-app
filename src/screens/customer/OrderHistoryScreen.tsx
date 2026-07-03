@@ -155,7 +155,7 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
       case 'cancelled': return colors.error;
       default: return colors.textSecondary;
     }
-  }, []);
+  }, [colors]);
 
   const getStatusText = useCallback((status: BookingStatus) => {
     switch (status) {
