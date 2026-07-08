@@ -17,7 +17,7 @@ import type { CustomerAccountKind } from '../types/index';
 import { handleAsyncOperationWithRethrow } from '../utils/errorHandler';
 
 /** Standard society billing periods shown on the subscription screen. */
-export const SOCIETY_VISIBLE_DURATIONS = [1, 12] as const;
+export const SOCIETY_VISIBLE_DURATIONS = [1, 3, 6, 12] as const;
 
 export interface ProvisionFreeTrialResult {
   success: boolean;
@@ -27,16 +27,31 @@ export interface ProvisionFreeTrialResult {
   reason?: string;
 }
 
+export function computePlanSavingsFromMonthly(
+  monthlyPrice: number,
+  planPrice: number,
+  durationMonths: number
+): { fullPrice: number; savingsAmount: number; discountPercent: number } | null {
+  if (durationMonths <= 1) return null;
+  const fullPrice = monthlyPrice * durationMonths;
+  if (fullPrice <= planPrice) return null;
+  const savingsAmount = fullPrice - planPrice;
+  const discountPercent = Math.round((1 - planPrice / fullPrice) * 100);
+  if (discountPercent <= 0) return null;
+  return { fullPrice, savingsAmount, discountPercent };
+}
+
 export function computeYearlySavingsFromMonthly(
   monthlyPrice: number,
   yearlyPrice: number
 ): { fullYearPrice: number; savingsAmount: number; discountPercent: number } | null {
-  const fullYearPrice = monthlyPrice * 12;
-  if (fullYearPrice <= yearlyPrice) return null;
-  const savingsAmount = fullYearPrice - yearlyPrice;
-  const discountPercent = Math.round((1 - yearlyPrice / fullYearPrice) * 100);
-  if (discountPercent <= 0) return null;
-  return { fullYearPrice, savingsAmount, discountPercent };
+  const savings = computePlanSavingsFromMonthly(monthlyPrice, yearlyPrice, 12);
+  if (!savings) return null;
+  return {
+    fullYearPrice: savings.fullPrice,
+    savingsAmount: savings.savingsAmount,
+    discountPercent: savings.discountPercent,
+  };
 }
 
 /**

@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useMemo } from 'react';
+import React, { useCallback, useRef, useState, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -48,6 +48,7 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
   const [plan, setPlan] = useState<SubscriptionPlan | null>(null);
   const [latestPayment, setLatestPayment] = useState<PaymentTransaction | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
 
   const load = useCallback(async () => {
     if (!user?.id) return;
@@ -73,13 +74,15 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      if (sub === null) {
+      if (!hasLoadedOnceRef.current) {
         setLoading(true);
       } else {
         setRefreshing(true);
       }
-      void load();
-    }, [load, sub])
+      void load().finally(() => {
+        hasLoadedOnceRef.current = true;
+      });
+    }, [load])
   );
 
   const onRefresh = () => {

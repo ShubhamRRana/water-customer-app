@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -15,7 +15,7 @@ import { Typography, CustomerMenuDrawer, ScreenLoading } from '../../components/
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import { useAuthStore } from '../../store/authStore';
-import { SubscriptionService, computeYearlySavingsFromMonthly } from '../../services/subscription.service';
+import { SubscriptionService, computePlanSavingsFromMonthly } from '../../services/subscription.service';
 import type { SubscriptionPlan } from '../../types/subscription.types';
 import type { UserSubscription } from '../../types/subscription.types';
 import { UI_CONFIG, FEATURE_FLAGS } from '../../constants/config';
@@ -42,6 +42,7 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
 
   const load = useCallback(async () => {
     if (!user?.id) return;
@@ -62,13 +63,15 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      if (plans.length === 0) {
+      if (!hasLoadedOnceRef.current) {
         setLoading(true);
       } else {
         setRefreshing(true);
       }
-      void load();
-    }, [load, plans.length])
+      void load().finally(() => {
+        hasLoadedOnceRef.current = true;
+      });
+    }, [load])
   );
 
   const monthlyEquivalent = useMemo(() => {
@@ -114,27 +117,9 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const savingsLabel = (plan: SubscriptionPlan): string | null => {
-    if (!monthlyEquivalent || plan.durationMonths <= 1) return null;
-
-    if (plan.durationMonths === 12) {
-      const yearly = computeYearlySavingsFromMonthly(monthlyEquivalent, plan.price);
-      if (!yearly) return null;
-      return `Save ~${yearly.discountPercent}% vs paying monthly`;
-    }
-
-    const full = monthlyEquivalent * plan.durationMonths;
-    if (full <= plan.price) return null;
-    const pct = Math.round((1 - plan.price / full) * 100);
-    if (pct <= 0) return null;
-    return `Save ~${pct}% vs paying monthly`;
-  };
-
-  const yearlyCalculationLine = (plan: SubscriptionPlan): string | null => {
-    if (!monthlyEquivalent || plan.durationMonths !== 12) return null;
-    const yearly = computeYearlySavingsFromMonthly(monthlyEquivalent, plan.price);
-    if (!yearly) return null;
-    return `${PricingUtils.formatPrice(monthlyEquivalent)} × 12 = ${PricingUtils.formatPrice(yearly.fullYearPrice)}`;
+  const planSavings = (plan: SubscriptionPlan) => {
+    if (!monthlyEquivalent) return null;
+    return computePlanSavingsFromMonthly(monthlyEquivalent, plan.price, plan.durationMonths);
   };
 
   const handleMenuNavigate = (route: CustomerMenuRoute) => {
@@ -181,16 +166,15 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
           ) : null}
 
           {plans.map((plan) => {
-            const saving = savingsLabel(plan);
-            const calculationLine = yearlyCalculationLine(plan);
+            const savings = planSavings(plan);
             return (
               <Card key={plan.id} padding="large" style={styles.card}>
                 <View style={styles.cardTop}>
                   <Typography variant="h3">{plan.name}</Typography>
-                  {saving ? (
+                  {savings ? (
                     <View style={styles.badge}>
                       <Typography variant="caption" style={styles.badgeText}>
-                        {saving}
+                        {savings.discountPercent}% off
                       </Typography>
                     </View>
                   ) : null}
@@ -203,13 +187,19 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
                 <Typography variant="h2" style={styles.price}>
                   {PricingUtils.formatPrice(plan.price)}
                 </Typography>
-                {calculationLine ? (
-                  <Typography
-                    variant="body"
-                    style={[styles.savingsCalc, { color: colors.textSecondary }]}
-                  >
-                    {calculationLine}
-                  </Typography>
+                {savings ? (
+                  <>
+                    <Typography variant="body" style={[styles.savingsAmount, { color: colors.accent }]}>
+                      Save {PricingUtils.formatPrice(savings.savingsAmount)} vs paying monthly
+                    </Typography>
+                    <Typography
+                      variant="body"
+                      style={[styles.savingsCalc, { color: colors.textSecondary }]}
+                    >
+                      {PricingUtils.formatPrice(monthlyEquivalent!)} × {plan.durationMonths} ={' '}
+                      {PricingUtils.formatPrice(savings.fullPrice)}
+                    </Typography>
+                  </>
                 ) : null}
                 <Button
                   title={
@@ -270,6 +260,7 @@ function createSubscriptionPlansStyles(colors: ThemeColors) {
   badgeText: { color: colors.accent },
   desc: { marginTop: UI_CONFIG.spacing.xs, marginBottom: UI_CONFIG.spacing.sm },
   price: { marginVertical: UI_CONFIG.spacing.sm },
+  savingsAmount: { marginBottom: UI_CONFIG.spacing.xs },
   savingsCalc: { marginBottom: UI_CONFIG.spacing.sm },
   });
 }

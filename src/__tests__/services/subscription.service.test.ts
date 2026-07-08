@@ -24,7 +24,7 @@ jest.mock('../../utils/errorLogger', () => ({
 }));
 
 import { supabase } from '../../lib/supabaseClient';
-import { SubscriptionService, computeYearlySavingsFromMonthly } from '../../services/subscription.service';
+import { SubscriptionService, computePlanSavingsFromMonthly, computeYearlySavingsFromMonthly } from '../../services/subscription.service';
 import type { SubscriptionPlan } from '../../types/subscription.types';
 
 function mockPlan(
@@ -90,10 +90,10 @@ describe('SubscriptionService.filterPlansForAccountKind', () => {
     }),
   ];
 
-  it('excludes agency plans for society users and keeps only society 1/12 month plans', () => {
+  it('excludes agency plans for society users and keeps society 1/3/6/12 month plans', () => {
     const filtered = SubscriptionService.filterPlansForAccountKind(plans, 'society');
 
-    expect(filtered.map((p) => p.id)).toEqual(['soc-m', 'soc-y']);
+    expect(filtered.map((p) => p.id).sort()).toEqual(['soc-h', 'soc-m', 'soc-q', 'soc-y']);
   });
 
   it('falls back to universal plans for society when no society-specific plans exist', () => {
@@ -115,6 +115,36 @@ describe('SubscriptionService.filterPlansForAccountKind', () => {
 
     expect(filtered.some((p) => p.accountKind === 'agency')).toBe(false);
     expect(filtered.length).toBe(plans.length - 1);
+  });
+});
+
+describe('computePlanSavingsFromMonthly', () => {
+  it('returns savings breakdown for society quarterly price', () => {
+    const result = computePlanSavingsFromMonthly(2399, 6117, 3);
+
+    expect(result).toEqual({
+      fullPrice: 7197,
+      savingsAmount: 1080,
+      discountPercent: 15,
+    });
+  });
+
+  it('returns savings breakdown for society half-yearly price', () => {
+    const result = computePlanSavingsFromMonthly(2399, 12235, 6);
+
+    expect(result).toEqual({
+      fullPrice: 14394,
+      savingsAmount: 2159,
+      discountPercent: 15,
+    });
+  });
+
+  it('returns null for monthly duration', () => {
+    expect(computePlanSavingsFromMonthly(2399, 2399, 1)).toBeNull();
+  });
+
+  it('returns null when plan price equals monthly × duration', () => {
+    expect(computePlanSavingsFromMonthly(1000, 3000, 3)).toBeNull();
   });
 });
 

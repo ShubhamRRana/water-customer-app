@@ -133,49 +133,49 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.chips}
-        contentContainerStyle={styles.chipsInner}
-      >
-        {FLOW_FILTERS.map((f) => {
-          const on = flowFilter === f.key;
-          return (
-            <TouchableOpacity
-              key={f.key}
-              style={[styles.chip, on && styles.chipOn]}
-              onPress={() => setFlowFilter(f.key)}
-            >
-              <Typography variant="caption" style={on ? styles.chipTextOn : styles.chipText}>
-                {f.label}
-              </Typography>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      <View style={styles.filterSection}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsInner}
+        >
+          {FLOW_FILTERS.map((f) => {
+            const on = flowFilter === f.key;
+            return (
+              <TouchableOpacity
+                key={f.key}
+                style={[styles.chip, on && styles.chipOn]}
+                onPress={() => setFlowFilter(f.key)}
+              >
+                <Typography variant="body" style={on ? styles.chipTextOn : styles.chipText}>
+                  {f.label}
+                </Typography>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.chipsSecondary}
-        contentContainerStyle={styles.chipsInner}
-      >
-        {STATUS_FILTERS.map((f) => {
-          const on = statusFilter === f.key;
-          return (
-            <TouchableOpacity
-              key={f.key}
-              style={[styles.chip, on && styles.chipOn]}
-              onPress={() => setStatusFilter(f.key)}
-            >
-              <Typography variant="caption" style={on ? styles.chipTextOn : styles.chipText}>
-                {f.label}
-              </Typography>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsInnerSecondary}
+        >
+          {STATUS_FILTERS.map((f) => {
+            const on = statusFilter === f.key;
+            return (
+              <TouchableOpacity
+                key={f.key}
+                style={[styles.chip, on && styles.chipOn]}
+                onPress={() => setStatusFilter(f.key)}
+              >
+                <Typography variant="body" style={on ? styles.chipTextOn : styles.chipText}>
+                  {f.label}
+                </Typography>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
 
       {loading ? (
         <ScreenLoading message="Loading payments..." />
@@ -207,25 +207,8 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
                         </Typography>
                       </View>
                     </View>
-                    <Typography variant="h4" style={styles.amountText}>
-                      {PRICING_CONFIG.currencySymbol}
-                      {tx.amount.toFixed(2)}
-                    </Typography>
-                    <Typography variant="caption" style={{ color: colors.textSecondary }}>
-                      {tx.initiatedAt.toLocaleString()}
-                    </Typography>
                   </View>
                 </View>
-                {tx.gatewayOrderId ? (
-                  <Typography variant="caption" style={{ marginTop: 8, color: colors.textSecondary }}>
-                    Order: {tx.gatewayOrderId}
-                  </Typography>
-                ) : null}
-                {tx.gatewayTransactionId ? (
-                  <Typography variant="caption" style={{ color: colors.textSecondary }}>
-                    Payment: {tx.gatewayTransactionId}
-                  </Typography>
-                ) : null}
               </Card>
             ))
           )}
@@ -271,43 +254,67 @@ function statusStyle(s: PaymentTransactionStatus, colors: ThemeColors) {
 
 function createPaymentHistoryStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.primary },
+    safe: { flex: 1, backgroundColor: colors.background },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: UI_CONFIG.spacing.md,
       paddingVertical: UI_CONFIG.spacing.sm,
+      backgroundColor: colors.surface,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
     iconBtn: { padding: UI_CONFIG.spacing.xs },
     headerTitle: { flex: 1, textAlign: 'center' },
-    chips: { maxHeight: 48, borderBottomWidth: 1, borderBottomColor: colors.border },
-    chipsSecondary: { maxHeight: 44 },
+    filterSection: {
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
     chipsInner: {
       paddingHorizontal: UI_CONFIG.spacing.md,
-      paddingVertical: UI_CONFIG.spacing.sm,
+      paddingTop: UI_CONFIG.spacing.sm,
+      paddingBottom: 6,
+      gap: 8,
+      alignItems: 'center',
+    },
+    chipsInnerSecondary: {
+      paddingHorizontal: UI_CONFIG.spacing.md,
+      paddingTop: 4,
+      paddingBottom: UI_CONFIG.spacing.sm,
       gap: 8,
       alignItems: 'center',
     },
     chip: {
-      paddingHorizontal: 14,
+      paddingHorizontal: 16,
       paddingVertical: 8,
       borderRadius: 20,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.border,
       marginRight: 8,
     },
-    chipOn: { backgroundColor: colors.accent },
-    chipText: { color: colors.textSecondary },
-    chipTextOn: { color: colors.primary, fontWeight: '600' },
+    chipOn: {
+      backgroundColor: colors.accent,
+      borderColor: colors.accent,
+    },
+    chipText: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    chipTextOn: {
+      color: '#1a1d24',
+      fontSize: 14,
+      fontWeight: '600',
+    },
     scroll: { padding: UI_CONFIG.spacing.md, paddingBottom: UI_CONFIG.spacing.xl },
     card: { marginBottom: UI_CONFIG.spacing.sm },
     cardRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    flowRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+    flowRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     flowPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-    flowPillText: { fontWeight: '600', textTransform: 'capitalize' },
-    amountText: { marginBottom: 2 },
+    flowPillText: { fontWeight: '600', textTransform: 'capitalize', color: colors.text },
     pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
     pillText: { textTransform: 'capitalize' },
   });
