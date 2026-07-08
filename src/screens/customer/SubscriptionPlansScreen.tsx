@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -38,16 +38,27 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
   const styles = useMemo(() => createSubscriptionPlansStyles(colors), [colors]);
   const { user, logout, customerAccountKind } = useAuthStore();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [monthlyBasePrice, setMonthlyBasePrice] = useState<number | null>(null);
   const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const hasLoadedOnceRef = useRef(false);
 
+  useEffect(() => {
+    hasLoadedOnceRef.current = false;
+  }, [user?.id]);
+
   const load = useCallback(async () => {
     if (!user?.id) return;
     try {
       const list = await SubscriptionService.getActivePlans();
+      // Derive monthly price from the full list before duration filtering so savings
+      // calculations survive future filter changes or the 1-month plan being filtered out.
+      const monthly = list.find(
+        (p) => (p.accountKind === customerAccountKind || !p.accountKind) && p.durationMonths === 1
+      );
+      setMonthlyBasePrice(monthly?.price ?? null);
       const filtered = SubscriptionService.filterPlansForAccountKind(list, customerAccountKind);
       setPlans(filtered.sort((a, b) => a.displayOrder - b.displayOrder));
       const subscription = await SubscriptionService.getUserSubscription(user.id);
@@ -74,10 +85,6 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
     }, [load])
   );
 
-  const monthlyEquivalent = useMemo(() => {
-    const m = plans.find((p) => p.durationMonths === 1);
-    return m?.price ?? null;
-  }, [plans]);
 
   const activeTrial = useMemo(() => {
     if (!userSubscription?.isTrial || userSubscription.status !== 'active') return null;
@@ -118,8 +125,8 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const planSavings = (plan: SubscriptionPlan) => {
-    if (!monthlyEquivalent) return null;
-    return computePlanSavingsFromMonthly(monthlyEquivalent, plan.price, plan.durationMonths);
+    if (!monthlyBasePrice) return null;
+    return computePlanSavingsFromMonthly(monthlyBasePrice, plan.price, plan.durationMonths);
   };
 
   const handleMenuNavigate = (route: CustomerMenuRoute) => {
@@ -196,7 +203,7 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
                       variant="body"
                       style={[styles.savingsCalc, { color: colors.textSecondary }]}
                     >
-                      {PricingUtils.formatPrice(monthlyEquivalent!)} × {plan.durationMonths} ={' '}
+                      {PricingUtils.formatPrice(savings.fullPrice / plan.durationMonths)} × {plan.durationMonths} ={' '}
                       {PricingUtils.formatPrice(savings.fullPrice)}
                     </Typography>
                   </>

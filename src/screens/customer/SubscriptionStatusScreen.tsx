@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -49,6 +49,10 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
   const [latestPayment, setLatestPayment] = useState<PaymentTransaction | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const hasLoadedOnceRef = useRef(false);
+
+  useEffect(() => {
+    hasLoadedOnceRef.current = false;
+  }, [user?.id]);
 
   const load = useCallback(async () => {
     if (!user?.id) return;

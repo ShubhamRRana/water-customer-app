@@ -207,6 +207,15 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
                         </Typography>
                       </View>
                     </View>
+                    <Typography variant="caption" style={[styles.dateText, { color: colors.textSecondary }]}>
+                      {tx.initiatedAt.toLocaleString()}
+                    </Typography>
+                  </View>
+                  <View style={styles.amountCol}>
+                    <Typography variant="h4" style={styles.amountText}>
+                      {PRICING_CONFIG.currencySymbol}{tx.amount.toFixed(2)}
+                    </Typography>
+                    <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} />
                   </View>
                 </View>
               </Card>
@@ -317,6 +326,9 @@ function createPaymentHistoryStyles(colors: ThemeColors) {
     flowPillText: { fontWeight: '600', textTransform: 'capitalize', color: colors.text },
     pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
     pillText: { textTransform: 'capitalize' },
+    dateText: { marginTop: 4 },
+    amountCol: { alignItems: 'flex-end', paddingLeft: 8, gap: 2 },
+    amountText: {},
   });
 }
 

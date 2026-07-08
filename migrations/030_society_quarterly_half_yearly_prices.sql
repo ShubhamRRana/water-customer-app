@@ -1,16 +1,12 @@
 -- Society 3-month (₹6,117) and 6-month (₹12,235) subscription prices.
 -- Matches ~15% savings vs paying monthly (₹2,399/mo), consistent with yearly (₹24,469).
 
+-- Prices: quarterly = 6117, half-yearly = 12235 (also used in the INSERT below).
 UPDATE subscription_plans
-SET price = 6117, updated_at = now()
-WHERE account_kind = 'society' AND duration_months = 3 AND is_active = true;
-
-UPDATE subscription_plans
-SET price = 12235, updated_at = now()
-WHERE account_kind = 'society' AND duration_months = 6 AND is_active = true;
-
-UPDATE subscription_plans
-SET display_order = duration_months, updated_at = now()
+SET
+  price         = CASE duration_months WHEN 3 THEN 6117 WHEN 6 THEN 12235 ELSE price END,
+  display_order = duration_months,
+  updated_at    = now()
 WHERE account_kind = 'society'
   AND duration_months IN (1, 3, 6, 12)
   AND is_active = true;
