@@ -523,10 +523,10 @@ Optional: `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` for enhanced map features.
 npm run eas:dev:android
 
 # After installing the dev build on device/emulator
-npm run start:dev
+npm start
 ```
 
-For remote devices off LAN: `npm run start:dev:tunnel`. iOS dev builds: `eas build --profile development --platform ios` (see `package.json` script `_eas_dev_ios`).
+Use `npm start` (not plain `npx expo start`) so the QR code uses your PC's LAN IP instead of `localhost`. For remote devices off LAN: `npm run start:dev:tunnel`. iOS dev builds: `eas build --profile development --platform ios` (see `package.json` script `_eas_dev_ios`).
 
 ### 5. Supabase Database Setup
 
@@ -568,11 +568,11 @@ Apply every file in [`migrations/`](./migrations/) in **lexicographic (filename)
 ### 6. Start the Development Server
 
 ```bash
-# Expo Go (no Razorpay checkout)
+# Dev client with Razorpay (after EAS dev build is installed)
 npm start
 
-# Dev client with Razorpay (after EAS dev build is installed)
-npm run start:dev
+# Expo Go only (no Razorpay checkout; limited testing)
+npm run start:go
 
 # Or use platform-specific commands
 npm run android
@@ -601,8 +601,9 @@ Database changes are versioned under [`migrations/`](./migrations/); apply them 
 
 | Script | Purpose |
 |--------|---------|
-| `npm start` | Start Expo dev server (Expo Go) |
-| `npm run start:dev` | Dev client — LAN (`expo start --dev-client --lan`) |
+| `npm start` | Dev client — LAN (`expo start --dev-client --lan --scheme wtccustomer`) |
+| `npm run start:go` | Expo Go with LAN (no Razorpay) |
+| `npm run start:dev` | Same as `npm start` |
 | `npm run start:dev:tunnel` | Dev client — tunnel for remote devices |
 | `npm run start:tunnel` | Expo Go with tunnel |
 | `npm run eas:dev:android` | EAS development APK (Android) for Razorpay native module |
