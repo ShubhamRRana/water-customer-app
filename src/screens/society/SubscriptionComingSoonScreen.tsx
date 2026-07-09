@@ -8,7 +8,6 @@ import { Button, Card, Typography } from '../../components/common';
 import type { ThemeColors } from '../../constants/config';
 import { FEATURE_FLAGS } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { useAuthStore } from '../../store/authStore';
 import { SubscriptionService } from '../../services/subscription.service';
 
 type SubscriptionComingSoonNavigationProp = StackNavigationProp<
@@ -63,7 +62,6 @@ const SubscriptionComingSoonScreen: React.FC<Props> = ({ navigation }) => {
   const [checkingPlans, setCheckingPlans] = useState(FEATURE_FLAGS.enableRazorpaySubscription);
 
   const goHome = useCallback(() => {
-    useAuthStore.getState().dismissSocietySubscriptionIntro();
     navigation.reset({
       index: 0,
       routes: [{ name: 'Home' }],
@@ -71,7 +69,6 @@ const SubscriptionComingSoonScreen: React.FC<Props> = ({ navigation }) => {
   }, [navigation]);
 
   const goToPlans = useCallback(() => {
-    useAuthStore.getState().dismissSocietySubscriptionIntro();
     navigation.replace('SubscriptionPlans');
   }, [navigation]);
 

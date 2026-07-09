@@ -24,7 +24,6 @@ describe('useAuthStore', () => {
       pendingLoginRole: null,
       needsPasswordReset: false,
       customerAccountKind: null,
-      showSocietySubscriptionIntro: false,
       showPostRegisterWelcome: false,
     });
     jest.clearAllMocks();

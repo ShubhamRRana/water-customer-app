@@ -5,6 +5,8 @@
 
 import { describe, expect, it, jest } from '@jest/globals';
 
+const mockNavigationReset = jest.fn();
+
 // Mock React Navigation before any imports
 jest.mock('@react-navigation/native', () => {
   const React = require('react');
@@ -14,11 +16,12 @@ jest.mock('@react-navigation/native', () => {
     useNavigation: () => ({
       navigate: jest.fn(),
       goBack: jest.fn(),
-      reset: jest.fn(),
+      reset: mockNavigationReset,
     }),
     useRoute: () => ({
       params: {},
     }),
+    useFocusEffect: jest.fn(),
   };
 });
 
@@ -46,21 +49,30 @@ jest.mock('@react-navigation/bottom-tabs', () => {
   };
 });
 
+jest.mock('../../utils/postLoginSubscriptionGate', () => ({
+  resolveSubscriptionAccess: jest.fn().mockResolvedValue('allowed'),
+}));
+
 jest.mock('../../store/authStore', () => ({
   useAuthStore: (
     selector: (state: {
-      showSocietySubscriptionIntro: boolean;
+      user: { id: string; role: string } | null;
       needsPasswordReset: boolean;
     }) => unknown
-  ) => selector({ showSocietySubscriptionIntro: false, needsPasswordReset: false }),
+  ) =>
+    selector({
+      user: { id: 'customer-1', role: 'customer' },
+      needsPasswordReset: false,
+    }),
 }));
 
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, waitFor } from '@testing-library/react-native';
 import AuthNavigator from '../../navigation/AuthNavigator';
 import MainNavigator from '../../navigation/MainNavigator';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
 import type { PaymentResultParams } from '../../types/razorpay.types';
+import { resolveSubscriptionAccess } from '../../utils/postLoginSubscriptionGate';
 
 // Mock all screen components
 jest.mock('../../screens/auth/LoginScreen', () => {
@@ -284,16 +296,46 @@ describe('Navigation Configuration', () => {
   });
 
   describe('MainNavigator', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      (resolveSubscriptionAccess as jest.Mock).mockResolvedValue('allowed');
+    });
+
     it('should render without crashing', () => {
       const { getByTestId } = render(<MainNavigator />);
-      // Should render the StackNavigator
       expect(getByTestId('StackNavigator')).toBeTruthy();
     });
 
     it('should have all required screens registered', () => {
       const { getByTestId } = render(<MainNavigator />);
-      // Should render the navigator
       expect(getByTestId('StackNavigator')).toBeTruthy();
+    });
+
+    it('should reset to required SubscriptionPlans when access is required', async () => {
+      (resolveSubscriptionAccess as jest.Mock).mockResolvedValue('required');
+
+      render(<MainNavigator />);
+
+      await waitFor(() => {
+        expect(resolveSubscriptionAccess).toHaveBeenCalledWith('customer-1');
+      });
+
+      expect(mockNavigationReset).toHaveBeenCalledWith({
+        index: 0,
+        routes: [{ name: 'SubscriptionPlans', params: { required: true } }],
+      });
+    });
+
+    it('should not reset navigation when access is allowed', async () => {
+      (resolveSubscriptionAccess as jest.Mock).mockResolvedValue('allowed');
+
+      render(<MainNavigator />);
+
+      await waitFor(() => {
+        expect(resolveSubscriptionAccess).toHaveBeenCalledWith('customer-1');
+      });
+
+      expect(mockNavigationReset).not.toHaveBeenCalled();
     });
   });
 

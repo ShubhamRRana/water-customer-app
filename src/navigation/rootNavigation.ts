@@ -36,7 +36,7 @@ export type AppStackParamList = {
   OrderTracking: { orderId: string };
   SavedAddresses: undefined;
   PastOrders: undefined;
-  SubscriptionPlans: undefined;
+  SubscriptionPlans: { required?: boolean } | undefined;
   SubscriptionStatus: undefined;
   PaySubscription: {
     subscriptionId: string;

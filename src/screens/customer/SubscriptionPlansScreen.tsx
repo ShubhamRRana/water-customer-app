@@ -6,9 +6,11 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Typography, CustomerMenuDrawer, ScreenLoading } from '../../components/common';
@@ -31,9 +33,11 @@ type Nav = StackNavigationProp<AppStackParamList, 'SubscriptionPlans'>;
 
 interface Props {
   navigation: Nav;
+  route: RouteProp<AppStackParamList, 'SubscriptionPlans'>;
 }
 
-const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
+const SubscriptionPlansScreen: React.FC<Props> = ({ navigation, route }) => {
+  const isRequired = route.params?.required === true;
   const colors = useThemeColors();
   const styles = useMemo(() => createSubscriptionPlansStyles(colors), [colors]);
   const { user, logout, customerAccountKind } = useAuthStore();
@@ -84,6 +88,12 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
       });
     }, [load])
   );
+
+  useEffect(() => {
+    if (!isRequired) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, [isRequired]);
 
 
   const activeTrial = useMemo(() => {
@@ -142,9 +152,13 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityLabel="Go back">
-          <Ionicons name="chevron-back" size={28} color={colors.accent} />
-        </TouchableOpacity>
+        {isRequired ? (
+          <View style={styles.backBtn} />
+        ) : (
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityLabel="Go back">
+            <Ionicons name="chevron-back" size={28} color={colors.accent} />
+          </TouchableOpacity>
+        )}
         <Typography variant="h2" style={styles.headerTitle}>
           Subscription plans
         </Typography>
