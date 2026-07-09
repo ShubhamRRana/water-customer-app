@@ -30,6 +30,11 @@ jest.mock('@expo/vector-icons', () => {
   };
 });
 
+// Mock expo-crypto — ESM module; use Node crypto in Jest
+jest.mock('expo-crypto', () => ({
+  randomUUID: () => require('crypto').randomUUID(),
+}));
+
 // Mock expo-modules-core/build/Refs before jest-expo tries to use it
 // This mock is hoisted and runs before the preset setup
 jest.mock('expo-modules-core/build/Refs', () => ({
