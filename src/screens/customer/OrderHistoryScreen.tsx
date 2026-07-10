@@ -22,7 +22,6 @@ import AppScreenHeader from '../../components/layouts/AppScreenHeader';
 import { Booking, BookingStatus } from '../../types';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { PricingUtils } from '../../utils/pricing';
-import { UI_CONFIG } from '../../constants/config';
 import type { ThemeColors } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { errorLogger } from '../../utils/errorLogger';

@@ -73,25 +73,6 @@ async function parseEdgeFunctionErrorBody(
   return { message: fallback };
 }
 
-async function parseEdgeFunctionError(error: unknown, fallback: string): Promise<string> {
-  const { message } = await parseEdgeFunctionErrorBody(error, fallback);
-  return message;
-}
-
-async function parseEdgeFunctionBody<T>(data: unknown, error: unknown, fallback: string): Promise<T> {
-  if (error) {
-    throw new Error(await parseEdgeFunctionError(error, fallback));
-  }
-  if (!data || typeof data !== 'object') {
-    throw new Error(fallback);
-  }
-  const body = data as { error?: string };
-  if (body.error) {
-    throw new Error(body.error);
-  }
-  return data as T;
-}
-
 export class PaymentService {
   /**
    * Unified payment history for subscription (Flow A) and delivery (Flow B) transactions.
