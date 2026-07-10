@@ -43,9 +43,6 @@ export type AppStackParamList = {
     planId: string;
     planName: string;
   };
-  PayBooking: {
-    bookingId: string;
-  };
   PaymentResult: PaymentResultParams;
   PaymentHistory: undefined;
 };

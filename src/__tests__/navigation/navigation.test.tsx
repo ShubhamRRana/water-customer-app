@@ -225,16 +225,6 @@ jest.mock('../../screens/customer/PaySubscriptionScreen', () => {
   );
 });
 
-jest.mock('../../screens/customer/PayBookingScreen', () => {
-  const React = require('react');
-  const { View, Text } = require('react-native');
-  return () => (
-    <View testID="PayBookingScreen">
-      <Text>PayBookingScreen</Text>
-    </View>
-  );
-});
-
 jest.mock('../../screens/shared/PaymentResultScreen', () => {
   const React = require('react');
   const { View, Text } = require('react-native');
@@ -351,18 +341,16 @@ describe('Navigation Configuration', () => {
         planId: 'plan-1',
         planName: 'Monthly',
       };
-      const payBooking: AppStackParamList['PayBooking'] = {
-        bookingId: 'book-1',
-      };
       const paymentResult: PaymentResultParams = {
-        type: 'booking',
+        type: 'subscription',
         status: 'success',
-        referenceId: 'book-1',
+        subscriptionId: 'sub-1',
+        planId: 'plan-1',
+        planName: 'Monthly',
       };
       const paymentResultRoute: AppStackParamList['PaymentResult'] = paymentResult;
 
       expect(paySubscription.subscriptionId).toBe('sub-1');
-      expect(payBooking.bookingId).toBe('book-1');
       expect(paymentResultRoute.status).toBe('success');
     });
   });

@@ -67,20 +67,12 @@ export interface BookingPaymentVerifyResult {
   code?: string;
 }
 
-export type PaymentResultParams =
-  | {
-      type: 'booking';
-      status: 'success' | 'failure';
-      bookingId: string;
-      paymentId?: string;
-      errorMessage?: string;
-    }
-  | {
-      type: 'subscription';
-      status: 'success' | 'failure';
-      subscriptionId: string;
-      planId: string;
-      planName: string;
-      paymentId?: string;
-      errorMessage?: string;
-    };
+export type PaymentResultParams = {
+  type: 'subscription';
+  status: 'success' | 'failure';
+  subscriptionId: string;
+  planId: string;
+  planName: string;
+  paymentId?: string;
+  errorMessage?: string;
+};

@@ -18,7 +18,6 @@ import SettlePaymentPlaceholderScreen from '../screens/shared/SettlePaymentPlace
 import SubscriptionPlansScreen from '../screens/customer/SubscriptionPlansScreen';
 import SubscriptionStatusScreen from '../screens/customer/SubscriptionStatusScreen';
 import PaySubscriptionScreen from '../screens/customer/PaySubscriptionScreen';
-import PayBookingScreen from '../screens/customer/PayBookingScreen';
 import PaymentResultScreen from '../screens/shared/PaymentResultScreen';
 import PaymentHistoryScreen from '../screens/customer/PaymentHistoryScreen';
 import ChangePasswordScreen from '../screens/customer/ChangePasswordScreen';
@@ -101,7 +100,6 @@ const MainNavigator: React.FC = () => {
           <Stack.Screen name="SubscriptionPlans" component={SubscriptionPlansScreen} />
           <Stack.Screen name="SubscriptionStatus" component={SubscriptionStatusScreen} />
           <Stack.Screen name="PaySubscription" component={PaySubscriptionScreen} />
-          <Stack.Screen name="PayBooking" component={PayBookingScreen} />
           <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
           <Stack.Screen name="PaymentHistory" component={PaymentHistoryScreen} />
         </Stack.Navigator>

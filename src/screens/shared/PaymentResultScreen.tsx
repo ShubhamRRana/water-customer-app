@@ -30,35 +30,17 @@ const PaymentResultScreen: React.FC<Props> = ({ navigation }) => {
 
   const isSuccess = params.status === 'success';
 
-  const title = isSuccess
-    ? params.type === 'booking'
-      ? 'Delivery payment successful'
-      : 'Subscription payment successful'
-    : params.type === 'booking'
-      ? 'Delivery payment failed'
-      : 'Subscription payment failed';
+  const title = isSuccess ? 'Subscription payment successful' : 'Subscription payment failed';
 
   const message = isSuccess
-    ? params.type === 'booking'
-      ? 'Your delivery payment was confirmed. You can track your order for updates.'
-      : 'Your subscription payment was confirmed. Enjoy full app access.'
+    ? 'Your subscription payment was confirmed. Enjoy full app access.'
     : params.errorMessage ?? ERROR_MESSAGES.payment.failed;
 
   const handlePrimary = () => {
     if (isSuccess) {
-      if (params.type === 'booking') {
-        navigation.replace('OrderTracking', { orderId: params.bookingId });
-        return;
-      }
       navigation.replace('SubscriptionStatus');
       return;
     }
-
-    if (params.type === 'booking') {
-      navigation.replace('PayBooking', { bookingId: params.bookingId });
-      return;
-    }
-
     navigation.replace('PaySubscription', {
       subscriptionId: params.subscriptionId,
       planId: params.planId,
@@ -67,20 +49,11 @@ const PaymentResultScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleSecondary = () => {
-    if (params.type === 'booking') {
-      navigation.navigate('Orders');
-      return;
-    }
     navigation.navigate('SubscriptionPlans');
   };
 
-  const primaryLabel = isSuccess
-    ? params.type === 'booking'
-      ? 'Track order'
-      : 'View subscription'
-    : 'Try again';
-
-  const secondaryLabel = params.type === 'booking' ? 'View orders' : 'Back to plans';
+  const primaryLabel = isSuccess ? 'View subscription' : 'Try again';
+  const secondaryLabel = 'Back to plans';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
