@@ -1,4 +1,4 @@
-import type { NavigatorScreenParams } from '@react-navigation/native';
+import type { NavigationContainerRef, NavigatorScreenParams } from '@react-navigation/native';
 import type { PaymentResultParams } from '../types/razorpay.types';
 
 /** Period context for society trip payment settlement (month view uses month 0–11; year view ignores month). */
@@ -51,3 +51,27 @@ export type RootStackParamList = {
   Auth: undefined;
   Main: NavigatorScreenParams<AppStackParamList> | undefined;
 };
+
+/**
+ * Resets the root navigator to `targetRoute` unless it is already the active
+ * root-level route. Must compare against the root stack route (Auth/Main), not
+ * `getCurrentRoute()` — that returns the deepest focused route (e.g.
+ * "SavedAddresses"), which never equals a root route name and would reset the
+ * stack on every auth-user update, kicking the user back to Home.
+ */
+export function syncRootRoute(
+  nav: Pick<NavigationContainerRef<RootStackParamList>, 'getRootState' | 'reset'>,
+  targetRoute: keyof RootStackParamList
+): void {
+  const rootState = nav.getRootState() as
+    | { index: number; routes: { name: string }[] }
+    | undefined;
+  const currentRootRoute = rootState?.routes[rootState.index]?.name;
+
+  if (currentRootRoute !== targetRoute) {
+    nav.reset({
+      index: 0,
+      routes: [{ name: targetRoute }],
+    });
+  }
+}

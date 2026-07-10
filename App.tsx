@@ -21,6 +21,7 @@ import { createAppQueryClient } from './src/lib/queryClient';
 
 // Types
 import { User, isCustomerUser } from './src/types';
+import { syncRootRoute } from './src/navigation/rootNavigation';
 import type { RootStackParamList } from './src/navigation/rootNavigation';
 
 export type { RootStackParamList };
@@ -84,15 +85,7 @@ const App: React.FC = () => {
     const nav = navigationRef.current;
     if (!nav?.isReady()) return;
 
-    const targetRoute = getInitialRouteName(user, needsPasswordReset);
-    const currentRoute = nav.getCurrentRoute()?.name;
-
-    if (currentRoute !== targetRoute) {
-      nav.reset({
-        index: 0,
-        routes: [{ name: targetRoute }],
-      });
-    }
+    syncRootRoute(nav, getInitialRouteName(user, needsPasswordReset));
   }, [user, needsPasswordReset]);
 
   const onNavigationReady = () => {
@@ -101,15 +94,7 @@ const App: React.FC = () => {
 
     const u = useAuthStore.getState().user;
     const resetNeeded = useAuthStore.getState().needsPasswordReset;
-    const targetRoute = getInitialRouteName(u, resetNeeded);
-    const currentRoute = nav.getCurrentRoute()?.name;
-
-    if (currentRoute !== targetRoute) {
-      nav.reset({
-        index: 0,
-        routes: [{ name: targetRoute }],
-      });
-    }
+    syncRootRoute(nav, getInitialRouteName(u, resetNeeded));
   };
 
   // Don't render until fonts are loaded
