@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp, useFocusEffect, useRoute } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
-import { Button, Card, Typography, ScreenLoading, ScreenEmpty } from '../../components/common';
+import { Card, Typography, ScreenLoading, ScreenEmpty } from '../../components/common';
 import AppScreenHeader from '../../components/layouts/AppScreenHeader';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
 import type { ThemeColors } from '../../constants/config';
@@ -100,15 +100,6 @@ const AgencyTripBreakdownScreen: React.FC<Props> = ({ navigation }) => {
       }),
     [agencyName, filteredTrips, completedPaymentPeriods, periodType, year, month],
   );
-
-  const onSettlePayment = useCallback(() => {
-    navigation.navigate('SettlePaymentPlaceholder', {
-      periodType,
-      year,
-      month,
-      agencyName,
-    });
-  }, [navigation, periodType, year, month, agencyName]);
 
   if (isLoading && trips == null) {
     return (
@@ -231,24 +222,16 @@ const AgencyTripBreakdownScreen: React.FC<Props> = ({ navigation }) => {
               </View>
             ) : null}
 
-            <View style={styles.settleRow}>
-              {agencyComplete ? (
+            {agencyComplete ? (
+              <View style={styles.settleRow}>
                 <View style={styles.paymentComplete}>
                   <Ionicons name="checkmark-circle" size={18} color={colors.success} />
                   <Typography variant="body" style={styles.paymentCompleteText}>
                     Payment Complete
                   </Typography>
                 </View>
-              ) : hasBillableAmount ? (
-                <Button
-                  title="Settle Payment"
-                  onPress={onSettlePayment}
-                  variant="primary"
-                  size="small"
-                  style={styles.settleButton}
-                />
-              ) : null}
-            </View>
+              </View>
+            ) : null}
           </Card>
         </ScrollView>
       )}
@@ -374,10 +357,6 @@ function createStyles(colors: ThemeColors) {
       marginTop: 4,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
-    },
-    settleButton: {
-      width: '100%',
-      paddingVertical: 7,
     },
     paymentComplete: {
       flexDirection: 'row',

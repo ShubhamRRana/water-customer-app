@@ -3,11 +3,6 @@ import { supabase } from '../lib/supabaseClient';
 import { SocietyTrip } from '../types';
 import { handleError } from '../utils/errorHandler';
 import { SubscriptionService } from './subscription.service';
-import {
-  societyAgencyPaymentPeriodKey,
-  societyPaymentPeriodKey,
-  type SocietyPaymentCompletePeriod,
-} from '../navigation/rootNavigation';
 
 export interface CreateSocietyTripInput {
   customerId: string;
@@ -161,36 +156,6 @@ export class SocietyTripService {
     } catch (error) {
       handleError(error, {
         context: { operation: 'listSocietyPaymentPeriodsCompleted', customerId },
-        userFacing: false,
-      });
-      throw error;
-    }
-  }
-
-  static async markPaymentPeriodComplete(
-    customerId: string,
-    period: SocietyPaymentCompletePeriod,
-  ): Promise<void> {
-    const periodKey =
-      period.agencyName != null
-        ? societyAgencyPaymentPeriodKey(period)
-        : societyPaymentPeriodKey(period);
-    try {
-      const { error } = await supabase.from('society_payment_periods_completed').upsert(
-        {
-          customer_id: customerId,
-          period_key: periodKey,
-          completed_at: new Date().toISOString(),
-        },
-        { onConflict: 'customer_id,period_key' },
-      );
-
-      if (error) {
-        throw new Error(error.message || 'Failed to save payment status');
-      }
-    } catch (error) {
-      handleError(error, {
-        context: { operation: 'markSocietyPaymentPeriodComplete', customerId, periodKey },
         userFacing: false,
       });
       throw error;

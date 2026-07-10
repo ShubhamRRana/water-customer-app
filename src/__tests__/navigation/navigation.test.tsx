@@ -165,16 +165,6 @@ jest.mock('../../screens/shared/AgencyTripBreakdownScreen', () => {
   );
 });
 
-jest.mock('../../screens/shared/SettlePaymentPlaceholderScreen', () => {
-  const React = require('react');
-  const { View, Text } = require('react-native');
-  return () => (
-    <View testID="SettlePaymentPlaceholderScreen">
-      <Text>SettlePaymentPlaceholderScreen</Text>
-    </View>
-  );
-});
-
 jest.mock('../../screens/society/SubscriptionComingSoonScreen', () => {
   const React = require('react');
   const { View, Text } = require('react-native');

@@ -14,7 +14,6 @@ import AddTripScreen from '../screens/shared/AddTripScreen';
 import TripDetailsScreen from '../screens/shared/TripDetailsScreen';
 import AgencyTripBreakdownScreen from '../screens/shared/AgencyTripBreakdownScreen';
 import SubscriptionComingSoonScreen from '../screens/society/SubscriptionComingSoonScreen';
-import SettlePaymentPlaceholderScreen from '../screens/shared/SettlePaymentPlaceholderScreen';
 import SubscriptionPlansScreen from '../screens/customer/SubscriptionPlansScreen';
 import SubscriptionStatusScreen from '../screens/customer/SubscriptionStatusScreen';
 import PaySubscriptionScreen from '../screens/customer/PaySubscriptionScreen';
@@ -93,7 +92,6 @@ const MainNavigator: React.FC = () => {
           <Stack.Screen name="AddTrip" component={AddTripScreen} />
           <Stack.Screen name="TripDetails" component={TripDetailsScreen} />
           <Stack.Screen name="AgencyTripBreakdown" component={AgencyTripBreakdownScreen} />
-          <Stack.Screen name="SettlePaymentPlaceholder" component={SettlePaymentPlaceholderScreen} />
           <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
           <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen} />
           <Stack.Screen name="PastOrders" component={PastOrdersScreen} />

@@ -32,7 +32,6 @@ export type AppStackParamList = {
   AddTrip: undefined;
   TripDetails: undefined;
   AgencyTripBreakdown: SocietyPaymentCompletePeriod & { agencyName: string };
-  SettlePaymentPlaceholder: SocietyPaymentCompletePeriod;
   OrderTracking: { orderId: string };
   SavedAddresses: undefined;
   PastOrders: undefined;
