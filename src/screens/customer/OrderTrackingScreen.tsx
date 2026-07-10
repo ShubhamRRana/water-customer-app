@@ -23,10 +23,9 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { LocationTrackingService, DriverLocation } from '../../services/locationTracking.service';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
-import Button from '../../components/common/Button';
 import {
-  canPayBookingOnline,
   getBookingPaymentStatusLabel,
+  shouldShowPayAtDeliveryNote,
 } from '../../utils/paymentDisplay';
 
 type OrderTrackingScreenNavigationProp = StackNavigationProp<AppStackParamList, 'OrderTracking'>;
@@ -266,8 +265,10 @@ function createOrderTrackingStyles(colors: ThemeColors) {
       color: colors.error,
       marginLeft: 8,
     },
-    payButton: {
+    payAtDeliveryNote: {
       marginTop: 12,
+      color: colors.textSecondary,
+      lineHeight: 18,
     },
     paymentIdText: {
       fontSize: 13,
@@ -609,12 +610,10 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
                 </Typography>
               </View>
             )}
-            {canPayBookingOnline(booking) && (
-              <Button
-                title="Pay now"
-                onPress={() => navigation.navigate('PayBooking', { bookingId: booking.id })}
-                style={styles.payButton}
-              />
+            {shouldShowPayAtDeliveryNote(booking) && (
+              <Typography variant="caption" style={styles.payAtDeliveryNote}>
+                Pay at delivery — scan the driver's QR code or pay cash when your tanker arrives.
+              </Typography>
             )}
           </Card>
         </View>

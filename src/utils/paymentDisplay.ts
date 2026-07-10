@@ -1,5 +1,4 @@
 import type { Booking } from '../types';
-import { FEATURE_FLAGS } from '../constants/config';
 
 export type BookingPaymentChip = 'paid' | 'unpaid' | 'failed' | 'cod' | 'refunded';
 
@@ -27,13 +26,6 @@ export function getBookingPaymentChipLabel(chip: BookingPaymentChip): string {
     default:
       return 'Unknown';
   }
-}
-
-export function canPayBookingOnline(booking: Booking): boolean {
-  if (!FEATURE_FLAGS.enableOnlinePayment) return false;
-  if (booking.status === 'cancelled') return false;
-  if (booking.totalPrice <= 0) return false;
-  return booking.paymentStatus === 'pending' || booking.paymentStatus === 'failed';
 }
 
 /** Booking is unpaid and priced — the customer pays the driver (QR scan or cash) at delivery. */

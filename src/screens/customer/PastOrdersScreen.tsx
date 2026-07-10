@@ -28,7 +28,6 @@ import { exportReportToExcel } from '../../utils/excelExport';
 import Card from '../../components/common/Card';
 import { formatDateTime } from '../../utils/dateUtils';
 import {
-  canPayBookingOnline,
   getBookingPaymentChip,
   getBookingPaymentChipLabel,
 } from '../../utils/paymentDisplay';
@@ -291,15 +290,6 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
                       ? PricingUtils.formatPrice(booking.totalPrice)
                       : 'Amount at delivery'}
                   </Typography>
-                  {canPayBookingOnline(booking) && (
-                    <TouchableOpacity
-                      style={styles.payNowButton}
-                      onPress={() => navigation.navigate('PayBooking', { bookingId: booking.id })}
-                    >
-                      <Ionicons name="card-outline" size={14} color={colors.textLight} />
-                      <Typography variant="caption" style={styles.payNowText}>Pay now</Typography>
-                    </TouchableOpacity>
-                  )}
                 </View>
               </Card>
             ))
@@ -513,19 +503,6 @@ function createPastOrdersStyles(colors: ThemeColors) {
     fontSize: 16,
     fontWeight: '600',
     color: colors.accent,
-  },
-  payNowButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.accent,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 4,
-  },
-  payNowText: {
-    color: colors.textLight,
-    fontWeight: '600',
   },
   bottomSpacing: {
     height: 40,

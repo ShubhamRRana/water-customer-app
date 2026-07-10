@@ -1,7 +1,5 @@
 import type { Booking } from '../../types';
-import { FEATURE_FLAGS } from '../../constants/config';
 import {
-  canPayBookingOnline,
   getBookingPaymentChip,
   getBookingPaymentChipLabel,
   getBookingPaymentStatusLabel,
@@ -69,34 +67,6 @@ describe('paymentDisplay', () => {
       expect(getBookingPaymentChipLabel('failed')).toBe('Failed');
       expect(getBookingPaymentChipLabel('cod')).toBe('COD');
       expect(getBookingPaymentChipLabel('refunded')).toBe('Refunded');
-    });
-  });
-
-  describe('canPayBookingOnline', () => {
-    it('allows pay when online flag on and booking is pending with price', () => {
-      expect(canPayBookingOnline(baseBooking({ paymentStatus: 'pending' }))).toBe(true);
-    });
-
-    it('allows pay when payment failed', () => {
-      expect(canPayBookingOnline(baseBooking({ paymentStatus: 'failed' }))).toBe(true);
-    });
-
-    it('blocks pay when booking is cancelled', () => {
-      expect(canPayBookingOnline(baseBooking({ status: 'cancelled' }))).toBe(false);
-    });
-
-    it('blocks pay when total price is zero', () => {
-      expect(canPayBookingOnline(baseBooking({ totalPrice: 0 }))).toBe(false);
-    });
-
-    it('blocks pay when online payment flag is off', () => {
-      const previous = FEATURE_FLAGS.enableOnlinePayment;
-      FEATURE_FLAGS.enableOnlinePayment = false;
-      try {
-        expect(canPayBookingOnline(baseBooking())).toBe(false);
-      } finally {
-        FEATURE_FLAGS.enableOnlinePayment = previous;
-      }
     });
   });
 

@@ -28,7 +28,6 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
 import {
-  canPayBookingOnline,
   getBookingPaymentChip,
   getBookingPaymentChipLabel,
 } from '../../utils/paymentDisplay';
@@ -361,26 +360,15 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
                 </View>
               )}
 
-              {(canPayBookingOnline(booking) || (booking.canCancel && booking.status === 'pending')) && (
+              {booking.canCancel && booking.status === 'pending' && (
                 <View style={styles.orderActions}>
-                  {canPayBookingOnline(booking) && (
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.payButton]}
-                      onPress={() => navigation.navigate('PayBooking', { bookingId: booking.id })}
-                    >
-                      <Ionicons name="card-outline" size={16} color={colors.textLight} />
-                      <Typography variant="caption" style={[styles.actionText, styles.payText]}>Pay now</Typography>
-                    </TouchableOpacity>
-                  )}
-                  {booking.canCancel && booking.status === 'pending' && (
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.cancelButton]}
-                      onPress={() => handleCancelBooking(booking)}
-                    >
-                      <Ionicons name="close-outline" size={16} color={colors.error} />
-                      <Typography variant="caption" style={[styles.actionText, styles.cancelText]}>Cancel</Typography>
-                    </TouchableOpacity>
-                  )}
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.cancelButton]}
+                    onPress={() => handleCancelBooking(booking)}
+                  >
+                    <Ionicons name="close-outline" size={16} color={colors.error} />
+                    <Typography variant="caption" style={[styles.actionText, styles.cancelText]}>Cancel</Typography>
+                  </TouchableOpacity>
                 </View>
               )}
             </Card>
@@ -617,12 +605,6 @@ function createOrderHistoryStyles(colors: ThemeColors) {
     paddingVertical: 6,
     backgroundColor: colors.background,
     borderRadius: 16,
-  },
-  payButton: {
-    backgroundColor: colors.accent,
-  },
-  payText: {
-    color: colors.textLight,
   },
   cancelButton: {
     backgroundColor: colors.surfaceLight,
