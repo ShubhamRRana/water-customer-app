@@ -612,7 +612,7 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
             )}
             {shouldShowPayAtDeliveryNote(booking) && (
               <Typography variant="caption" style={styles.payAtDeliveryNote}>
-                Pay at delivery — scan the driver's QR code or pay cash when your tanker arrives.
+                Pay at delivery — scan the driver&apos;s QR code or pay cash when your tanker arrives.
               </Typography>
             )}
           </Card>
