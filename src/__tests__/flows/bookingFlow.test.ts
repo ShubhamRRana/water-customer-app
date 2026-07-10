@@ -5,9 +5,9 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BookingService } from '../../services/booking.service';
-import { PaymentService } from '../../services/payment.service';
 import { LocalStorageService } from '../../services/localStorage';
 import { Booking, BookingStatus } from '../../types';
+import { simulateDriverPaymentConfirmation } from '../helpers/driverPayment';
 
 jest.mock('../../services/subscription.service', () => ({
   SubscriptionService: {
@@ -113,18 +113,15 @@ describe('Booking Flow Integration', () => {
       booking = await BookingService.getBookingById(bookingId);
       expect(booking?.status).toBe('in_transit');
 
-      // Step 4: Driver delivers and confirms payment
+      // Step 4: Driver delivers; driver app confirms QR/cash payment via shared DB
       await BookingService.updateBookingStatus(bookingId, 'delivered');
-      const paymentResult = await PaymentService.confirmCODPayment(bookingId);
-
-      expect(paymentResult.success).toBe(true);
-      expect(paymentResult.paymentId).toBeTruthy();
+      const paymentId = await simulateDriverPaymentConfirmation(bookingId);
 
       booking = await BookingService.getBookingById(bookingId);
       expect(booking?.status).toBe('delivered');
       expect(booking?.paymentStatus).toBe('completed');
       expect(booking?.deliveredAt).toBeInstanceOf(Date);
-      expect(booking?.paymentId).toBe(paymentResult.paymentId);
+      expect(booking?.paymentId).toBe(paymentId);
     });
 
     it('should handle booking cancellation flow', async () => {
@@ -140,31 +137,23 @@ describe('Booking Flow Integration', () => {
       expect(booking?.cancellationReason).toBe(cancellationReason);
     });
 
-    it('should handle payment processing during booking flow', async () => {
-      // Create booking
+    it('should keep booking unpaid until driver confirms payment at delivery', async () => {
       const bookingId = await BookingService.createBooking(mockBookingData);
-      
-      // Process COD payment
-      const paymentResult = await PaymentService.processCODPayment(bookingId, 600);
-      expect(paymentResult.success).toBe(true);
-      expect(paymentResult.paymentId).toBeTruthy();
 
       let booking = await BookingService.getBookingById(bookingId);
       expect(booking?.paymentStatus).toBe('pending');
-      expect(booking?.paymentId).toBe(paymentResult.paymentId);
+      expect(booking?.paymentId).toBeUndefined();
 
-      // Driver accepts and delivers
       await BookingService.updateBookingStatus(bookingId, 'accepted', {
         driverId: mockDriver.id,
       });
       await BookingService.updateBookingStatus(bookingId, 'delivered');
 
-      // Confirm payment
-      const confirmResult = await PaymentService.confirmCODPayment(bookingId);
-      expect(confirmResult.success).toBe(true);
+      const paymentId = await simulateDriverPaymentConfirmation(bookingId);
 
       booking = await BookingService.getBookingById(bookingId);
       expect(booking?.paymentStatus).toBe('completed');
+      expect(booking?.paymentId).toBe(paymentId);
     });
   });
 
@@ -258,19 +247,6 @@ describe('Booking Flow Integration', () => {
   });
 
   describe('Error Handling in Flow', () => {
-    it('should handle payment processing failure gracefully', async () => {
-      const bookingId = await BookingService.createBooking(mockBookingData);
-
-      // Simulate storage failure
-      jest.spyOn(LocalStorageService, 'updateBooking').mockRejectedValueOnce(
-        new Error('Storage error')
-      );
-
-      const paymentResult = await PaymentService.processCODPayment(bookingId, 600);
-      expect(paymentResult.success).toBe(false);
-      expect(paymentResult.error).toBeTruthy();
-    });
-
     it('should handle booking status update failure', async () => {
       const bookingId = await BookingService.createBooking(mockBookingData);
 

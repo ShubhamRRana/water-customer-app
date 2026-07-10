@@ -13,9 +13,9 @@
 import { SupabaseDataAccess } from '../../lib/supabaseDataAccess';
 import { AuthService } from '../../services/auth.service';
 import { BookingService } from '../../services/booking.service';
-import { PaymentService } from '../../services/payment.service';
 import { User, Booking, Vehicle, CustomerUser, DriverUser, AdminUser, Address } from '../../types/index';
 import { supabase } from '../../lib/supabaseClient';
+import { simulateDriverPaymentConfirmation } from '../helpers/driverPayment';
 
 jest.mock('../../services/subscription.service', () => ({
   SubscriptionService: {
@@ -696,69 +696,44 @@ describe('User Acceptance Tests - Payment Collection', () => {
     canCancel: true,
   };
 
-  it('should process COD payment when booking is created', async () => {
+  it('should create booking unpaid (payment collected at delivery)', async () => {
     const bookingId = await BookingService.createBooking(mockBookingData);
-    
-    const paymentResult = await PaymentService.processCODPayment(bookingId, 650);
-    
-    expect(paymentResult.success).toBe(true);
-    expect(paymentResult.paymentId).toBeTruthy();
-    expect(paymentResult.paymentId).toContain('cod_');
-    
+
     const booking = await BookingService.getBookingById(bookingId);
     expect(booking?.paymentStatus).toBe('pending');
-    expect(booking?.paymentId).toBe(paymentResult.paymentId);
+    expect(booking?.paymentId).toBeUndefined();
   });
 
   it('should confirm payment after delivery is completed', async () => {
     const bookingId = await BookingService.createBooking(mockBookingData);
-    
-    // Process COD payment
-    await PaymentService.processCODPayment(bookingId, 650);
-    
-    // Driver accepts and delivers
+
     await BookingService.updateBookingStatus(bookingId, 'accepted', {
       driverId: 'driver-1',
     });
     await BookingService.updateBookingStatus(bookingId, 'delivered', {
       deliveredAt: new Date(),
     });
-    
-    // Confirm payment
-    const confirmResult = await PaymentService.confirmCODPayment(bookingId);
-    
-    expect(confirmResult.success).toBe(true);
-    expect(confirmResult.paymentId).toBeTruthy();
-    
+
+    const paymentId = await simulateDriverPaymentConfirmation(bookingId);
+
     const booking = await BookingService.getBookingById(bookingId);
     expect(booking?.paymentStatus).toBe('completed');
-    expect(booking?.paymentId).toBe(confirmResult.paymentId);
+    expect(booking?.paymentId).toBe(paymentId);
   });
 
-  it('should handle payment processing errors gracefully', async () => {
-    const paymentResult = await PaymentService.processCODPayment('non-existent-booking', 650);
-    
-    expect(paymentResult.success).toBe(false);
-    expect(paymentResult.error).toBeTruthy();
-  });
-
-  it('should maintain payment ID through booking status changes', async () => {
+  it('should stay unpaid through status changes until driver confirms', async () => {
     const bookingId = await BookingService.createBooking(mockBookingData);
-    
-    const paymentResult = await PaymentService.processCODPayment(bookingId, 650);
-    const initialPaymentId = paymentResult.paymentId;
-    
-    // Status changes
+
     await BookingService.updateBookingStatus(bookingId, 'accepted', {
       driverId: 'driver-1',
     });
-    
     let booking = await BookingService.getBookingById(bookingId);
-    expect(booking?.paymentId).toBe(initialPaymentId);
-    
+    expect(booking?.paymentStatus).toBe('pending');
+
     await BookingService.updateBookingStatus(bookingId, 'in_transit');
     booking = await BookingService.getBookingById(bookingId);
-    expect(booking?.paymentId).toBe(initialPaymentId);
+    expect(booking?.paymentStatus).toBe('pending');
+    expect(booking?.paymentId).toBeUndefined();
   });
 });
 
@@ -808,11 +783,7 @@ describe('User Acceptance Tests - End-to-End Scenarios', () => {
     
     const bookingId = await BookingService.createBooking(bookingData);
     expect(bookingId).toBeTruthy();
-    
-    // Step 4: Process payment
-    const paymentResult = await PaymentService.processCODPayment(bookingId, 650);
-    expect(paymentResult.success).toBe(true);
-    
+
     // Step 5: Driver accepts booking
     await BookingService.updateBookingStatus(bookingId, 'accepted', {
       driverId: driverId!,
@@ -828,10 +799,10 @@ describe('User Acceptance Tests - End-to-End Scenarios', () => {
       deliveredAt: new Date(),
     });
     
-    // Step 8: Confirm payment
-    const confirmResult = await PaymentService.confirmCODPayment(bookingId);
-    expect(confirmResult.success).toBe(true);
-    
+    // Step 8: Driver confirms QR/cash payment
+    const paymentId = await simulateDriverPaymentConfirmation(bookingId);
+    expect(paymentId).toBeTruthy();
+
     // Verify final state
     const finalBooking = await BookingService.getBookingById(bookingId);
     expect(finalBooking?.status).toBe('delivered');
