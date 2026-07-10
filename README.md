@@ -4,7 +4,7 @@ A **customer-facing** mobile app (**WTC**) for on-demand water tanker delivery, 
 
 This client only mounts **Auth** and **Customer** flows (`App.tsx`). Users restored as non-customer (e.g. staff) are sent back to sign-in.
 
-Customers can sign in as **individual** or **society** accounts (same customer role; account kind differs). **Active subscriptions** are required to create bookings and society trips (enforced in app and database). Subscription purchase/renewal (**Flow A**) and booking online payment (**Flow B**) use **Razorpay** via Supabase Edge Functions and `react-native-razorpay` (requires an **Expo dev client** or EAS build — not Expo Go).
+Customers can sign in as **individual** or **society** accounts (same customer role; account kind differs). **Active subscriptions** are required to create bookings and society trips (enforced in app and database). Subscription purchase/renewal (**Flow A**) uses **Razorpay** via Supabase Edge Functions and `react-native-razorpay` (requires an **Expo dev client** or EAS build — not Expo Go). Booking payment is collected **at delivery** — the customer scans the driver's QR code or pays cash, and the driver app records it (the Flow B booking Edge Functions remain server-side for other apps).
 
 ## Table of Contents
 
@@ -32,7 +32,7 @@ Customers can sign in as **individual** or **society** accounts (same customer r
 - **Price Calculation**: Automatic distance-based pricing with Indian numbering format
 - **Scheduled Deliveries**: Schedule deliveries for future dates
 - **Subscriptions**: Browse plans, subscribe or renew via Razorpay checkout (Flow A), view status, and free-trial provisioning where configured
-- **Online booking payment**: Pay for confirmed bookings via Razorpay Route checkout (Flow B); COD / pay-at-delivery when price is zero or online payment is off
+- **Pay at delivery**: Booking payment is collected when the tanker arrives — scan the driver's QR code or pay cash; the driver app marks the payment received
 - **Payment history**: Filterable in-app history for subscription and booking payments (Razorpay order/payment ids)
 - **Society login & trips**: Society-specific login flow; record and manage society trips (subscription rules apply; society plans route to the same subscription checkout when available)
 - **Password reset**: Forgot-password email flow with in-app `SetNewPassword` via deep link (`wtccustomer://reset-password`)
