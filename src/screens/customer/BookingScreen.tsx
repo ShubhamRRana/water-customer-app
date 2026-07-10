@@ -25,7 +25,7 @@ import DateTimeInput from '../../components/customer/DateTimeInput';
 import { Address, isAdminUser, isCustomerUser } from '../../types';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
-import { UI_CONFIG, LOCATION_CONFIG, FEATURE_FLAGS } from '../../constants/config';
+import { UI_CONFIG, LOCATION_CONFIG } from '../../constants/config';
 import type { ThemeColors } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { handleError } from '../../utils/errorHandler';
@@ -421,22 +421,14 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
 
       const bookingId = await createBookingMutation.mutateAsync(bookingData);
 
-      const shouldPayOnline =
-        FEATURE_FLAGS.enableOnlinePayment && priceBreakdown.totalPrice > 0;
-
-      if (shouldPayOnline) {
-        navigation.replace('PayBooking', { bookingId });
-        return;
-      }
-
-      const codMessage =
+      const payMessage =
         priceBreakdown.totalPrice > 0
-          ? 'You can pay online when your order is ready, or pay cash on delivery when the tanker arrives.'
-          : 'Amount will be determined at delivery. You can pay cash on delivery or online once the amount is confirmed.';
+          ? 'Pay when your tanker arrives — scan the driver\'s QR code or pay cash on delivery.'
+          : 'Amount will be determined at delivery. Pay the driver by QR or cash when the tanker arrives.';
 
       Alert.alert(
         'Booking successful',
-        `Your booking has been placed.\nAgency: ${selectedAgency.name}\n\n${codMessage}`,
+        `Your booking has been placed.\nAgency: ${selectedAgency.name}\n\n${payMessage}`,
         [{ text: 'OK', onPress: () => navigation.replace('OrderTracking', { orderId: bookingId }) }]
       );
     } catch (error) {
