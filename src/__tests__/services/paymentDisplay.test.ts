@@ -5,6 +5,7 @@ import {
   getBookingPaymentChip,
   getBookingPaymentChipLabel,
   getBookingPaymentStatusLabel,
+  shouldShowPayAtDeliveryNote,
 } from '../../utils/paymentDisplay';
 
 const baseBooking = (overrides: Partial<Booking> = {}): Booking => ({
@@ -96,6 +97,28 @@ describe('paymentDisplay', () => {
       } finally {
         FEATURE_FLAGS.enableOnlinePayment = previous;
       }
+    });
+  });
+
+  describe('shouldShowPayAtDeliveryNote', () => {
+    it('shows note for a pending priced booking', () => {
+      expect(shouldShowPayAtDeliveryNote(baseBooking({ paymentStatus: 'pending' }))).toBe(true);
+    });
+
+    it('shows note when a previous payment attempt failed', () => {
+      expect(shouldShowPayAtDeliveryNote(baseBooking({ paymentStatus: 'failed' }))).toBe(true);
+    });
+
+    it('hides note when booking is cancelled', () => {
+      expect(shouldShowPayAtDeliveryNote(baseBooking({ status: 'cancelled' }))).toBe(false);
+    });
+
+    it('hides note when total price is zero', () => {
+      expect(shouldShowPayAtDeliveryNote(baseBooking({ totalPrice: 0 }))).toBe(false);
+    });
+
+    it('hides note once payment is completed', () => {
+      expect(shouldShowPayAtDeliveryNote(baseBooking({ paymentStatus: 'completed' }))).toBe(false);
     });
   });
 

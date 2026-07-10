@@ -36,6 +36,13 @@ export function canPayBookingOnline(booking: Booking): boolean {
   return booking.paymentStatus === 'pending' || booking.paymentStatus === 'failed';
 }
 
+/** Booking is unpaid and priced — the customer pays the driver (QR scan or cash) at delivery. */
+export function shouldShowPayAtDeliveryNote(booking: Booking): boolean {
+  if (booking.status === 'cancelled') return false;
+  if (booking.totalPrice <= 0) return false;
+  return booking.paymentStatus === 'pending' || booking.paymentStatus === 'failed';
+}
+
 export function getBookingPaymentStatusLabel(booking: Booking): string {
   const chip = getBookingPaymentChip(booking);
   if (chip === 'paid' && booking.paymentId?.startsWith('pay_')) {
