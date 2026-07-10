@@ -16,8 +16,6 @@ export type {
   RazorpayVerifyPayload,
   PaymentFlow,
   RazorpaySubscriptionOrder,
-  RazorpayBookingOrder,
   SubscriptionPaymentVerifyResult,
-  BookingPaymentVerifyResult,
   PaymentResultParams,
 } from '../types/razorpay.types';

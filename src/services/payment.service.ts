@@ -6,20 +6,12 @@ import { handleError } from '../utils/errorHandler';
 import { getErrorMessage } from '../utils/errors';
 import { mapPaymentErrorCode } from '../utils/paymentErrors';
 import type {
-  BookingPaymentVerifyResult,
   PaymentFlow,
-  RazorpayBookingOrder,
   RazorpaySubscriptionOrder,
   RazorpayVerifyPayload,
   SubscriptionPaymentVerifyResult,
 } from '../types/razorpay.types';
 import type { PaymentTransaction, PaymentTransactionStatus } from '../types/subscription.types';
-
-export interface PaymentResult {
-  success: boolean;
-  paymentId?: string;
-  error?: string;
-}
 
 export interface PaymentHistoryOptions {
   flow?: PaymentFlow;
@@ -56,21 +48,6 @@ function flowLabel(flow: PaymentFlow | null): string {
     default:
       return 'Payment';
   }
-}
-
-function paymentVerifyFailure(
-  error: string,
-  code?: string
-): { success: false; error: string; code?: string } {
-  return code ? { success: false, error, code } : { success: false, error };
-}
-
-function throwBookingPaymentError(message: string, code?: string): never {
-  const err = new Error(message);
-  if (code) {
-    (err as Error & { code: string }).code = code;
-  }
-  throw err;
 }
 
 async function parseEdgeFunctionErrorBody(
@@ -153,105 +130,6 @@ export class PaymentService {
         userFacing: false,
       });
       throw error;
-    }
-  }
-
-  /**
-   * Process Cash on Delivery payment - marks payment as pending in local storage
-   */
-  static async processCODPayment(bookingId: string, amount: number): Promise<PaymentResult> {
-    try {
-      const booking = await dataAccess.bookings.getBookingById(bookingId);
-      if (!booking) {
-        return {
-          success: false,
-          error: 'Booking not found',
-        };
-      }
-
-      const paymentId = `cod_${bookingId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-      await dataAccess.bookings.updateBooking(bookingId, {
-        paymentStatus: 'pending',
-        paymentId,
-      });
-
-      return {
-        success: true,
-        paymentId,
-      };
-    } catch (error) {
-      handleError(error, {
-        context: { operation: 'processCODPayment', bookingId, amount },
-        userFacing: false,
-      });
-      return {
-        success: false,
-        error: getErrorMessage(error, 'Payment processing failed'),
-      };
-    }
-  }
-
-  /**
-   * Mark payment as completed when driver confirms delivery
-   */
-  static async confirmCODPayment(bookingId: string): Promise<PaymentResult> {
-    try {
-      const booking = await dataAccess.bookings.getBookingById(bookingId);
-      if (!booking) {
-        return {
-          success: false,
-          error: 'Booking not found',
-        };
-      }
-
-      const paymentId = `cod_confirmed_${bookingId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-      await dataAccess.bookings.updateBooking(bookingId, {
-        paymentStatus: 'completed',
-        paymentId,
-      });
-
-      return {
-        success: true,
-        paymentId,
-      };
-    } catch (error) {
-      handleError(error, {
-        context: { operation: 'confirmCODPayment', bookingId },
-        userFacing: false,
-      });
-      return {
-        success: false,
-        error: getErrorMessage(error, 'Payment confirmation failed'),
-      };
-    }
-  }
-
-  static async processOnlinePayment(
-    bookingId: string,
-    _amount: number,
-    paymentMethod: 'razorpay' | 'stripe'
-  ): Promise<PaymentResult> {
-    if (paymentMethod === 'stripe') {
-      return { success: false, error: 'Stripe payments are not supported.' };
-    }
-
-    try {
-      const order = await PaymentService.createBookingPayment(bookingId);
-      return {
-        success: true,
-        paymentId: order.orderId,
-      };
-    } catch (error) {
-      handleError(error, {
-        context: { operation: 'processOnlinePayment', bookingId },
-        userFacing: false,
-      });
-      return {
-        success: false,
-        error: getErrorMessage(error, ERROR_MESSAGES.payment.failed),
-      };
     }
   }
 
@@ -344,92 +222,6 @@ export class PaymentService {
     } catch (error) {
       handleError(error, {
         context: { operation: 'verifySubscriptionPayment', subscriptionId },
-        userFacing: false,
-      });
-      return {
-        success: false,
-        error: getErrorMessage(error, ERROR_MESSAGES.payment.failed),
-      };
-    }
-  }
-
-  /**
-   * Flow B — create Razorpay order for booking delivery (Route transfer to agency).
-   */
-  static async createBookingPayment(bookingId: string): Promise<RazorpayBookingOrder> {
-    const { data, error } = await supabase.functions.invoke('create-customer-booking-order', {
-      body: { bookingId },
-    });
-
-    if (error) {
-      const { message, code } = await parseEdgeFunctionErrorBody(error, ERROR_MESSAGES.payment.failed);
-      throwBookingPaymentError(mapPaymentErrorCode(code, message), code);
-    }
-
-    if (!data || typeof data !== 'object') {
-      throw new Error(ERROR_MESSAGES.payment.failed);
-    }
-
-    const body = data as { error?: string; code?: string };
-    if (body.error) {
-      throwBookingPaymentError(mapPaymentErrorCode(body.code, body.error), body.code);
-    }
-
-    const order = data as RazorpayBookingOrder;
-    if (!order.orderId || !order.keyId || !order.amount) {
-      throw new Error(ERROR_MESSAGES.payment.failed);
-    }
-
-    return order;
-  }
-
-  /**
-   * Flow B — verify Razorpay payment signature and complete booking payment.
-   */
-  static async verifyBookingPayment(
-    bookingId: string,
-    payload: RazorpayVerifyPayload
-  ): Promise<BookingPaymentVerifyResult> {
-    try {
-      const { data, error } = await supabase.functions.invoke('verify-customer-booking-payment', {
-        body: {
-          bookingId,
-          razorpay_order_id: payload.razorpay_order_id,
-          razorpay_payment_id: payload.razorpay_payment_id,
-          razorpay_signature: payload.razorpay_signature,
-        },
-      });
-
-      if (error) {
-        const { message, code } = await parseEdgeFunctionErrorBody(
-          error,
-          ERROR_MESSAGES.payment.failed
-        );
-        return paymentVerifyFailure(mapPaymentErrorCode(code, message), code);
-      }
-
-      const body = data as {
-        success?: boolean;
-        alreadyCompleted?: boolean;
-        bookingId?: string;
-        error?: string;
-        code?: string;
-      };
-
-      if (body?.error) {
-        return paymentVerifyFailure(mapPaymentErrorCode(body.code, body.error), body.code);
-      }
-
-      return {
-        success: true,
-        bookingId: body?.bookingId ?? bookingId,
-        ...(body?.alreadyCompleted !== undefined
-          ? { alreadyCompleted: body.alreadyCompleted }
-          : {}),
-      };
-    } catch (error) {
-      handleError(error, {
-        context: { operation: 'verifyBookingPayment', bookingId },
         userFacing: false,
       });
       return {

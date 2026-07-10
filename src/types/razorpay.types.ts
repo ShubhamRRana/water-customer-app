@@ -1,6 +1,7 @@
 /**
- * Razorpay checkout types (Flow A subscription + Flow B booking).
+ * Razorpay checkout types (Flow A subscription).
  * Amounts are in paise (INR smallest unit) per Razorpay API.
+ * PaymentFlow retains 'customer_booking' for historical payment-history records.
  */
 
 export type PaymentFlow = 'customer_subscription' | 'customer_booking';
@@ -46,23 +47,6 @@ export interface SubscriptionPaymentVerifyResult {
   success: boolean;
   alreadyCompleted?: boolean;
   subscriptionId?: string;
-  error?: string;
-  code?: string;
-}
-
-/** Server response from `create-customer-booking-order`. */
-export interface RazorpayBookingOrder {
-  orderId: string;
-  /** Amount in paise. */
-  amount: number;
-  currency: string;
-  keyId: string;
-}
-
-export interface BookingPaymentVerifyResult {
-  success: boolean;
-  alreadyCompleted?: boolean;
-  bookingId?: string;
   error?: string;
   code?: string;
 }

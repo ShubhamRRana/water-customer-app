@@ -1,10 +1,8 @@
 import { ERROR_MESSAGES, FEATURE_FLAGS } from '../constants/config';
 import { dataAccess } from '../lib/index';
 import { Booking, BookingStatus } from '../types/index';
-import type { RazorpayVerifyPayload } from '../types/razorpay.types';
 import { handleAsyncOperationWithRethrow, handleError } from '../utils/errorHandler';
 import type { PaginationOptions, BookingQueryOptions } from '../lib/dataAccess.interface';
-import { PaymentService } from './payment.service';
 import { SubscriptionService } from './subscription.service';
 
 /**
@@ -350,24 +348,5 @@ export class BookingService {
         userFacing: false,
       }
     );
-  }
-
-  /**
-   * Flow B — verify Razorpay payment and mark booking as paid.
-   */
-  static async completeBookingPayment(
-    bookingId: string,
-    verifyPayload: RazorpayVerifyPayload
-  ): Promise<void> {
-    if (!FEATURE_FLAGS.enableOnlinePayment) {
-      throw new Error(
-        'Online booking payments are disabled. Set enableOnlinePayment to enable.'
-      );
-    }
-
-    const result = await PaymentService.verifyBookingPayment(bookingId, verifyPayload);
-    if (!result.success) {
-      throw new Error(result.error ?? 'Booking payment failed');
-    }
   }
 }
