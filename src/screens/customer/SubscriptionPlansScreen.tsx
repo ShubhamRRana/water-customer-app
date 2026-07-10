@@ -246,6 +246,7 @@ const SubscriptionPlansScreen: React.FC<Props> = ({ navigation, route }) => {
         onLogout={logout}
         currentRoute="SubscriptionPlans"
         customerAccountKind={customerAccountKind}
+        userName={user?.name}
       />
     </SafeAreaView>
   );

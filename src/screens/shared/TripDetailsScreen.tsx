@@ -549,6 +549,7 @@ const TripDetailsScreen: React.FC<TripDetailsScreenProps> = ({ navigation }) => 
         onLogout={handleLogout}
         currentRoute="TripDetails"
         customerAccountKind={customerAccountKind}
+        userName={user?.name}
       />
 
       <Modal

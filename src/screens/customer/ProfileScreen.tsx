@@ -680,6 +680,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         onLogout={handleLogout}
         currentRoute="Profile"
         customerAccountKind={customerAccountKind}
+        userName={user?.name}
       />
     </SafeAreaView>
   );

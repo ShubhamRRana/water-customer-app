@@ -306,6 +306,7 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
         onLogout={handleLogout}
         currentRoute="PastOrders"
         customerAccountKind={customerAccountKind}
+        userName={user?.name}
       />
     </SafeAreaView>
   );

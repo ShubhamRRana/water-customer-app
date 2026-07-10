@@ -231,6 +231,7 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
         onLogout={logout}
         currentRoute="PaymentHistory"
         customerAccountKind={customerAccountKind}
+        userName={user?.name}
       />
     </SafeAreaView>
   );

@@ -485,6 +485,7 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
         onLogout={handleLogout}
         currentRoute="Home"
         customerAccountKind={customerAccountKind}
+        userName={user?.name}
       />
     </SafeAreaView>
   );

@@ -25,6 +25,18 @@ interface CustomerMenuDrawerProps {
   currentRoute?: CustomerMenuRoute;
   /** When `society`, shows Trip details and Saved Addresses (society-only stack screens). */
   customerAccountKind?: CustomerAccountKind | null;
+  /** Signed-in user's name; shown in the drawer's profile header. */
+  userName?: string | null | undefined;
+}
+
+/** First letters of the first two words, uppercase (e.g. "Ravi Kumar" -> "RK"). */
+function getInitials(name?: string | null): string {
+  if (!name) return '';
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '';
+  const first = words[0]?.[0] ?? '';
+  const second = words.length > 1 ? words[words.length - 1]?.[0] ?? '' : '';
+  return (first + second).toUpperCase();
 }
 
 const CustomerMenuDrawer: React.FC<CustomerMenuDrawerProps> = ({
@@ -34,9 +46,10 @@ const CustomerMenuDrawer: React.FC<CustomerMenuDrawerProps> = ({
   onLogout,
   currentRoute,
   customerAccountKind,
+  userName,
 }) => {
   const menuItems: MenuItem<CustomerMenuRoute>[] = useMemo(() => {
-    const base: MenuItem<CustomerMenuRoute>[] = [
+    const items: MenuItem<CustomerMenuRoute>[] = [
       {
         label: 'Home',
         icon: 'home-outline',
@@ -50,6 +63,7 @@ const CustomerMenuDrawer: React.FC<CustomerMenuDrawerProps> = ({
         label: 'Orders',
         icon: 'list-outline',
         route: 'Orders',
+        section: 'Orders',
         onPress: () => {
           onNavigate('Orders');
           onClose();
@@ -59,6 +73,7 @@ const CustomerMenuDrawer: React.FC<CustomerMenuDrawerProps> = ({
         label: 'Past Orders',
         icon: 'time-outline',
         route: 'PastOrders',
+        section: 'Orders',
         onPress: () => {
           onNavigate('PastOrders');
           onClose();
@@ -66,19 +81,21 @@ const CustomerMenuDrawer: React.FC<CustomerMenuDrawerProps> = ({
       },
     ];
     if (customerAccountKind === 'society') {
-      base.push({
+      items.push({
         label: 'Trip details',
         icon: 'document-text-outline',
         route: 'TripDetails',
+        section: 'Orders',
         onPress: () => {
           onNavigate('TripDetails');
           onClose();
         },
       });
-      base.push({
+      items.push({
         label: 'Saved Addresses',
         icon: 'location-outline',
         route: 'SavedAddresses',
+        section: 'Account',
         onPress: () => {
           onNavigate('SavedAddresses');
           onClose();
@@ -86,26 +103,31 @@ const CustomerMenuDrawer: React.FC<CustomerMenuDrawerProps> = ({
       });
     }
     // My Subscription screen links to plans + payment history — single drawer row for all customer kinds.
-    base.push({
+    items.push({
       label: 'My subscription',
       icon: 'shield-checkmark-outline',
       route: 'SubscriptionStatus',
+      section: 'Account',
       onPress: () => {
         onNavigate('SubscriptionStatus');
         onClose();
       },
     });
-    base.push({
+    items.push({
       label: 'Profile',
       icon: 'person-circle-outline',
       route: 'Profile',
+      section: 'Account',
       onPress: () => {
         onNavigate('Profile');
         onClose();
       },
     });
-    return base;
+    return items;
   }, [customerAccountKind, onClose, onNavigate]);
+
+  const accountLabel =
+    customerAccountKind === 'society' ? 'Society account' : 'Individual account';
 
   return (
     <MenuDrawer
@@ -114,10 +136,12 @@ const CustomerMenuDrawer: React.FC<CustomerMenuDrawerProps> = ({
       onNavigate={onNavigate}
       onLogout={onLogout}
       menuItems={menuItems}
+      headerTitle={userName || 'Menu'}
+      headerSubtitle={accountLabel}
+      headerInitials={getInitials(userName)}
       {...(currentRoute !== undefined ? { currentRoute } : {})}
     />
   );
 };
 
 export default CustomerMenuDrawer;
-
