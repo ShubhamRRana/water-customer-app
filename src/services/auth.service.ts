@@ -6,6 +6,8 @@ import {
   AdminUser,
   UserSubscription,
   CustomerAccountKind,
+  Address,
+  isCustomerUser,
 } from '../types/index';
 import { ERROR_MESSAGES } from '../constants/config';
 import { securityLogger, SecurityEventType, SecuritySeverity } from '../utils/securityLogger';
@@ -1393,9 +1395,11 @@ export class AuthService {
    */
   static async updateUserProfile(id: string, updates: Partial<AppUser>): Promise<void> {
     try {
-      // Get current user
-      const currentUser = await dataAccess.users.getUserById(id);
-      
+      const currentUser =
+        'savedAddresses' in updates
+          ? await fetchUserWithRole(id, 'customer')
+          : (await dataAccess.users.getUserById(id)) ?? (await fetchUserWithRole(id));
+
       if (!currentUser) {
         throw new Error('User not found');
       }
@@ -1409,6 +1413,36 @@ export class AuthService {
     } catch (error) {
       handleError(error, {
         context: { operation: 'updateUserProfile', id },
+        userFacing: false,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Persist customer saved addresses without touching users/user_roles rows.
+   */
+  static async updateCustomerSavedAddresses(
+    userId: string,
+    addresses: Address[],
+    accountKind?: CustomerAccountKind
+  ): Promise<void> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user || session.user.id !== userId) {
+        throw new Error('You can only update addresses for your own account.');
+      }
+
+      const currentUser = await fetchUserWithRole(userId, 'customer');
+      if (!currentUser || !isCustomerUser(currentUser)) {
+        throw new Error('Only customer accounts can save addresses.');
+      }
+
+      const kind = accountKind ?? (await AuthService.getCustomerAccountKind(userId));
+      await dataAccess.users.updateCustomerSavedAddresses(userId, addresses, kind);
+    } catch (error) {
+      handleError(error, {
+        context: { operation: 'updateCustomerSavedAddresses', userId },
         userFacing: false,
       });
       throw error;

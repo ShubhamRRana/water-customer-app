@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User, UserRole, AdminUser, CustomerAccountKind, isCustomerUser } from '../types/index';
+import { User, UserRole, AdminUser, CustomerAccountKind, isCustomerUser, Address } from '../types/index';
 import { AuthService } from '../services/auth.service';
 import { supabase } from '../lib/supabaseClient';
 import { handleError } from '../utils/errorHandler';
@@ -134,6 +134,8 @@ interface AuthState {
   ) => Promise<{ needsEmailConfirmation?: boolean } | void>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
+  /** Persist customer saved addresses via targeted customers-table update. */
+  updateSavedAddresses: (addresses: Address[]) => Promise<void>;
   /** Refetch profile from the server and update `user` (lighter than full `initializeAuth`). */
   refreshUserProfile: () => Promise<void>;
   setUser: (user: User | null) => void;
@@ -550,6 +552,35 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (error) {
       handleError(error, {
         context: { operation: 'updateUser', userId: user.id },
+        userFacing: false,
+        severity: ErrorSeverity.MEDIUM,
+      });
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  updateSavedAddresses: async (addresses: Address[]) => {
+    const { user, customerAccountKind } = get();
+    if (!user) return;
+    if (!isCustomerUser(user)) {
+      throw new Error('Only customer accounts can save addresses.');
+    }
+
+    set({ isLoading: true });
+    try {
+      await AuthService.updateCustomerSavedAddresses(
+        user.id,
+        addresses,
+        customerAccountKind ?? 'individual'
+      );
+      set({
+        user: { ...user, savedAddresses: addresses },
+        isLoading: false,
+      });
+    } catch (error) {
+      handleError(error, {
+        context: { operation: 'updateSavedAddresses', userId: user.id },
         userFacing: false,
         severity: ErrorSeverity.MEDIUM,
       });

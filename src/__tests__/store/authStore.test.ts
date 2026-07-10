@@ -421,6 +421,61 @@ describe('useAuthStore', () => {
     });
   });
 
+  describe('updateSavedAddresses', () => {
+    const addresses = [
+      {
+        id: 'addr-1',
+        address: '123 Main Street, Example City',
+        latitude: 28.6,
+        longitude: 77.2,
+        isDefault: true,
+      },
+    ];
+
+    it('should persist saved addresses for customer users', async () => {
+      const mockUser: User = {
+        id: 'user-1',
+        email: 'test@example.com',
+        password: 'hashed',
+        name: 'Test User',
+        role: 'customer',
+        savedAddresses: [],
+        createdAt: new Date(),
+      };
+
+      useAuthStore.setState({ user: mockUser, customerAccountKind: 'individual' });
+      (AuthService.updateCustomerSavedAddresses as jest.Mock).mockResolvedValue(undefined);
+
+      await useAuthStore.getState().updateSavedAddresses(addresses);
+
+      const state = useAuthStore.getState();
+      expect(state.user?.savedAddresses).toEqual(addresses);
+      expect(state.isLoading).toBe(false);
+      expect(AuthService.updateCustomerSavedAddresses).toHaveBeenCalledWith(
+        'user-1',
+        addresses,
+        'individual'
+      );
+    });
+
+    it('should reject saved address updates for non-customer users', async () => {
+      const mockUser: User = {
+        id: 'user-1',
+        email: 'test@example.com',
+        password: 'hashed',
+        name: 'Test User',
+        role: 'admin',
+        createdAt: new Date(),
+      };
+
+      useAuthStore.setState({ user: mockUser });
+
+      await expect(
+        useAuthStore.getState().updateSavedAddresses(addresses)
+      ).rejects.toThrow('Only customer accounts can save addresses.');
+    });
+  });
+
   describe('refreshUserProfile', () => {
     it('should no-op when there is no user', async () => {
       await useAuthStore.getState().refreshUserProfile();

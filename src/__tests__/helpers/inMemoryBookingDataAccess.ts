@@ -93,5 +93,6 @@ export const inMemoryDataAccessForBookingTests = {
 
   users: {
     async updateUserProfile(_id: string, _updates: Partial<User>): Promise<void> {},
+    async updateCustomerSavedAddresses(_userId: string, _addresses: import('../../types').Address[]): Promise<void> {},
   },
 };

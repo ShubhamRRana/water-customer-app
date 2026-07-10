@@ -14,6 +14,8 @@ import {
   Vehicle,
   BankAccount,
   Expense,
+  Address,
+  CustomerAccountKind,
   SubscriptionPlan,
   UserSubscription,
   PaymentTransaction,
@@ -62,6 +64,12 @@ export interface IUserDataAccess {
   getUsers(options?: { createdByAdminId?: string }): Promise<User[]>;
   saveUserToCollection(user: User): Promise<void>;
   updateUserProfile(id: string, updates: Partial<User>): Promise<void>;
+  /** Persist saved addresses on customers row only (provisions row if missing). */
+  updateCustomerSavedAddresses(
+    userId: string,
+    addresses: Address[],
+    accountKind?: CustomerAccountKind
+  ): Promise<void>;
   subscribeToUserUpdates(id: string, callback: SubscriptionCallback<User>): Unsubscribe;
   subscribeToAllUsersUpdates(callback: CollectionSubscriptionCallback<User>): Unsubscribe;
   /** Permanently delete a customer account and all related data (bookings, customer row, roles, user). */

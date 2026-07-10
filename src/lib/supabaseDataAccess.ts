@@ -659,13 +659,34 @@ class SupabaseUserDataAccess implements IUserDataAccess {
     try {
       const { userRow, roleRows, customerRow, driverRow, adminRow } = await mapUserToDb(user);
 
-      // Insert or update user
-      const { error: userError } = await supabase
+      const { data: existingUser } = await supabase
         .from('users')
-        .upsert(userRow, { onConflict: 'id' });
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
 
-      if (userError) {
-        throw userError;
+      if (existingUser) {
+        const { error: userError } = await supabase
+          .from('users')
+          .update({
+            email: userRow.email,
+            name: userRow.name,
+            phone: userRow.phone,
+            updated_at: userRow.updated_at,
+          })
+          .eq('id', user.id);
+
+        if (userError) {
+          throw userError;
+        }
+      } else {
+        const { error: userError } = await supabase
+          .from('users')
+          .upsert(userRow, { onConflict: 'id' });
+
+        if (userError) {
+          throw userError;
+        }
       }
 
       // Insert or update role
@@ -1027,6 +1048,55 @@ class SupabaseUserDataAccess implements IUserDataAccess {
         throw error;
       }
       throw new DataAccessError('Failed to update user profile', 'updateUserProfile', { error, id });
+    }
+  }
+
+  async updateCustomerSavedAddresses(
+    userId: string,
+    addresses: Address[],
+    accountKind: 'individual' | 'society' = 'individual'
+  ): Promise<void> {
+    try {
+      const { data: existingCustomer } = await supabase
+        .from('customers')
+        .select('user_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!existingCustomer) {
+        const { error: provisionError } = await supabase
+          .from('customers')
+          .upsert(
+            {
+              user_id: userId,
+              saved_addresses: [],
+              account_kind: accountKind,
+            },
+            { onConflict: 'user_id' }
+          );
+
+        if (provisionError) {
+          throw provisionError;
+        }
+      }
+
+      const { error: updateError } = await supabase
+        .from('customers')
+        .update({
+          saved_addresses: addresses,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId);
+
+      if (updateError) {
+        throw updateError;
+      }
+    } catch (error) {
+      throw new DataAccessError(
+        'Failed to update customer saved addresses',
+        'updateCustomerSavedAddresses',
+        { error, userId }
+      );
     }
   }
 

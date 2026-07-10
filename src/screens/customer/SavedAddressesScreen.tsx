@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import Card from '../../components/common/Card';
@@ -33,30 +34,55 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
   const colors = useThemeColors();
   const styles = useMemo(() => createSavedAddressesStyles(colors), [colors]);
   const queryClient = useQueryClient();
-  const { user, updateUser, isLoading } = useAuthStore();
+  const { user, updateSavedAddresses, refreshUserProfile, isLoading } = useAuthStore();
   
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [newAddressText, setNewAddressText] = useState('');
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
 
-  useEffect(() => {
-    loadAddresses();
-  }, []);
-
-  useEffect(() => {
-    loadAddresses();
-  }, [user]);
-
-  const loadAddresses = async () => {
-    if (!user || !isCustomerUser(user) || !user.savedAddresses) {
+  const loadAddresses = useCallback(() => {
+    if (!user || !isCustomerUser(user)) {
       setAddresses([]);
       return;
     }
-    setAddresses(user.savedAddresses);
-  };
+    setAddresses(user.savedAddresses ?? []);
+  }, [user]);
+
+  useEffect(() => {
+    loadAddresses();
+  }, [loadAddresses]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshUserProfile().then(() => loadAddresses());
+    }, [refreshUserProfile, loadAddresses])
+  );
+
+  const persistAddresses = useCallback(
+    async (updatedAddresses: Address[], previousAddresses: Address[]) => {
+      if (!user) {
+        Alert.alert('Error', 'User not found. Please log in again.');
+        return false;
+      }
+      if (!isCustomerUser(user)) {
+        Alert.alert('Error', 'Only customer accounts can save addresses.');
+        return false;
+      }
+
+      try {
+        await updateSavedAddresses(updatedAddresses);
+        invalidateAuthProfileQueries(queryClient, user.id);
+        setAddresses(updatedAddresses);
+        return true;
+      } catch {
+        setAddresses(previousAddresses);
+        return false;
+      }
+    },
+    [user, updateSavedAddresses, queryClient]
+  );
 
   const handleSaveAddress = useCallback(async () => {
-    // Sanitize and validate address
     const sanitizedAddress = SanitizationUtils.sanitizeAddress(newAddressText.trim());
     const addressValidation = ValidationUtils.validateAddressText(sanitizedAddress);
     
@@ -70,49 +96,44 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
       return;
     }
 
-    try {
-      let updatedAddresses: Address[];
-      
-      if (editingAddress) {
-        // Update existing address
-        const updatedAddress: Address = {
-          ...editingAddress,
-          address: sanitizedAddress,
-        };
-        
-        updatedAddresses = addresses.map(addr => 
-          addr.id === editingAddress.id ? updatedAddress : addr
-        );
-      } else {
-        // Add new address
-        // TODO: Replace mock coordinates with actual geocoding service
-        const addressToSave: Address = {
-          id: dataAccess.generateId(),
-          address: sanitizedAddress,
-          latitude: LOCATION_CONFIG.defaultCenter.latitude + (Math.random() - 0.5) * 0.1,
-          longitude: LOCATION_CONFIG.defaultCenter.longitude + (Math.random() - 0.5) * 0.1,
-          isDefault: addresses.length === 0, // First address becomes default
-        };
-        
-        updatedAddresses = [...addresses, addressToSave];
-      }
+    if (!isCustomerUser(user)) {
+      Alert.alert('Error', 'Only customer accounts can save addresses.');
+      return;
+    }
 
-      setAddresses(updatedAddresses);
+    const previousAddresses = addresses;
+    let updatedAddresses: Address[];
       
-      // Update user in auth store
-      if (user) {
-        await updateUser({ savedAddresses: updatedAddresses });
-        invalidateAuthProfileQueries(queryClient, user.id);
-      }
+    if (editingAddress) {
+      const updatedAddress: Address = {
+        ...editingAddress,
+        address: sanitizedAddress,
+      };
+        
+      updatedAddresses = addresses.map(addr => 
+        addr.id === editingAddress.id ? updatedAddress : addr
+      );
+    } else {
+      const addressToSave: Address = {
+        id: dataAccess.generateId(),
+        address: sanitizedAddress,
+        latitude: LOCATION_CONFIG.defaultCenter.latitude + (Math.random() - 0.5) * 0.1,
+        longitude: LOCATION_CONFIG.defaultCenter.longitude + (Math.random() - 0.5) * 0.1,
+        isDefault: addresses.length === 0,
+      };
+        
+      updatedAddresses = [...addresses, addressToSave];
+    }
 
+    const saved = await persistAddresses(updatedAddresses, previousAddresses);
+    if (saved) {
       setNewAddressText('');
       setEditingAddress(null);
-      
       Alert.alert('Success', editingAddress ? 'Address updated successfully' : 'Address saved successfully');
-    } catch (error) {
+    } else {
       Alert.alert('Error', 'Failed to save address. Please try again.');
     }
-  }, [newAddressText, editingAddress, addresses, user, updateUser, queryClient]);
+  }, [newAddressText, editingAddress, addresses, user, persistAddresses]);
 
   const handleDeleteAddress = useCallback((addressId: string) => {
     Alert.alert(
@@ -129,30 +150,24 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
               return;
             }
 
-            try {
-              const updatedAddresses = addresses.filter(addr => addr.id !== addressId);
+            const previousAddresses = addresses;
+            const updatedAddresses = addresses.filter(addr => addr.id !== addressId);
               
-              // If we deleted the default address, make the first remaining address default
-              if (updatedAddresses.length > 0 && !updatedAddresses.some(addr => addr.isDefault)) {
-                updatedAddresses[0]!.isDefault = true;
-              }
+            if (updatedAddresses.length > 0 && !updatedAddresses.some(addr => addr.isDefault)) {
+              updatedAddresses[0]!.isDefault = true;
+            }
 
-              setAddresses(updatedAddresses);
-              
-              if (user) {
-                await updateUser({ savedAddresses: updatedAddresses });
-                invalidateAuthProfileQueries(queryClient, user.id);
-              }
-
+            const deleted = await persistAddresses(updatedAddresses, previousAddresses);
+            if (deleted) {
               Alert.alert('Success', 'Address deleted successfully');
-            } catch (error) {
+            } else {
               Alert.alert('Error', 'Failed to delete address. Please try again.');
             }
           },
         },
       ]
     );
-  }, [addresses, user, updateUser, queryClient]);
+  }, [addresses, user, persistAddresses]);
 
   const handleSetDefault = useCallback(async (addressId: string) => {
     if (!user) {
@@ -160,24 +175,19 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
       return;
     }
 
-    try {
-      const updatedAddresses = addresses.map(addr => ({
-        ...addr,
-        isDefault: addr.id === addressId,
-      }));
+    const previousAddresses = addresses;
+    const updatedAddresses = addresses.map(addr => ({
+      ...addr,
+      isDefault: addr.id === addressId,
+    }));
 
-      setAddresses(updatedAddresses);
-      
-      if (user) {
-        await updateUser({ savedAddresses: updatedAddresses });
-        invalidateAuthProfileQueries(queryClient, user.id);
-      }
-      
+    const updated = await persistAddresses(updatedAddresses, previousAddresses);
+    if (updated) {
       Alert.alert('Success', 'Default address updated successfully');
-    } catch (error) {
+    } else {
       Alert.alert('Error', 'Failed to update default address. Please try again.');
     }
-  }, [addresses, user, updateUser, queryClient]);
+  }, [addresses, user, persistAddresses]);
 
   const handleEditAddress = useCallback((address: Address) => {
     setEditingAddress(address);

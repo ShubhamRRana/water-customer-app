@@ -65,6 +65,7 @@ describe('SupabaseDataAccess', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (supabase.from as jest.Mock).mockReset();
     dataAccess = new SupabaseDataAccess();
     // Reset to return a new query builder for each call
     (supabase.from as jest.Mock).mockImplementation(() => createMockQueryBuilder());
@@ -191,26 +192,47 @@ describe('SupabaseDataAccess', () => {
     });
 
     describe('saveUser', () => {
-      it('should save customer user correctly', async () => {
+      const createSaveUserFromMock = (existingUser = true) => {
         const upsertMock = jest.fn().mockResolvedValue({ data: null, error: null });
-        
-        (supabase.from as jest.Mock).mockReturnValue({
-          upsert: upsertMock,
+        const updateMock = jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({ data: null, error: null }),
         });
+
+        (supabase.from as jest.Mock).mockImplementation((table: string) => {
+          if (table === 'users') {
+            return {
+              select: jest.fn().mockReturnValue({
+                eq: jest.fn().mockReturnValue({
+                  maybeSingle: jest.fn().mockResolvedValue({
+                    data: existingUser ? { id: 'customer-1' } : null,
+                    error: null,
+                  }),
+                }),
+              }),
+              update: updateMock,
+              upsert: upsertMock,
+            };
+          }
+          return { upsert: upsertMock };
+        });
+
+        return { upsertMock, updateMock };
+      };
+
+      it('should save customer user correctly', async () => {
+        const { upsertMock, updateMock } = createSaveUserFromMock(true);
 
         await dataAccess.users.saveUser(mockCustomerUser);
 
+        expect(updateMock).toHaveBeenCalled();
         expect(supabase.from).toHaveBeenCalledWith('users');
         expect(supabase.from).toHaveBeenCalledWith('user_roles');
         expect(supabase.from).toHaveBeenCalledWith('customers');
+        expect(upsertMock).toHaveBeenCalled();
       });
 
       it('should save driver user correctly', async () => {
-        const upsertMock = jest.fn().mockResolvedValue({ data: null, error: null });
-        
-        (supabase.from as jest.Mock).mockReturnValue({
-          upsert: upsertMock,
-        });
+        createSaveUserFromMock(true);
 
         await dataAccess.users.saveUser(mockDriverUser);
 
@@ -220,11 +242,7 @@ describe('SupabaseDataAccess', () => {
       });
 
       it('should save admin user correctly', async () => {
-        const upsertMock = jest.fn().mockResolvedValue({ data: null, error: null });
-        
-        (supabase.from as jest.Mock).mockReturnValue({
-          upsert: upsertMock,
-        });
+        createSaveUserFromMock(true);
 
         await dataAccess.users.saveUser(mockAdminUser);
 
@@ -233,9 +251,30 @@ describe('SupabaseDataAccess', () => {
         expect(supabase.from).toHaveBeenCalledWith('admins');
       });
 
+      it('should upsert users row when profile does not exist yet', async () => {
+        const { upsertMock } = createSaveUserFromMock(false);
+
+        await dataAccess.users.saveUser(mockCustomerUser);
+
+        expect(upsertMock).toHaveBeenCalled();
+      });
+
       it('should throw DataAccessError on save failure', async () => {
-        (supabase.from as jest.Mock).mockReturnValue({
-          upsert: jest.fn().mockResolvedValue({ data: null, error: { message: 'Database error' } }),
+        (supabase.from as jest.Mock).mockImplementation((table: string) => {
+          if (table === 'users') {
+            return {
+              select: jest.fn().mockReturnValue({
+                eq: jest.fn().mockReturnValue({
+                  maybeSingle: jest.fn().mockResolvedValue({ data: { id: 'customer-1' }, error: null }),
+                }),
+              }),
+              update: jest.fn().mockReturnValue({
+                eq: jest.fn().mockResolvedValue({ data: null, error: { message: 'Database error' } }),
+              }),
+              upsert: jest.fn(),
+            };
+          }
+          return { upsert: jest.fn() };
         });
 
         await expect(dataAccess.users.saveUser(mockCustomerUser)).rejects.toThrow(DataAccessError);
@@ -262,7 +301,6 @@ describe('SupabaseDataAccess', () => {
           updated_at: '2024-01-01T00:00:00Z',
         };
 
-        let callCount = 0;
         (supabase.from as jest.Mock).mockImplementation((table) => {
           const builder = {
             select: jest.fn().mockReturnThis(),
@@ -277,12 +315,12 @@ describe('SupabaseDataAccess', () => {
               return Promise.resolve({ data: null, error: null });
             }),
           };
-          return builder;
-        });
 
-        (supabase.from as jest.Mock).mockReturnValueOnce({
-          select: jest.fn().mockReturnThis(),
-          eq: jest.fn().mockResolvedValue({ data: mockRoleRow, error: null }),
+          if (table === 'user_roles') {
+            builder.eq.mockResolvedValue({ data: mockRoleRow, error: null });
+          }
+
+          return builder;
         });
 
         const result = await dataAccess.users.getUserById('customer-1');
@@ -375,35 +413,28 @@ describe('SupabaseDataAccess', () => {
           updated_at: '2024-01-02T00:00:00Z',
         };
 
-        // Mock getUserById calls: users, user_roles, customers
-        (supabase.from as jest.Mock).mockReturnValueOnce({
-          select: jest.fn().mockReturnThis(),
-          eq: jest.fn().mockReturnThis(),
-          single: jest.fn().mockResolvedValue({ data: mockUserRow, error: null }),
-        });
+        (supabase.from as jest.Mock).mockImplementation((table: string) => {
+          const builder = {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            single: jest.fn(),
+            maybeSingle: jest.fn(),
+            update: jest.fn().mockReturnValue({
+              eq: jest.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+            upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
+          };
 
-        (supabase.from as jest.Mock).mockReturnValueOnce({
-          select: jest.fn().mockReturnThis(),
-          eq: jest.fn().mockResolvedValue({ data: mockRoleRow, error: null }),
-        });
+          if (table === 'users') {
+            builder.single.mockResolvedValue({ data: mockUserRow, error: null });
+            builder.maybeSingle.mockResolvedValue({ data: { id: 'customer-1' }, error: null });
+          } else if (table === 'user_roles') {
+            builder.eq.mockResolvedValue({ data: mockRoleRow, error: null });
+          } else if (table === 'customers') {
+            builder.single.mockResolvedValue({ data: mockCustomerRow, error: null });
+          }
 
-        (supabase.from as jest.Mock).mockReturnValueOnce({
-          select: jest.fn().mockReturnThis(),
-          eq: jest.fn().mockReturnThis(),
-          single: jest.fn().mockResolvedValue({ data: mockCustomerRow, error: null }),
-        });
-
-        // Mock saveUser calls: users (upsert), user_roles (upsert), customers (upsert)
-        (supabase.from as jest.Mock).mockReturnValueOnce({
-          upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
-        });
-
-        (supabase.from as jest.Mock).mockReturnValueOnce({
-          upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
-        });
-
-        (supabase.from as jest.Mock).mockReturnValueOnce({
-          upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
+          return builder;
         });
 
         await dataAccess.users.updateUserProfile('customer-1', { name: 'Updated Name' });
@@ -412,16 +443,98 @@ describe('SupabaseDataAccess', () => {
       });
 
       it('should throw NotFoundError when updating non-existent user', async () => {
-        // Mock getUserById to return null (user not found)
-        (supabase.from as jest.Mock).mockReturnValueOnce({
-          select: jest.fn().mockReturnThis(),
-          eq: jest.fn().mockReturnThis(),
-          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        (supabase.from as jest.Mock).mockImplementation((table: string) => {
+          const builder = {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            single: jest.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
+          };
+          if (table === 'user_roles') {
+            builder.eq.mockResolvedValue({ data: [], error: null });
+          }
+          return builder;
         });
 
         await expect(
           dataAccess.users.updateUserProfile('non-existent', { name: 'Test' })
         ).rejects.toThrow(NotFoundError);
+      });
+    });
+
+    describe('updateCustomerSavedAddresses', () => {
+      const sampleAddresses = [
+        {
+          id: 'addr-1',
+          address: '123 Main Street, City',
+          latitude: 28.6,
+          longitude: 77.2,
+          isDefault: true,
+        },
+      ];
+
+      it('should update saved addresses when customer row exists', async () => {
+        const updateEq = jest.fn().mockResolvedValue({ data: null, error: null });
+
+        (supabase.from as jest.Mock).mockImplementation((table: string) => {
+          if (table !== 'customers') {
+            return createMockQueryBuilder();
+          }
+          return {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({ data: { user_id: 'customer-1' }, error: null }),
+            upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
+            update: jest.fn().mockReturnValue({ eq: updateEq }),
+          };
+        });
+
+        await dataAccess.users.updateCustomerSavedAddresses('customer-1', sampleAddresses, 'individual');
+
+        expect(updateEq).toHaveBeenCalledWith('user_id', 'customer-1');
+      });
+
+      it('should provision customer row then update when row is missing', async () => {
+        const upsertMock = jest.fn().mockResolvedValue({ data: null, error: null });
+        const updateEq = jest.fn().mockResolvedValue({ data: null, error: null });
+
+        (supabase.from as jest.Mock).mockImplementation((table: string) => {
+          if (table !== 'customers') {
+            return createMockQueryBuilder();
+          }
+          return {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+            upsert: upsertMock,
+            update: jest.fn().mockReturnValue({ eq: updateEq }),
+          };
+        });
+
+        await dataAccess.users.updateCustomerSavedAddresses('customer-1', sampleAddresses, 'individual');
+
+        expect(upsertMock).toHaveBeenCalled();
+        expect(updateEq).toHaveBeenCalledWith('user_id', 'customer-1');
+      });
+
+      it('should throw DataAccessError when update fails', async () => {
+        (supabase.from as jest.Mock).mockImplementation((table: string) => {
+          if (table !== 'customers') {
+            return createMockQueryBuilder();
+          }
+          return {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            maybeSingle: jest.fn().mockResolvedValue({ data: { user_id: 'customer-1' }, error: null }),
+            upsert: jest.fn(),
+            update: jest.fn().mockReturnValue({
+              eq: jest.fn().mockResolvedValue({ data: null, error: { message: 'Update failed' } }),
+            }),
+          };
+        });
+
+        await expect(
+          dataAccess.users.updateCustomerSavedAddresses('customer-1', sampleAddresses)
+        ).rejects.toThrow(DataAccessError);
       });
     });
 
@@ -730,10 +843,18 @@ describe('SupabaseDataAccess', () => {
           },
         ];
 
+        const resolvedQuery = {
+          limit: jest.fn().mockReturnThis(),
+          range: jest.fn().mockResolvedValue({ data: mockBookingRows, error: null }),
+          then: (resolve: (value: { data: typeof mockBookingRows; error: null }) => void) =>
+            resolve({ data: mockBookingRows, error: null }),
+        };
+
         (supabase.from as jest.Mock).mockReturnValue({
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
-          order: jest.fn().mockResolvedValue({ data: mockBookingRows, error: null }),
+          is: jest.fn().mockReturnThis(),
+          order: jest.fn().mockReturnValue(resolvedQuery),
         });
 
         const result = await dataAccess.bookings.getAvailableBookings();
@@ -967,14 +1088,35 @@ describe('SupabaseDataAccess', () => {
 
     describe('deleteVehicle', () => {
       it('should delete vehicle successfully', async () => {
-        (supabase.from as jest.Mock).mockReturnValue({
-          delete: jest.fn().mockReturnThis(),
-          eq: jest.fn().mockResolvedValue({ data: null, error: null }),
+        const deleteEq = jest.fn().mockResolvedValue({ data: null, error: null });
+
+        (supabase.from as jest.Mock).mockImplementation((table: string) => {
+          if (table !== 'vehicles') {
+            return createMockQueryBuilder();
+          }
+
+          return {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            single: jest.fn().mockResolvedValue({
+              data: {
+                id: 'vehicle-1',
+                agency_id: 'admin-1',
+                vehicle_number: 'ABC123',
+                tanker_size: 10000,
+                created_at: '2024-01-01T00:00:00Z',
+                updated_at: '2024-01-01T00:00:00Z',
+              },
+              error: null,
+            }),
+            delete: jest.fn().mockReturnValue({ eq: deleteEq }),
+          };
         });
 
         await dataAccess.vehicles.deleteVehicle('vehicle-1');
 
         expect(supabase.from).toHaveBeenCalledWith('vehicles');
+        expect(deleteEq).toHaveBeenCalledWith('id', 'vehicle-1');
       });
 
       it('should throw NotFoundError when deleting non-existent vehicle', async () => {

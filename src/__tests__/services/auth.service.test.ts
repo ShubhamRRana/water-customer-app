@@ -504,7 +504,7 @@ describe('AuthService', () => {
     let userId: string;
 
     beforeEach(async () => {
-      const user = await LocalStorageService.saveUserToCollection({
+      await LocalStorageService.saveUserToCollection({
         ...mockCustomerUser,
         id: 'customer-1',
         createdAt: new Date(),
