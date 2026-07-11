@@ -25,14 +25,13 @@ import { useThemeStore } from '../../store/themeStore';
 import { AuthService } from '../../services/auth.service';
 import { User } from '../../types';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
-import { APP_CONFIG, UI_CONFIG } from '../../constants/config';
+import { APP_CONFIG } from '../../constants/config';
 import type { ThemeColors } from '../../constants/config';
 import type { ThemePreference } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { ValidationUtils, SanitizationUtils } from '../../utils';
-import { formatDateOnly } from '../../utils/dateUtils';
 import { invalidateAuthProfileQueries, useAuthProfileQuery } from '../../hooks/queries';
-import SubscriptionExpiryBanner from '../../components/customer/SubscriptionExpiryBanner';
+import ProfileSubscriptionPanel from '../../components/customer/ProfileSubscriptionPanel';
 
 type ProfileScreenNavigationProp = StackNavigationProp<AppStackParamList, 'Profile'>;
 
@@ -265,10 +264,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     });
   };
 
-  const formatDate = (date: Date | string) => {
-    return formatDateOnly(date, 'en-US');
-  };
-
   if (isLoading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -302,6 +297,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     { key: 'light', label: 'Light' },
     { key: 'system', label: 'System' },
   ];
+  const isSocietyAccount = customerAccountKind === 'society';
+  const accountEyebrow = isSocietyAccount ? 'Society account' : 'Individual account';
+  const nameFieldLabel = isSocietyAccount ? 'Society name' : 'Name';
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -320,75 +318,54 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
           showsVerticalScrollIndicator={false} 
           keyboardShouldPersistTaps="handled"
         >
-          {/* Header with Gradient */}
-          <LinearGradient
-            colors={[colors.surface, colors.surfaceLight]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.headerGradient}
+          <Animated.View
+            style={[
+              styles.identityContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
+              },
+            ]}
           >
-            {/* Profile Section */}
-            <Animated.View 
-              style={[
-                styles.profileSection,
-                {
-                  opacity: fadeAnim,
-                  transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
-                },
-              ]}
+            <LinearGradient
+              colors={[colors.surface, colors.surfaceLight]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.identityStrip}
             >
+              <Typography variant="caption" style={styles.accountEyebrow}>
+                {accountEyebrow}
+              </Typography>
+              <Typography variant="caption" style={styles.identityLabel}>
+                {nameFieldLabel}
+              </Typography>
               <Typography variant="h2" style={styles.userName}>
                 {displayUser.name}
               </Typography>
-              <Typography variant="body" style={styles.userPhone}>
+              <Typography variant="body" style={styles.identityText}>
                 {displayUser.email}
               </Typography>
               {displayUser.phone && (
-                <Typography variant="body" style={styles.userPhone}>
+                <Typography variant="body" style={styles.identityText}>
                   {displayUser.phone}
                 </Typography>
               )}
-            </Animated.View>
-          </LinearGradient>
-
-          <SubscriptionExpiryBanner userId={displayUser?.id} navigation={navigation} />
-
-          {/* Profile Info Card */}
-          <Animated.View
-            style={[
-              styles.infoCard,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
-              },
-            ]}
-          >
-            <View style={styles.infoRow}>
-              <View style={styles.infoIconContainer}>
-                <Ionicons name="calendar-outline" size={20} color={colors.accent} />
-              </View>
-              <View style={styles.infoContent}>
-                <Typography variant="caption" style={styles.infoLabel}>
-                  Member Since
-                </Typography>
-                <Typography variant="body" style={styles.infoValue}>
-                  {formatDate(displayUser.createdAt)}
-                </Typography>
-              </View>
-            </View>
+            </LinearGradient>
           </Animated.View>
 
+          <ProfileSubscriptionPanel userId={displayUser?.id} />
+
           {/* Action Buttons */}
-          <Animated.View
-            style={[
-              styles.actionButtonsContainer,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
-              },
-            ]}
-          >
-            {!isEditing && (
+          {!isEditing ? (
+            <Animated.View
+              style={[
+                styles.actionButtonsContainer,
+                {
+                  opacity: fadeAnim,
+                  transform: [{ translateY: slideAnim }],
+                },
+              ]}
+            >
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={handleEditProfile}
@@ -404,9 +381,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   Edit Profile
                 </Typography>
               </TouchableOpacity>
-            )}
 
-            {!isEditing && (
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => navigation.navigate('ChangePassword')}
@@ -418,9 +393,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   Change Password
                 </Typography>
               </TouchableOpacity>
-            )}
 
-            {!isEditing && (
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => navigation.navigate('PaymentHistory')}
@@ -432,74 +405,61 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   Payment history
                 </Typography>
               </TouchableOpacity>
-            )}
 
-            {showContactCta && (
-              <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  !isEditing && styles.contactUsButton,
-                ]}
-                onPress={handleContactUs}
-                activeOpacity={0.8}
-                disabled={isDeleting}
-              >
-                <Ionicons name="chatbubbles-outline" size={22} color={colors.accent} />
-                <Typography variant="body" style={styles.actionButtonText}>
-                  Contact Us
+              {showContactCta && (
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.contactUsButton]}
+                  onPress={handleContactUs}
+                  activeOpacity={0.8}
+                  disabled={isDeleting}
+                >
+                  <Ionicons name="chatbubbles-outline" size={22} color={colors.accent} />
+                  <Typography variant="body" style={styles.actionButtonText}>
+                    Contact Us
+                  </Typography>
+                </TouchableOpacity>
+              )}
+
+              <View style={styles.appearanceCard}>
+                <Typography variant="h3" style={styles.appearanceTitle}>
+                  Appearance
                 </Typography>
-              </TouchableOpacity>
-            )}
-          </Animated.View>
-          <Animated.View
-            style={[
-              styles.appearanceCard,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
-              },
-            ]}
-          >
-            <Typography variant="h3" style={styles.appearanceTitle}>
-              Appearance
-            </Typography>
-            <Typography variant="body" style={styles.appearanceDescription}>
-              Choose a theme for menus, lists, and forms. System follows your device settings.
-            </Typography>
-            <View style={styles.appearanceSegmentRow}>
-              {appearanceOptions.map((option) => {
-                const selected = preference === option.key;
-                return (
-                  <TouchableOpacity
-                    key={option.key}
-                    style={[
-                      styles.appearanceSegment,
-                      selected && styles.appearanceSegmentSelected,
-                      selected && {
-                        borderColor: colors.accent,
-                        backgroundColor: colors.surfaceLight,
-                      },
-                    ]}
-                    onPress={() => setPreference(option.key)}
-                    activeOpacity={0.8}
-                  >
-                    <Typography
-                      variant="body"
-                      style={[
-                        styles.appearanceSegmentText,
-                        selected && { color: colors.accent },
-                      ]}
-                    >
-                      {option.label}
-                    </Typography>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </Animated.View>
-
-          {/* Edit Profile Form */}
-          {isEditing && (
+                <Typography variant="body" style={styles.appearanceDescription}>
+                  Choose a theme for menus, lists, and forms. System follows your device settings.
+                </Typography>
+                <View style={styles.appearanceSegmentRow}>
+                  {appearanceOptions.map((option) => {
+                    const selected = preference === option.key;
+                    return (
+                      <TouchableOpacity
+                        key={option.key}
+                        style={[
+                          styles.appearanceSegment,
+                          selected && styles.appearanceSegmentSelected,
+                          selected && {
+                            borderColor: colors.accent,
+                            backgroundColor: colors.surfaceLight,
+                          },
+                        ]}
+                        onPress={() => setPreference(option.key)}
+                        activeOpacity={0.8}
+                      >
+                        <Typography
+                          variant="body"
+                          style={[
+                            styles.appearanceSegmentText,
+                            selected && { color: colors.accent },
+                          ]}
+                        >
+                          {option.label}
+                        </Typography>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            </Animated.View>
+          ) : (
             <Animated.View
               style={[
                 styles.editFormContainer,
@@ -521,7 +481,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   <View style={styles.inputLabelContainer}>
                     <Ionicons name="person" size={16} color={colors.textSecondary} />
                     <Typography variant="body" style={styles.inputLabel}>
-                      Full Name
+                      {nameFieldLabel}
                     </Typography>
                   </View>
                   <TextInput
@@ -699,90 +659,64 @@ function createProfileStyles(colors: ThemeColors) {
   contentContainer: {
     paddingBottom: 32,
   },
-  headerGradient: {
-    paddingTop: 8,
-    paddingBottom: 32,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    shadowColor: colors.shadow,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  profileSection: {
-    alignItems: 'center',
-    paddingTop: 24,
-    paddingBottom: 40,
-  },
-  userName: {
-    fontSize: 25,
-    fontWeight: 'bold',
-    color: colors.accent,
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  userPhone: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  infoCard: {
-    backgroundColor: colors.surface,
+  identityContainer: {
     marginHorizontal: 20,
-    marginTop: -20,
-    borderRadius: 16,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  identityStrip: {
+    borderRadius: 20,
     padding: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
     shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 3,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.12,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
   },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  infoIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: `${colors.primary}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  infoContent: {
-    flex: 1,
-  },
-  infoLabel: {
+  accountEyebrow: {
+    color: colors.accent,
     fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    marginBottom: 16,
+    textTransform: 'uppercase',
+  },
+  identityLabel: {
     color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.6,
     marginBottom: 4,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
-  infoValue: {
-    fontSize: 16,
+  userName: {
+    fontSize: 24,
+    lineHeight: 30,
+    fontFamily: 'PlayfairDisplay-Regular',
     color: colors.text,
-    fontWeight: '600',
+    marginBottom: 10,
+  },
+  identityText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   actionButtonsContainer: {
     paddingHorizontal: 20,
-    marginTop: 24,
+    marginTop: 12,
+    gap: 12,
   },
   appearanceCard: {
-    marginHorizontal: 20,
-    marginTop: 20,
     borderRadius: 12,
     padding: 16,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   appearanceTitle: {
     marginBottom: 6,
@@ -819,7 +753,7 @@ function createProfileStyles(colors: ThemeColors) {
     color: colors.textSecondary,
   },
   contactUsButton: {
-    marginTop: 12,
+    marginTop: 0,
   },
   deleteAccountFooter: {
     paddingHorizontal: 20,
@@ -831,6 +765,7 @@ function createProfileStyles(colors: ThemeColors) {
   deleteAccountButton: {
     borderColor: colors.error,
     backgroundColor: `${colors.error}10`,
+    justifyContent: 'center',
   },
   deleteAccountButtonText: {
     marginLeft: 8,
@@ -841,20 +776,12 @@ function createProfileStyles(colors: ThemeColors) {
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: colors.shadow,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   actionButtonActive: {
     borderColor: colors.error,
@@ -947,6 +874,7 @@ function createProfileStyles(colors: ThemeColors) {
   },
   cancelEditFooterButton: {
     marginTop: 12,
+    justifyContent: 'center',
   },
   bottomSpacing: {
     height: 40,
