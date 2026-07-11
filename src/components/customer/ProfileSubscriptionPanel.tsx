@@ -168,13 +168,12 @@ function getPanelCopy(model: ProfileSubscriptionPanelModel): {
   }
 
   if (model.visualState === 'expiring_soon') {
-    const days = model.daysLeft ?? 0;
     return {
       eyebrow: 'Needs attention',
       badge: 'Expiring soon',
       badgeColor: 'warning',
       title: model.planName ?? 'Current plan',
-      body: `${days} ${days === 1 ? 'day' : 'days'} left - renew to keep access.`,
+      body: 'Renew to keep booking tankers and logging trips.',
       primaryLabel: 'Renew now',
       secondaryLabel: null,
     };
@@ -301,7 +300,8 @@ const ProfileSubscriptionPanelContent: React.FC<ProfileSubscriptionPanelProps> =
         {copy.title}
       </Typography>
 
-      {model.visualState === 'active' && model.daysLeft !== null ? (
+      {(model.visualState === 'active' || model.visualState === 'expiring_soon') &&
+      model.daysLeft !== null ? (
         <View style={styles.daysRow}>
           <Typography variant="h2" style={styles.daysNumber}>
             {model.daysLeft}
