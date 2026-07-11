@@ -3,6 +3,7 @@ import type { SubscriptionPlan, UserSubscription } from '../types/subscription.t
 export type ProfileSubscriptionVisualState =
   | 'active'
   | 'expiring_soon'
+  | 'trial'
   | 'none'
   | 'hidden';
 
@@ -48,9 +49,22 @@ export function getProfileSubscriptionPanelModel(input: {
     };
   }
 
+  const planName = plan?.name ?? null;
+
+  if (subscription?.status === 'active' && subscription.isTrial) {
+    const trialEnd = subscription.trialEndDate ?? subscription.endDate ?? null;
+    return {
+      visualState: 'trial',
+      daysLeft: daysRemainingUntil(trialEnd, now),
+      planName,
+      endDate: trialEnd,
+      primaryCta: 'view_plans',
+      secondaryCta: null,
+    };
+  }
+
   const endDate = subscription?.endDate ?? null;
   const daysLeft = daysRemainingUntil(endDate, now);
-  const planName = plan?.name ?? null;
 
   if (subscription?.status === 'active') {
     if (daysLeft !== null && daysLeft <= expiringSoonDays) {

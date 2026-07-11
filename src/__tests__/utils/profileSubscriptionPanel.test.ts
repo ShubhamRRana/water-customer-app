@@ -115,4 +115,56 @@ describe('getProfileSubscriptionPanelModel', () => {
       expect(model.primaryCta).toBe('view_plans');
     }
   });
+
+  it('returns trial when active and isTrial', () => {
+    const trialEnd = new Date('2026-08-01T00:00:00Z');
+    const model = getProfileSubscriptionPanelModel({
+      gatingEnabled: true,
+      subscription: makeSub({
+        isTrial: true,
+        trialEndDate: trialEnd,
+        endDate: new Date('2026-07-20T00:00:00Z'),
+      }),
+      plan,
+      now,
+    });
+    expect(model.visualState).toBe('trial');
+    expect(model.endDate).toEqual(trialEnd);
+    expect(model.daysLeft).toBe(20);
+    expect(model.primaryCta).toBe('view_plans');
+    expect(model.secondaryCta).toBeNull();
+  });
+
+  it('trial falls back to endDate when trialEndDate missing', () => {
+    const end = new Date('2026-07-20T00:00:00Z');
+    const model = getProfileSubscriptionPanelModel({
+      gatingEnabled: true,
+      subscription: makeSub({
+        isTrial: true,
+        trialEndDate: null,
+        endDate: end,
+      }),
+      plan,
+      now,
+    });
+    expect(model.visualState).toBe('trial');
+    expect(model.endDate).toEqual(end);
+    expect(model.daysLeft).toBe(8);
+    expect(model.primaryCta).toBe('view_plans');
+  });
+
+  it('trial does not use expiring_soon even with ≤7 days left', () => {
+    const model = getProfileSubscriptionPanelModel({
+      gatingEnabled: true,
+      subscription: makeSub({
+        isTrial: true,
+        trialEndDate: new Date('2026-07-15T00:00:00Z'),
+        endDate: new Date('2026-07-15T00:00:00Z'),
+      }),
+      plan,
+      now,
+    });
+    expect(model.visualState).toBe('trial');
+    expect(model.daysLeft).toBe(3);
+  });
 });

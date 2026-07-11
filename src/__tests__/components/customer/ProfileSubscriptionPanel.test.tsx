@@ -94,4 +94,30 @@ describe('ProfileSubscriptionPanel', () => {
     await waitFor(() => expect(getByText(/Couldn't load plan/i)).toBeTruthy());
     expect(getByText('Retry')).toBeTruthy();
   });
+
+  it('shows trial message, end date, and View plans', async () => {
+    const trialEnd = new Date('2026-08-01T00:00:00Z');
+    (SubscriptionService.getUserSubscription as jest.Mock).mockResolvedValue({
+      id: 's1',
+      userId: 'u1',
+      planId: 'p1',
+      status: 'active',
+      isTrial: true,
+      trialEndDate: trialEnd,
+      endDate: trialEnd,
+    });
+    (SubscriptionService.getPlanById as jest.Mock).mockResolvedValue({
+      id: 'p1',
+      name: 'Free Trial',
+    });
+
+    const { getByText, queryByText } = render(<ProfileSubscriptionPanel userId="u1" />);
+    await waitFor(() => expect(getByText(/trial subscription/i)).toBeTruthy());
+    expect(getByText('Trial')).toBeTruthy();
+    expect(getByText(/Trial ends on/i)).toBeTruthy();
+    expect(getByText('View plans')).toBeTruthy();
+    expect(queryByText('Renew')).toBeNull();
+    fireEvent.press(getByText('View plans'));
+    expect(mockNavigate).toHaveBeenCalledWith('SubscriptionPlans');
+  });
 });

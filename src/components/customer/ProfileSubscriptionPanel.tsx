@@ -154,6 +154,19 @@ function getPanelCopy(model: ProfileSubscriptionPanelModel): {
   primaryLabel: string | null;
   secondaryLabel: string | null;
 } {
+  if (model.visualState === 'trial') {
+    const end = formatEndDate(model.endDate);
+    return {
+      eyebrow: 'Your plan',
+      badge: 'Trial',
+      badgeColor: 'success',
+      title: 'You’re on a trial subscription',
+      body: end ? `Trial ends on ${end}.` : 'You’re using a trial subscription.',
+      primaryLabel: 'View plans',
+      secondaryLabel: null,
+    };
+  }
+
   if (model.visualState === 'active') {
     const end = formatEndDate(model.endDate);
     return {
@@ -300,7 +313,9 @@ const ProfileSubscriptionPanelContent: React.FC<ProfileSubscriptionPanelProps> =
         {copy.title}
       </Typography>
 
-      {(model.visualState === 'active' || model.visualState === 'expiring_soon') &&
+      {(model.visualState === 'active' ||
+        model.visualState === 'expiring_soon' ||
+        model.visualState === 'trial') &&
       model.daysLeft !== null ? (
         <View style={styles.daysRow}>
           <Typography variant="h2" style={styles.daysNumber}>
