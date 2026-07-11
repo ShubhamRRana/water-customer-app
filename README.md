@@ -4,7 +4,7 @@ A **customer-facing** mobile app (**WTC**) for on-demand water tanker delivery, 
 
 This client only mounts **Auth** and **Customer** flows (`App.tsx`). Users restored as non-customer (e.g. staff) are sent back to sign-in.
 
-Customers can sign in as **individual** or **society** accounts (same customer role; account kind differs). **Active subscriptions** are required to create bookings and society trips (enforced in app and database). Subscription purchase/renewal (**Flow A**) uses **Razorpay** via Supabase Edge Functions and `react-native-razorpay` (requires an **Expo dev client** or EAS build — not Expo Go). Booking payment is collected **at delivery** — the customer scans the driver's QR code or pays cash, and the driver app records it (the Flow B booking Edge Functions remain server-side for other apps).
+Customers can sign in as **individual** or **society** accounts (same customer role; account kind differs). **Active subscriptions** are required to create bookings and society trips (enforced in app and database). Subscription purchase/renewal (**Flow A**) uses **Razorpay** via Supabase Edge Functions and `react-native-razorpay` (requires an **Expo dev client** or EAS build — not Expo Go). **Booking payment is collected at delivery** — the customer scans the driver's QR code or pays cash, and the driver app records it. Booking Razorpay Edge Functions remain server-side for other apps; this client does not open booking checkout.
 
 ## Table of Contents
 
@@ -25,18 +25,21 @@ Customers can sign in as **individual** or **society** accounts (same customer r
 ## Features
 
 ### Customer Features
+
 - **Booking Management**: Create, view, and track water tanker bookings (requires an active subscription; enforced in app and database)
-- **Address Management**: Save and manage multiple delivery addresses
-- **Real-time Tracking**: Track booking status updates in real-time
-- **Order History**: View past and current orders
+- **Address Management**: Save and manage multiple delivery addresses (`SavedAddresses` screen)
+- **Real-time Tracking**: Track booking status updates in real-time (React Query + Supabase Realtime)
+- **Order History**: Current orders and past orders (`Orders`, `PastOrders`)
 - **Price Calculation**: Automatic distance-based pricing with Indian numbering format
 - **Scheduled Deliveries**: Schedule deliveries for future dates
 - **Subscriptions**: Browse plans, subscribe or renew via Razorpay checkout (Flow A), view status, and free-trial provisioning where configured
 - **Pay at delivery**: Booking payment is collected when the tanker arrives — scan the driver's QR code or pay cash; the driver app marks the payment received
-- **Payment history**: Filterable in-app history for subscription and booking payments (Razorpay order/payment ids)
-- **Society login & trips**: Society-specific login flow; record and manage society trips (subscription rules apply; society plans route to the same subscription checkout when available)
+- **Payment history**: Filterable in-app history for subscription and booking payments (Razorpay order/payment ids where present)
+- **Profile (status hub)**: Compact identity strip (Individual vs Society labels) → subscription panel (Active / Expiring soon / Expired) → account actions (Edit Profile, Change Password, Payment history, Contact Us, Appearance) → Delete Account
+- **Appearance**: Light, Dark, or System theme (`themeStore`)
+- **Society login & trips**: Society-specific login; record and manage society trips and agency trip breakdown (subscription rules apply)
 - **Password reset**: Forgot-password email flow with in-app `SetNewPassword` via deep link (`wtccustomer://reset-password`)
-- **Delete Account**: Permanently delete account from the Profile screen (with confirmation); removes customer data and bookings, then logs out via `delete-auth-user-on-account-deletion` Edge Function
+- **Delete Account**: Permanently delete account from Profile (with confirmation); removes customer data and bookings, then logs out via `delete-auth-user-on-account-deletion` Edge Function
 
 ### Platform note
 
@@ -45,46 +48,52 @@ The same Supabase database supports drivers, admins, and agencies; **this reposi
 ## Tech Stack
 
 ### Frontend
+
 - **React** 19.x and **React Native** 0.81.x (Expo SDK ~54.0.32)
 - **TypeScript** (~5.9.2)
 - **React Navigation** v6 (stack navigators for auth and customer)
-- **Zustand** (state management)
+- **Zustand** (`authStore`, `themeStore`)
+- **@tanstack/react-query** (server state: bookings, vehicles, auth profile, realtime invalidation)
 - **Expo Location** (GPS and location helpers)
 - **react-native-razorpay** (native Razorpay checkout — requires dev client / EAS build)
-- **@tanstack/react-query** (server-state for bookings and related data)
 - **expo-dev-client** (custom dev builds for native modules)
+- **expo-font** / **Playfair Display** (display typography)
 - **react-native-webview** (hosted flows where used)
 
 ### Backend
+
 - **Supabase** (PostgreSQL Database)
 - **Supabase Auth** (Authentication)
 - **Supabase Realtime** (Real-time Subscriptions)
+- **Supabase Edge Functions** (Razorpay orders/verify/webhook, free trial, account deletion)
 
 ### Testing
+
 - **Jest** (Unit Testing)
 - **React Native Testing Library** (Component Testing)
 - **Jest Expo** (Expo-specific Testing)
 
 ### Development Tools
+
 - **Expo / EAS CLI** (local dev with `npx expo`; production builds with EAS — see `eas.json`)
 - **TypeScript** (Type Safety)
 - **ESLint** (Code Quality)
 
 ## Architecture
 
-The application follows a **layered architecture** pattern with clear separation of concerns:
+The application follows a **layered architecture** with clear separation of concerns:
 
 1. **Presentation Layer**: React Native screens and components
-2. **State Management Layer**: Zustand stores for global state
+2. **State Management Layer**: Zustand for auth and theme; React Query for server data
 3. **Service Layer**: Business logic and API interactions
 4. **Data Access Layer**: Abstracted data persistence interface
-5. **Infrastructure Layer**: Supabase client and utilities
+5. **Infrastructure Layer**: Supabase client, query client, and utilities
 
 ### Key Design Patterns
 
 - **Repository Pattern**: Data Access Layer abstracts database operations
 - **Service Layer Pattern**: Business logic separated from UI and data access
-- **Observer Pattern**: Real-time subscriptions for live updates
+- **Observer Pattern**: Real-time subscriptions invalidate React Query caches for live updates
 - **Factory Pattern**: Data access layer factory for different backends
 
 ## UML Diagrams
@@ -235,23 +244,25 @@ graph TB
         C --> I[CustomerHomeScreen]
         C --> J[BookingScreen]
         C --> K[OrderHistoryScreen]
+        C --> PO[PastOrdersScreen]
         C --> L[OrderTrackingScreen]
         C --> M[ProfileScreen]
+        C --> CP[ChangePasswordScreen]
+        C --> SA[SavedAddressesScreen]
         C --> N[SubscriptionPlansScreen]
         C --> NS[SubscriptionStatusScreen]
         C --> PS[PaySubscriptionScreen]
-        C --> PB[PayBookingScreen]
         C --> PR[PaymentResultScreen]
         C --> PH[PaymentHistoryScreen]
         C --> AT[AddTripScreen]
         C --> TD[TripDetailsScreen]
+        C --> AB[AgencyTripBreakdownScreen]
     end
     
     subgraph "State Management Layer"
         T[AuthStore]
-        U[BookingStore]
-        V[UserStore]
-        W[VehicleStore]
+        TH[ThemeStore]
+        RQ[React Query hooks]
     end
     
     subgraph "Service Layer"
@@ -262,7 +273,7 @@ graph TB
         RZ[razorpayCheckout.service]
         Z[UserService]
         AA[PaymentService]
-        AB[LocationService]
+        ABLoc[LocationService]
         AC[VehicleService]
     end
     
@@ -273,6 +284,7 @@ graph TB
     
     subgraph "Infrastructure Layer"
         AM[Supabase Client]
+        QC[QueryClient]
         AN[lib/subscriptionManager]
         AO[ErrorHandler]
         AP[Validation Utils]
@@ -280,14 +292,16 @@ graph TB
     end
     
     I --> T
-    J --> U
-    J --> W
+    I --> RQ
+    J --> RQ
+    M --> T
+    M --> TH
     
     T --> X
-    U --> Y
-    U --> SU
-    V --> Z
-    W --> AC
+    RQ --> Y
+    RQ --> SU
+    RQ --> Z
+    RQ --> AC
     AT --> SY
     
     SU --> RZ
@@ -298,11 +312,12 @@ graph TB
     Z --> AF
     AC --> AF
     AA --> AF
-    AB --> AF
+    ABLoc --> AF
     
     AF --> AG
     AG --> AM
     AG --> AN
+    RQ --> QC
     X --> AO
     Y --> AP
     Y --> AQ
@@ -310,13 +325,12 @@ graph TB
 
 ### 3. Sequence Diagram - Booking Flow (platform)
 
-End-to-end booking involves drivers and realtime updates on the **shared backend**. This app implements the **customer** side (`BookingScreen`, `BookingService`); staff use other clients.
+End-to-end booking involves drivers and realtime updates on the **shared backend**. This app implements the **customer** side (`BookingScreen`, `BookingService`); staff use other clients. Booking payment is confirmed in the **driver app** at delivery (QR or cash), not via in-app booking checkout.
 
 ```mermaid
 sequenceDiagram
     participant C as Customer
     participant CS as CustomerScreen
-    participant BS as BookingStore
     participant BKS as BookingService
     participant DAL as DataAccessLayer
     participant DB as Supabase
@@ -324,45 +338,41 @@ sequenceDiagram
     participant DS as DriverScreen
     
     C->>CS: Create Booking
-    CS->>BS: createBooking(bookingData)
-    BS->>BKS: createBooking(bookingData)
+    CS->>BKS: createBooking(bookingData)
     BKS->>DAL: saveBooking(booking)
     DAL->>DB: INSERT booking
     DB-->>DAL: Booking created
     DAL-->>BKS: Success
-    BKS-->>BS: bookingId
-    BS-->>CS: Booking created
+    BKS-->>CS: bookingId / navigate tracking
     
     Note over DB,DS: Real-time Subscription Active
     
     DB->>DS: Realtime Update (NEW BOOKING)
     DS->>D: Show Available Booking
     D->>DS: Accept Booking
-    DS->>BS: updateBookingStatus(id, 'accepted')
-    BS->>BKS: updateBookingStatus(id, 'accepted')
+    DS->>BKS: updateBookingStatus(id, 'accepted')
     BKS->>DAL: updateBooking(id, {status, driverId})
     DAL->>DB: UPDATE booking
     DB-->>DAL: Updated
     DAL-->>BKS: Success
-    BKS-->>BS: Success
     
     DB->>CS: Realtime Update (STATUS CHANGED)
     CS->>C: Show Status Update
     
     D->>DS: Update Status to 'in_transit'
-    DS->>BS: updateBookingStatus(id, 'in_transit')
-    BS->>BKS: updateBookingStatus(id, 'in_transit')
+    DS->>BKS: updateBookingStatus(id, 'in_transit')
     BKS->>DAL: updateBooking(id, {status})
     DAL->>DB: UPDATE booking
     DB->>CS: Realtime Update
     
     D->>DS: Mark as Delivered
-    DS->>BS: updateBookingStatus(id, 'delivered')
-    BS->>BKS: updateBookingStatus(id, 'delivered')
+    DS->>BKS: updateBookingStatus(id, 'delivered')
     BKS->>DAL: updateBooking(id, {status, deliveredAt})
     DAL->>DB: UPDATE booking
     DB->>CS: Realtime Update (DELIVERED)
     CS->>C: Show Delivery Confirmation
+    
+    Note over D,DB: Pay at delivery — driver records QR/cash payment
 ```
 
 ### 4. State Diagram - Booking Status Transitions
@@ -400,7 +410,7 @@ stateDiagram-v2
     
     note right of delivered
         Final state
-        Payment can be collected
+        Payment collected at delivery
     end note
 ```
 
@@ -413,6 +423,7 @@ graph LR
         B[lib/index.ts]
         C[store/index.ts]
         D[services/index.ts]
+        H[hooks/queries]
     end
     
     subgraph "Navigation"
@@ -423,12 +434,13 @@ graph LR
     subgraph "Screens"
         I[Auth Screens]
         J[Customer Screens]
-        K[Society Screens]
+        K[Society / Shared Screens]
     end
     
     subgraph "Components"
         M[Common Components]
         N[Customer Components]
+        L[Layouts]
     end
     
     subgraph "Utils"
@@ -447,16 +459,19 @@ graph LR
     
     I --> C
     J --> C
-    K --> C
+    J --> H
+    K --> H
     
     J --> D
     K --> D
     
     M --> A
     N --> A
+    L --> A
     
     D --> B
     C --> D
+    H --> D
     D --> Q
     D --> R
     D --> S
@@ -508,9 +523,9 @@ Also configure (see `.env.example` for comments and optional keys):
 - `EXPO_PUBLIC_PASSWORD_RESET_REDIRECT_URL` — where password-reset links should land (`wtccustomer://reset-password`)
 - `SUPABASE_SECRET_KEY` — **server-side and migration scripts only**; must not appear in client bundles (`npm run secrets:check` helps guard this)
 
-**Supabase API keys (migration):** In Dashboard → Settings → API Keys, create **Publishable and secret API keys** if prompted. Use the `default` publishable key (`sb_publishable_...`) for `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and the secret key (`sb_secret_...`) for `SUPABASE_SECRET_KEY`. Legacy `EXPO_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` still work as fallbacks during transition. Edge Functions on hosted Supabase receive `SUPABASE_PUBLISHABLE_KEYS` / `SUPABASE_SECRET_KEYS` automatically. Update `eas.json` build env (or EAS secrets) with the publishable key when ready.
+**Supabase API keys:** In Dashboard → Settings → API Keys, use the `default` publishable key (`sb_publishable_...`) for `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and the secret key (`sb_secret_...`) for `SUPABASE_SECRET_KEY`. Legacy `EXPO_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` still work as fallbacks during transition. Update `eas.json` build env (or EAS secrets) with the publishable key when ready.
 
-Razorpay subscription and booking checkout use **Supabase Edge Function secrets** (not `EXPO_PUBLIC_*`). Configure those in the Supabase Dashboard (see `.env.example` comments). Client uses `EXPO_PUBLIC_RAZORPAY_KEY_ID` only.
+Razorpay subscription checkout uses **Supabase Edge Function secrets** (not `EXPO_PUBLIC_*` beyond Key ID). Configure those in the Supabase Dashboard (see `.env.example` comments).
 
 Optional: `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` for enhanced map features.
 
@@ -526,7 +541,7 @@ npm run eas:dev:android
 npm start
 ```
 
-Use `npm start` (not plain `npx expo start`) so the QR code uses your PC's LAN IP instead of `localhost`. For remote devices off LAN: `npm run start:dev:tunnel`. iOS dev builds: `eas build --profile development --platform ios` (see `package.json` script `_eas_dev_ios`).
+Use `npm start` (not plain `npx expo start`) so the QR code uses your PC's LAN IP instead of `localhost`. For remote devices off LAN: `npm run start:dev:tunnel`. iOS: `eas build --profile development --platform ios` (see `package.json` script `_eas_dev_ios`).
 
 ### 5. Supabase Database Setup
 
@@ -542,12 +557,13 @@ Apply SQL migrations from [`migrations/`](./migrations/) to your Supabase projec
 - `bank_accounts` — Bank account information
 - `tanker_sizes` — Tanker size configurations
 - `pricing` — Pricing configuration
-- `subscription_plans`, `subscriptions`, `payment_transactions` — Subscription and Razorpay payment records ([`024_create_subscription_tables.sql`](./migrations/024_create_subscription_tables.sql) and follow-ups)
+- `subscription_plans`, `subscriptions`, `payment_transactions` — Subscription and Razorpay payment records
 - `society_trips` (and related society migrations) — Society trip flows
 
-Apply every file in [`migrations/`](./migrations/) in **lexicographic (filename) order** (some numeric prefixes have more than one file, e.g. two `026_*` migrations—run both). Later payment migrations adjust gateway metadata and RLS for online payments.
+Apply every file in [`migrations/`](./migrations/) in **lexicographic (filename) order**. Later payment migrations adjust gateway metadata and RLS for online payments.
 
 **Important**: Row Level Security (RLS) is enabled on all tables with comprehensive policies. Subscription gating for booking and society trip creation is enforced when `FEATURE_FLAGS.enableSubscriptionGating` is `true` (currently enabled in `src/constants/config.ts`). Configure realtime publications for:
+
 - `bookings`
 - `notifications`
 - `users`
@@ -581,6 +597,7 @@ npm run web
 ```
 
 Then choose your platform:
+
 - Press `a` for Android
 - Press `i` for iOS
 - Press `w` for Web
@@ -593,7 +610,7 @@ Tunnel mode: `npm run start:tunnel` (Expo Go) or `npm run start:dev:tunnel` (dev
 |----------|---------|
 | [MONITORING_PLAN.md](./MONITORING_PLAN.md) | Observability, error/security monitoring, and alert runbook (in repo) |
 
-Extended product and implementation notes may exist locally under `docs/` (that folder is **gitignored** and not shipped with clones). Common local-only files include Razorpay phase guides, production readiness checklists, and customer-flow inventories.
+Extended product and implementation notes may exist locally under `docs/` (that folder is **gitignored** and not shipped with clones). Common local-only files include Razorpay phase guides, production readiness checklists, and design specs.
 
 Database changes are versioned under [`migrations/`](./migrations/); apply them to your Supabase project in order when bootstrapping a new environment.
 
@@ -622,16 +639,17 @@ water-customer-app/
 ├── index.ts                # Expo entry (registers App)
 ├── eas.json                # EAS Build profiles (use Dashboard secrets for production keys)
 ├── migrations/             # Supabase SQL migrations (apply in lexicographic order)
-├── supabase/functions/     # Edge Functions (Razorpay orders/verify/webhook, free trial, delete-auth-user)
-├── docs/                   # Operational and product notes (see Additional documentation)
+├── supabase/functions/     # Edge Functions (Razorpay, free trial, delete-auth-user)
+├── docs/                   # Local operational/design notes (gitignored; see Additional documentation)
 ├── scripts/                # Utilities (e.g. verify-no-client-secrets.mjs, seed-test-data.ts)
 ├── src/
 │   ├── components/
-│   │   ├── customer/
-│   │   └── common/
+│   │   ├── customer/       # e.g. ProfileSubscriptionPanel, PriceBreakdown
+│   │   ├── common/
+│   │   └── layouts/
 │   ├── screens/
-│   │   ├── customer/       # Booking, orders, profile, subscriptions, PaySubscription/PayBooking, payment history
-│   │   ├── shared/         # Add trip, trip details, payment result, settle payment placeholder
+│   │   ├── customer/       # Home, booking, orders, profile, subscriptions, payment history
+│   │   ├── shared/         # Add trip, trip details, agency trip breakdown, payment result
 │   │   ├── society/        # Society-only flows (subscription intro when no society plans)
 │   │   └── auth/           # Role selection, login, register, verify email, forgot/set password
 │   ├── navigation/
@@ -639,6 +657,7 @@ water-customer-app/
 │   │   ├── MainNavigator.tsx
 │   │   ├── customerMenuNavigation.ts
 │   │   └── rootNavigation.ts
+│   ├── hooks/queries/      # React Query hooks and realtime invalidation
 │   ├── services/
 │   │   ├── auth.service.ts
 │   │   ├── booking.service.ts
@@ -652,14 +671,15 @@ water-customer-app/
 │   │   ├── vehicle.service.ts
 │   │   ├── storage.service.ts
 │   │   └── localStorage.ts
-│   ├── store/              # e.g. authStore, bookingStore, userStore, vehicleStore
+│   ├── store/              # authStore, themeStore
 │   ├── lib/
 │   │   ├── dataAccess.interface.ts
 │   │   ├── supabaseDataAccess.ts
 │   │   ├── supabaseClient.ts
-│   │   └── subscriptionManager.ts   # Realtime channel helpers
-│   ├── utils/              # validation, pricing, subscription eligibility (subscriptionManager.ts), errors, etc.
-│   ├── types/              # index.ts, subscription.types.ts
+│   │   ├── queryClient.ts
+│   │   └── subscriptionManager.ts
+│   ├── utils/              # validation, pricing, subscription eligibility, payment display, errors
+│   ├── types/
 │   └── constants/
 ├── assets/
 ├── App.tsx
@@ -682,26 +702,27 @@ npm run test:watch
 # Generate coverage report
 npm run test:coverage
 
-# Subscription-related service tests only (same as prebuild:check subset)
+# Release-focused suite (same as prebuild:check subset)
 npm run test:release
 ```
 
-Before release builds, run `npm run prebuild:check` (secrets + lint + `test:release`). Deploy Razorpay Edge Functions and set Supabase secrets before testing payments in staging/production.
+Before release builds, run `npm run prebuild:check` (secrets + lint + `test:release`). Deploy Razorpay Edge Functions and set Supabase secrets before testing subscription payments in staging/production.
 
 ### Test Structure
 
 - **Unit Tests**: Test individual functions and utilities
 - **Integration Tests**: Test service layer and data access layer
-- **Component Tests**: Test React Native components
-- **Flow Tests**: Test complete user flows (booking, payment, etc.)
+- **Component Tests**: Test React Native components (e.g. profile subscription panel)
+- **Flow Tests**: Test complete user flows (booking, pay-at-delivery, subscription payment)
 
 ### Test Coverage
 
 The project maintains comprehensive test coverage for:
-- Services (auth, booking, payment, etc.)
-- Utilities (validation, pricing, error handling)
-- Stores (state management)
-- Components (UI components)
+
+- Services (auth, booking, payment, subscription, society trips)
+- Utilities (validation, pricing, error handling, payment display)
+- Stores (auth, theme)
+- Components and screens
 - Integration flows
 
 ## Supabase Configuration
@@ -728,6 +749,7 @@ The following describes the **shared database** used by this app and other clien
 RLS is **enabled on all tables** with comprehensive role-based access control policies:
 
 #### Tables with RLS Enabled
+
 - `users` - User profile access control
 - `user_roles` - Role management access
 - `customers` - Customer data access
@@ -745,63 +767,76 @@ RLS is **enabled on all tables** with comprehensive role-based access control po
 #### Policy Overview
 
 **Users Table:**
+
 - Users can view, insert, and update their own profile
 - Users can delete their own row (for customer Delete Account flow; `id = auth.uid()`)
 - Admins can view all users
 - Customers can read admin users (for agency selection during booking)
 
 **User Roles Table:**
+
 - Users can view and insert their own roles
 - Users can delete their own role rows (for account deletion; `user_id = auth.uid()`)
 - Admins can view all user roles
 - Customers can read admin roles (to identify agencies)
 
 **Customers Table:**
+
 - Customers can view, insert, and update their own data
 - Customers can delete their own row (for Delete Account; `user_id = auth.uid()`)
 - Admins can view all customer data
 
 **Drivers Table:**
+
 - Drivers can view, insert, and update their own data
 - Admins can view and update all driver data
 
 **Admins Table:**
+
 - Admins can view, insert, and update their own data
 - Admins can view other admin data
 - Customers can read admin data (for agency selection during booking)
 
 **Bookings Table:**
+
 - Customers can create, view, and update their own bookings
 - Customers can delete their own bookings (for Delete Account; `customer_id = auth.uid()`)
 - Drivers can view available bookings and update assigned bookings
 - Admins can view and update bookings for their agency
 
 **Vehicles Table:**
+
 - Admins can manage vehicles for their agency (full CRUD)
 - Customers can read vehicles from any agency (for booking creation)
 
 **Bank Accounts Table:**
+
 - Admins can manage their own bank accounts (full CRUD)
 - Drivers can read bank accounts for agencies where they have assigned bookings (for QR code display during payment collection)
 
 **Expenses Table:**
+
 - Admins can create, view, update, and delete their own expenses
 - Supports filtering by expense type (diesel or maintenance)
 - Includes receipt image upload functionality
 
 **Tanker Sizes Table:**
+
 - Everyone can view active tanker sizes
 - Admins can view all sizes and manage them (full CRUD)
 
 **Pricing Table:**
+
 - Everyone can view pricing
 - Admins can insert and update pricing
 
 **Driver Applications Table:**
+
 - Anyone can create driver applications
 - Admins can view and update all applications
 
 **Driver Locations Table:**
+
 - Drivers can insert and view their own locations
 - Admins can view all driver locations
 - Customers can view driver locations for their active bookings
@@ -815,6 +850,7 @@ All policies use a secure `has_role()` helper function that checks user roles fr
 ### Realtime Subscriptions
 
 Enable realtime for:
+
 - `bookings` table (for status updates)
 - `notifications` table (for push notifications)
 - `users` table (for profile updates)
@@ -828,6 +864,7 @@ Add `subscriptions` / `payment_transactions` to your publication if the client s
 **Problem**: Login fails or user not found
 
 **Solutions**:
+
 - Verify `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `.env` (legacy: `EXPO_PUBLIC_SUPABASE_ANON_KEY`)
 - Ensure Email provider is enabled in Supabase Auth settings
 - Check that user exists in `users` table with corresponding `user_roles` entry
@@ -838,9 +875,10 @@ Add `subscriptions` / `payment_transactions` to your publication if the client s
 **Problem**: Real-time updates not appearing
 
 **Solutions**:
+
 - Confirm realtime is enabled for relevant tables in Supabase
 - Check that tables are added to realtime publication
-- Verify subscription is active (check network tab)
+- Verify React Query invalidation / subscription helpers are active
 - Ensure client is online and connected
 
 ### RLS Policy Errors
@@ -848,6 +886,7 @@ Add `subscriptions` / `payment_transactions` to your publication if the client s
 **Problem**: "Row Level Security policy violation" errors
 
 **Solutions**:
+
 - Ensure `user_roles` table has entry for the user's selected role
 - Verify RLS policies match the user's role
 - Check that policies allow the required operations (SELECT, INSERT, UPDATE, DELETE)
@@ -855,13 +894,15 @@ Add `subscriptions` / `payment_transactions` to your publication if the client s
 
 ### Razorpay / Payment Issues
 
-**Problem**: Checkout does not open or payment stays pending
+**Problem**: Subscription checkout does not open or payment stays pending
 
 **Solutions**:
-- Confirm you are on a **dev client or EAS build**, not Expo Go (`npm run start:dev` after `npm run eas:dev:android`)
+
+- Confirm you are on a **dev client or EAS build**, not Expo Go (`npm start` after `npm run eas:dev:android`)
 - Set `EXPO_PUBLIC_RAZORPAY_KEY_ID` in `.env` and matching `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` in Supabase Edge Function secrets
-- Deploy Edge Functions (`create-customer-subscription-order`, `create-customer-booking-order`, `verify-*`, `razorpay-webhook`) and register the webhook URL in Razorpay Dashboard
-- Check `FEATURE_FLAGS` in `src/constants/config.ts` (`enableRazorpaySubscription`, `enableOnlinePayment`)
+- Deploy Edge Functions (`create-customer-subscription-order`, `verify-customer-subscription-payment`, `razorpay-webhook`, and related) and register the webhook URL in Razorpay Dashboard
+- Check `FEATURE_FLAGS` in `src/constants/config.ts` (`enableRazorpaySubscription`, `enableSubscriptionGating`)
+- Remember: **booking payment is pay-at-delivery** in this app — there is no in-app booking Razorpay checkout
 - Run `npm run test:release` to verify payment service tests pass locally
 
 ### Build Issues
@@ -869,6 +910,7 @@ Add `subscriptions` / `payment_transactions` to your publication if the client s
 **Problem**: Build fails or app crashes on startup
 
 **Solutions**:
+
 - Clear Expo cache: `npx expo start -c`
 - Delete `node_modules` and reinstall (Unix): `rm -rf node_modules && npm install` — on Windows, remove the folder manually or use `Remove-Item -Recurse -Force node_modules` then `npm install`
 - Check for TypeScript errors: `npx tsc --noEmit`
@@ -881,11 +923,11 @@ Add `subscriptions` / `payment_transactions` to your publication if the client s
 **Payments (Razorpay)**
 
 - [x] **Phase 0** — SDK, types, `razorpayCheckout.service`, env example
-- [x] **Phase 1** — Edge Functions in repo (`create-*-order`, `verify-*-payment`, `razorpay-webhook`, `provision-free-trial-subscription`, legacy PhonePe helpers)
+- [x] **Phase 1** — Edge Functions in repo (`create-*-order`, `verify-*-payment`, `razorpay-webhook`, `provision-free-trial-subscription`)
 - [x] **Phase 2** — Flow A subscription checkout (`PaySubscriptionScreen`, plans/status)
-- [x] **Phase 3** — Flow B booking checkout (`PayBookingScreen`, Route transfers)
+- [x] **Phase 3** — Booking pay-at-delivery UX (customer app); booking Edge Functions retained server-side for other apps
 - [x] **Phase 4** — Screen wiring and subscription gating (`enableSubscriptionGating: true`)
-- [x] **Phase 5** — Payment history, order payment chips, Pay now on list/tracking
+- [x] **Phase 5** — Payment history, order payment chips, pay-at-delivery notes on tracking
 - [x] **Phase 6** — Payment unit/flow tests, error mapping, polish
 - [ ] **Production Razorpay** — Deploy Edge Functions, register webhook, set live keys and secrets
 
@@ -954,4 +996,3 @@ For issues, questions, or contributions, please contact the development team or 
 ---
 
 **Built with ❤️ using React Native, Expo, and Supabase**
-
