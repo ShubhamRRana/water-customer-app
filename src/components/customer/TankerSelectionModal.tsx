@@ -6,7 +6,6 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import { Typography } from '../common';
 import type { ThemeColors } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { PricingUtils } from '../../utils/pricing';
 
 interface TankerSelectionModalProps {
   visible: boolean;

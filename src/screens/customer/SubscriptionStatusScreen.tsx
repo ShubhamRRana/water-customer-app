@@ -38,6 +38,14 @@ function daysRemaining(end: Date | null): number | null {
   return Math.max(0, Math.ceil(ms / (86400000)));
 }
 
+const SUBSCRIPTION_STATUS_LABELS: Record<UserSubscription['status'], string> = {
+  pending: 'Waiting for payment',
+  active: 'Active',
+  expired: 'Expired',
+  cancelled: 'Cancelled',
+  paused: 'Paused',
+};
+
 const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
   const colors = useThemeColors();
   const styles = useMemo(() => createSubscriptionStatusStyles(colors), [colors]);
@@ -170,7 +178,9 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
             <Typography variant="caption" style={styles.label}>
               Status
             </Typography>
-            <Typography variant="h3">{sub ? sub.status.toUpperCase() : 'NONE'}</Typography>
+            <Typography variant="h3">
+              {sub ? SUBSCRIPTION_STATUS_LABELS[sub.status] : 'No subscription'}
+            </Typography>
             {isTrialActive ? (
               <View style={styles.trialBadge}>
                 <Typography variant="caption" style={styles.trialBadgeText}>
@@ -211,7 +221,7 @@ const SubscriptionStatusScreen: React.FC<Props> = ({ navigation }) => {
             ) : null}
             {sub?.endDate && isActive && !isTrialActive ? (
               <Typography variant="caption" style={{ color: colors.textSecondary, marginTop: 8 }}>
-                Renews / ends on {sub.endDate.toLocaleDateString()}
+                Access ends on {sub.endDate.toLocaleDateString()} — renew manually to keep it
               </Typography>
             ) : null}
             {latestPayment?.gatewayTransactionId ? (

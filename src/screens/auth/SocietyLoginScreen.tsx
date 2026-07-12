@@ -209,7 +209,12 @@ const SocietyLoginScreen: React.FC<Props> = ({ navigation }) => {
                 onChangeText={handlePasswordChange}
                 secureTextEntry={!showPassword}
               />
-              <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowPassword(!showPassword)}>
+              <TouchableOpacity
+                style={styles.eyeIcon}
+                onPress={() => setShowPassword(!showPassword)}
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                accessibilityRole="button"
+              >
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                   size={24}
@@ -226,6 +231,8 @@ const SocietyLoginScreen: React.FC<Props> = ({ navigation }) => {
               style={styles.forgotPasswordRow}
               onPress={() => navigation.navigate('ForgotPassword', { accountKind: 'society' })}
               activeOpacity={0.7}
+              accessibilityLabel="Forgot password"
+              accessibilityRole="button"
             >
               <Typography variant="caption" style={styles.forgotPasswordText}>
                 Forgot password?
@@ -251,6 +258,8 @@ const SocietyLoginScreen: React.FC<Props> = ({ navigation }) => {
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => navigation.navigate('Register', { accountKind: 'society' })}
+          accessibilityLabel="Create an account"
+          accessibilityRole="button"
         >
           <Typography variant="body" style={styles.linkText}>
             Create an account

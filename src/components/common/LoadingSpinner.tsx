@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
-import { UI_CONFIG } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import Typography from './Typography';
 

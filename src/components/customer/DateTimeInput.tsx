@@ -217,6 +217,8 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({
           <TouchableOpacity
             onPress={handleOpenDatePicker}
             activeOpacity={0.7}
+            accessibilityLabel="Select delivery date"
+            accessibilityRole="button"
           >
             <Card style={[styles.inputCard, styles.pickerCard, dateError && styles.inputCardError]}>
               <View style={styles.pickerContent}>
@@ -238,6 +240,8 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({
           <TouchableOpacity
             onPress={handleOpenTimePicker}
             activeOpacity={0.7}
+            accessibilityLabel="Select delivery time"
+            accessibilityRole="button"
           >
             <Card style={[styles.inputCard, styles.pickerCard]}>
               <View style={styles.pickerContent}>
@@ -259,7 +263,11 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({
             <Pressable style={styles.modalOverlay} onPress={handleDatePickerDismiss}>
               <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
-                  <TouchableOpacity onPress={handleDatePickerDismiss}>
+                  <TouchableOpacity
+                    onPress={handleDatePickerDismiss}
+                    accessibilityLabel="Confirm date"
+                    accessibilityRole="button"
+                  >
                     <Typography variant="body" style={styles.modalDone}>Done</Typography>
                   </TouchableOpacity>
                 </View>
@@ -293,7 +301,11 @@ const DateTimeInput: React.FC<DateTimeInputProps> = ({
             <Pressable style={styles.modalOverlay} onPress={handleTimePickerDismiss}>
               <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
-                  <TouchableOpacity onPress={handleTimePickerDismiss}>
+                  <TouchableOpacity
+                    onPress={handleTimePickerDismiss}
+                    accessibilityLabel="Confirm time"
+                    accessibilityRole="button"
+                  >
                     <Typography variant="body" style={styles.modalDone}>Done</Typography>
                   </TouchableOpacity>
                 </View>

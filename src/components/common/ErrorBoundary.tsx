@@ -1,6 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode, useMemo } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { errorLogger, ErrorSeverity } from '../../utils/errorLogger';
+import { errorLogger } from '../../utils/errorLogger';
 import Typography from './Typography';
 import Button from './Button';
 import { UI_CONFIG } from '../../constants/config';

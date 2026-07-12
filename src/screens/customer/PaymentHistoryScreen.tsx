@@ -48,6 +48,15 @@ const STATUS_FILTERS: { key: StatusFilterKey; label: string }[] = [
   { key: 'processing', label: 'Processing' },
 ];
 
+const PAYMENT_STATUS_LABELS: Record<PaymentTransactionStatus, string> = {
+  pending: 'Pending',
+  processing: 'Processing',
+  success: 'Successful',
+  failed: 'Failed',
+  refunded: 'Refunded',
+  cancelled: 'Cancelled',
+};
+
 const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
   const colors = useThemeColors();
   const styles = useMemo(() => createPaymentHistoryStyles(colors), [colors]);
@@ -106,7 +115,7 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
     const lines = [
       `Type: ${tx.flowLabel}`,
       `Amount: ${PRICING_CONFIG.currencySymbol}${tx.amount.toFixed(2)}`,
-      `Status: ${tx.status}`,
+      `Status: ${PAYMENT_STATUS_LABELS[tx.status]}`,
       `Gateway: ${tx.paymentGateway}`,
       tx.gatewayOrderId ? `Order ID: ${tx.gatewayOrderId}` : '',
       tx.gatewayTransactionId ? `Payment ID: ${tx.gatewayTransactionId}` : '',
@@ -203,7 +212,7 @@ const PaymentHistoryScreen: React.FC<Props> = ({ navigation }) => {
                       </View>
                       <View style={[styles.pill, statusStyle(tx.status, colors)]}>
                         <Typography variant="caption" style={styles.pillText}>
-                          {tx.status}
+                          {PAYMENT_STATUS_LABELS[tx.status]}
                         </Typography>
                       </View>
                     </View>

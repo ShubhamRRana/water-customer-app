@@ -388,6 +388,8 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
               <TouchableOpacity
                 style={styles.eyeIcon}
                 onPress={() => setShowPassword(!showPassword)}
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                accessibilityRole="button"
               >
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -411,6 +413,8 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
               <TouchableOpacity
                 style={styles.eyeIcon}
                 onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                accessibilityLabel={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                accessibilityRole="button"
               >
                 <Ionicons
                   name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -437,7 +441,12 @@ const RegisterScreen: React.FC<Props> = ({ navigation, route }) => {
 
         <View style={styles.footer}>
           <Typography variant="body" style={styles.footerText}>Already have an account? </Typography>
-          <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Login', { accountType: 'individual' })}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Login', { accountType: 'individual' })}
+            accessibilityLabel="Sign in"
+            accessibilityRole="button"
+          >
             <Typography variant="body" style={styles.linkText}>Sign In</Typography>
           </TouchableOpacity>
         </View>

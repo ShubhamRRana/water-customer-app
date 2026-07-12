@@ -299,6 +299,8 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
                   selectedAccount === accountType.key && styles.roleCardSelected,
                 ]}
                 onPress={() => setSelectedAccount(accountType.key)}
+                accessibilityLabel={`${accountType.title} account`}
+                accessibilityRole="button"
               >
                 <View style={styles.roleHeader}>
                   <View style={styles.roleInfo}>
@@ -351,6 +353,8 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
                 disabled={!selectedAccount}
                 onPressIn={() => setIsButtonPressed(true)}
                 onPressOut={() => setIsButtonPressed(false)}
+                accessibilityLabel="Continue"
+                accessibilityRole="button"
               >
                 <Typography variant="body" style={styles.buttonText}>
                   Continue

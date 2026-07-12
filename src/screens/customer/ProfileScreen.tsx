@@ -25,7 +25,7 @@ import { useThemeStore } from '../../store/themeStore';
 import { AuthService } from '../../services/auth.service';
 import { User } from '../../types';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
-import { APP_CONFIG } from '../../constants/config';
+import { APP_CONFIG, UI_CONFIG } from '../../constants/config';
 import type { ThemeColors } from '../../constants/config';
 import type { ThemePreference } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -63,6 +63,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   }>({});
   const [menuVisible, setMenuVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [focusedField, setFocusedField] = useState<'name' | 'email' | 'phone' | null>(null);
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -364,6 +365,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                 onPress={handleEditProfile}
                 activeOpacity={0.8}
                 disabled={isDeleting}
+                accessibilityLabel="Edit Profile"
+                accessibilityRole="button"
               >
                 <Ionicons
                   name="create-outline"
@@ -380,6 +383,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                 onPress={() => navigation.navigate('ChangePassword')}
                 activeOpacity={0.8}
                 disabled={isDeleting}
+                accessibilityLabel="Change Password"
+                accessibilityRole="button"
               >
                 <Ionicons name="key-outline" size={22} color={colors.accent} />
                 <Typography variant="body" style={styles.actionButtonText}>
@@ -392,6 +397,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                 onPress={() => navigation.navigate('PaymentHistory')}
                 activeOpacity={0.8}
                 disabled={isDeleting}
+                accessibilityLabel="Payment history"
+                accessibilityRole="button"
               >
                 <Ionicons name="card-outline" size={22} color={colors.accent} />
                 <Typography variant="body" style={styles.actionButtonText}>
@@ -405,6 +412,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   onPress={handleContactUs}
                   activeOpacity={0.8}
                   disabled={isDeleting}
+                  accessibilityLabel="Contact Us"
+                  accessibilityRole="button"
                 >
                   <Ionicons name="chatbubbles-outline" size={22} color={colors.accent} />
                   <Typography variant="body" style={styles.actionButtonText}>
@@ -436,6 +445,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                         ]}
                         onPress={() => setPreference(option.key)}
                         activeOpacity={0.8}
+                        accessibilityLabel={`${option.label} theme`}
+                        accessibilityRole="button"
                       >
                         <Typography
                           variant="body"
@@ -478,7 +489,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                     </Typography>
                   </View>
                   <TextInput
-                    style={[styles.textInput, formErrors.name && { borderColor: colors.error }]}
+                    style={[
+                      styles.textInput,
+                      focusedField === 'name' && { borderColor: colors.accent },
+                      formErrors.name && { borderColor: colors.error },
+                    ]}
                     value={editForm.name}
                     onChangeText={(text) => {
                       const sanitized = SanitizationUtils.sanitizeNameWhileEditing(text);
@@ -491,6 +506,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                         });
                       }
                     }}
+                    onFocus={() => setFocusedField('name')}
+                    onBlur={() => setFocusedField(null)}
                     placeholder="Enter your full name"
                     placeholderTextColor={colors.textSecondary}
                   />
@@ -509,7 +526,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                     </Typography>
                   </View>
                   <TextInput
-                    style={[styles.textInput, formErrors.email && { borderColor: colors.error }]}
+                    style={[
+                      styles.textInput,
+                      focusedField === 'email' && { borderColor: colors.accent },
+                      formErrors.email && { borderColor: colors.error },
+                    ]}
                     value={editForm.email}
                     onChangeText={(text) => {
                       const sanitized = SanitizationUtils.sanitizeEmail(text);
@@ -522,6 +543,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                         });
                       }
                     }}
+                    onFocus={() => setFocusedField('email')}
+                    onBlur={() => setFocusedField(null)}
                     placeholder="Enter your email address"
                     placeholderTextColor={colors.textSecondary}
                     keyboardType="email-address"
@@ -542,7 +565,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                     </Typography>
                   </View>
                   <TextInput
-                    style={[styles.textInput, formErrors.phone && { borderColor: colors.error }]}
+                    style={[
+                      styles.textInput,
+                      focusedField === 'phone' && { borderColor: colors.accent },
+                      formErrors.phone && { borderColor: colors.error },
+                    ]}
                     value={editForm.phone}
                     onChangeText={(text) => {
                       const sanitized = SanitizationUtils.sanitizePhone(text);
@@ -555,6 +582,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                         });
                       }
                     }}
+                    onFocus={() => setFocusedField('phone')}
+                    onBlur={() => setFocusedField(null)}
                     placeholder="Enter your phone number"
                     placeholderTextColor={colors.textSecondary}
                     keyboardType="phone-pad"
@@ -590,6 +619,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
                   onPress={handleCancelEdit}
                   activeOpacity={0.8}
                   disabled={isDeleting}
+                  accessibilityLabel="Cancel edit"
+                  accessibilityRole="button"
                 >
                   <Ionicons name="close-circle" size={22} color={colors.error} />
                   <Typography variant="body" style={styles.actionButtonTextActive}>
@@ -616,6 +647,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               onPress={handleDeleteAccountPress}
               activeOpacity={0.8}
               disabled={isDeleting}
+              accessibilityLabel="Delete Account"
+              accessibilityRole="button"
             >
               <Ionicons name="trash-outline" size={22} color={colors.error} />
               <Typography variant="body" style={styles.deleteAccountButtonText}>
@@ -650,16 +683,16 @@ function createProfileStyles(colors: ThemeColors) {
     backgroundColor: colors.background,
   },
   contentContainer: {
-    paddingBottom: 32,
+    paddingBottom: UI_CONFIG.spacing.xl,
   },
   identityContainer: {
-    marginHorizontal: 20,
-    marginTop: 8,
-    marginBottom: 8,
+    marginHorizontal: UI_CONFIG.spacing.lg,
+    marginTop: UI_CONFIG.spacing.sm,
+    marginBottom: UI_CONFIG.spacing.sm,
   },
   identityStrip: {
     borderRadius: 20,
-    padding: 20,
+    padding: UI_CONFIG.spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
     shadowColor: colors.shadow,
@@ -672,43 +705,43 @@ function createProfileStyles(colors: ThemeColors) {
     elevation: 3,
   },
   userName: {
-    fontSize: 24,
+    fontSize: UI_CONFIG.fontSize.xxl,
     lineHeight: 30,
     fontFamily: 'PlayfairDisplay-Regular',
     color: colors.text,
-    marginBottom: 10,
+    marginBottom: UI_CONFIG.spacing.sm,
   },
   identityText: {
-    fontSize: 16,
+    fontSize: UI_CONFIG.fontSize.md,
     color: colors.textSecondary,
-    marginTop: 2,
+    marginTop: 2, // TODO: token gap, needs design input (was 2px, nearest token is 4px)
   },
   actionButtonsContainer: {
-    paddingHorizontal: 20,
-    marginTop: 12,
-    gap: 12,
+    paddingHorizontal: UI_CONFIG.spacing.lg,
+    marginTop: UI_CONFIG.spacing.md,
+    gap: UI_CONFIG.spacing.md,
   },
   appearanceCard: {
     borderRadius: 12,
-    padding: 16,
+    padding: UI_CONFIG.spacing.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
   appearanceTitle: {
-    marginBottom: 6,
+    marginBottom: UI_CONFIG.spacing.sm,
     color: colors.text,
     fontWeight: '700',
   },
   appearanceDescription: {
-    marginBottom: 16,
+    marginBottom: UI_CONFIG.spacing.md,
     color: colors.textSecondary,
-    fontSize: 14,
+    fontSize: UI_CONFIG.fontSize.sm,
     lineHeight: 20,
   },
   appearanceSegmentRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: UI_CONFIG.spacing.sm,
   },
   appearanceSegment: {
     flex: 1,
@@ -717,24 +750,24 @@ function createProfileStyles(colors: ThemeColors) {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    paddingVertical: UI_CONFIG.spacing.md,
+    paddingHorizontal: UI_CONFIG.spacing.sm,
     backgroundColor: colors.surface,
   },
   appearanceSegmentSelected: {
     borderWidth: 1,
   },
   appearanceSegmentText: {
-    fontSize: 15,
+    fontSize: UI_CONFIG.fontSize.md,
     fontWeight: '500',
     color: colors.textSecondary,
   },
   contactUsButton: {
-    marginTop: 0,
+    marginTop: 0, // TODO: token gap, needs design input (was 0px, nearest token is 4px)
   },
   deleteAccountFooter: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingHorizontal: UI_CONFIG.spacing.lg,
+    paddingTop: UI_CONFIG.spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
     backgroundColor: colors.background,
@@ -745,8 +778,8 @@ function createProfileStyles(colors: ThemeColors) {
     justifyContent: 'center',
   },
   deleteAccountButtonText: {
-    marginLeft: 8,
-    fontSize: 16,
+    marginLeft: UI_CONFIG.spacing.sm,
+    fontSize: UI_CONFIG.fontSize.md,
     fontWeight: '600',
     color: colors.error,
   },
@@ -756,7 +789,7 @@ function createProfileStyles(colors: ThemeColors) {
     justifyContent: 'flex-start',
     backgroundColor: colors.surface,
     borderRadius: 12,
-    padding: 16,
+    padding: UI_CONFIG.spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -765,8 +798,8 @@ function createProfileStyles(colors: ThemeColors) {
     backgroundColor: `${colors.error}10`,
   },
   actionButtonText: {
-    marginLeft: 8,
-    fontSize: 16,
+    marginLeft: UI_CONFIG.spacing.sm,
+    fontSize: UI_CONFIG.fontSize.md,
     fontWeight: '600',
     color: colors.accent,
   },
@@ -774,13 +807,13 @@ function createProfileStyles(colors: ThemeColors) {
     color: colors.error,
   },
   editFormContainer: {
-    paddingHorizontal: 20,
-    marginTop: 20,
+    paddingHorizontal: UI_CONFIG.spacing.lg,
+    marginTop: UI_CONFIG.spacing.lg,
   },
   editCard: {
     backgroundColor: colors.surface,
     borderRadius: 16,
-    padding: 24,
+    padding: UI_CONFIG.spacing.lg,
     shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
@@ -793,39 +826,39 @@ function createProfileStyles(colors: ThemeColors) {
   editHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: UI_CONFIG.spacing.lg,
   },
   editTitle: {
-    fontSize: 20,
+    fontSize: UI_CONFIG.fontSize.xl,
     fontWeight: 'bold',
     color: colors.text,
-    marginLeft: 12,
+    marginLeft: UI_CONFIG.spacing.md,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: UI_CONFIG.spacing.lg,
   },
   inputLabelContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: UI_CONFIG.spacing.sm,
   },
   inputLabel: {
-    fontSize: 14,
+    fontSize: UI_CONFIG.fontSize.sm,
     fontWeight: '600',
     color: colors.text,
-    marginLeft: 8,
+    marginLeft: UI_CONFIG.spacing.sm,
   },
   textInput: {
     borderWidth: 2,
     borderColor: colors.border,
     borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+    padding: UI_CONFIG.spacing.md,
+    fontSize: UI_CONFIG.fontSize.md,
     color: colors.text,
     backgroundColor: colors.background,
   },
   saveButton: {
-    marginTop: 8,
+    marginTop: UI_CONFIG.spacing.sm,
     borderRadius: 12,
     overflow: 'hidden',
     shadowColor: colors.shadow,
@@ -841,16 +874,16 @@ function createProfileStyles(colors: ThemeColors) {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
+    padding: UI_CONFIG.spacing.md,
   },
   saveButtonText: {
-    marginLeft: 8,
-    fontSize: 16,
+    marginLeft: UI_CONFIG.spacing.sm,
+    fontSize: UI_CONFIG.fontSize.md,
     fontWeight: '600',
     color: colors.textLight,
   },
   cancelEditFooterButton: {
-    marginTop: 12,
+    marginTop: UI_CONFIG.spacing.md,
     justifyContent: 'center',
   },
   bottomSpacing: {

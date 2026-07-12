@@ -27,6 +27,7 @@ import {
   getBookingPaymentStatusLabel,
   shouldShowPayAtDeliveryNote,
 } from '../../utils/paymentDisplay';
+import StatusBadge from '../../components/customer/StatusBadge';
 
 type OrderTrackingScreenNavigationProp = StackNavigationProp<AppStackParamList, 'OrderTracking'>;
 type OrderTrackingScreenRouteProp = RouteProp<AppStackParamList, 'OrderTracking'>;
@@ -75,14 +76,6 @@ function createOrderTrackingStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       marginBottom: 16,
-    },
-    statusIconContainer: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 16,
     },
     statusInfo: {
       flex: 1,
@@ -276,23 +269,6 @@ function createOrderTrackingStyles(colors: ThemeColors) {
       marginTop: 4,
     },
   });
-}
-
-function getStatusColor(status: BookingStatus, colors: ThemeColors) {
-  switch (status) {
-    case 'pending':
-      return colors.warning;
-    case 'accepted':
-      return colors.accent;
-    case 'in_transit':
-      return colors.secondary;
-    case 'delivered':
-      return colors.success;
-    case 'cancelled':
-      return colors.error;
-    default:
-      return colors.textSecondary;
-  }
 }
 
 const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, route }) => {
@@ -492,11 +468,7 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
         <View style={styles.statusSection}>
           <Card style={styles.statusCard}>
             <View style={styles.statusHeader}>
-              <View
-                style={[styles.statusIconContainer, { backgroundColor: getStatusColor(trackingStatus, colors) }]}
-              >
-                <Ionicons name={getStatusIcon(trackingStatus)} size={32} color={colors.textLight} />
-              </View>
+              <StatusBadge status={trackingStatus} variant="avatar" icon={getStatusIcon(trackingStatus)} />
               <View style={styles.statusInfo}>
                 <Typography variant="h3" style={styles.statusTitle}>
                   {getStatusText(trackingStatus)}

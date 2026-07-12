@@ -211,7 +211,12 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+        >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Typography variant="h3" style={styles.title}>Saved Addresses</Typography>
@@ -224,7 +229,12 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
           {editingAddress && (
             <View style={styles.editModeHeader}>
               <Typography variant="caption" style={styles.editModeText}>Editing Address</Typography>
-              <TouchableOpacity onPress={handleCancelEdit} style={styles.cancelButton}>
+              <TouchableOpacity
+                onPress={handleCancelEdit}
+                style={styles.cancelButton}
+                accessibilityLabel="Cancel editing address"
+                accessibilityRole="button"
+              >
                 <Ionicons name="close" size={20} color={colors.error} />
                 <Typography variant="caption" style={styles.cancelButtonText}>Cancel</Typography>
               </TouchableOpacity>
@@ -246,6 +256,8 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
               style={styles.addButton}
               onPress={handleSaveAddress}
               disabled={!newAddressText.trim()}
+              accessibilityLabel={editingAddress ? 'Update address' : 'Add address'}
+              accessibilityRole="button"
             >
               <Ionicons 
                 name={editingAddress ? "checkmark" : "add"} 
@@ -287,6 +299,8 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
                   <TouchableOpacity
                     style={styles.setDefaultButton}
                     onPress={() => handleSetDefault(address.id!)}
+                    accessibilityLabel="Set as default address"
+                    accessibilityRole="button"
                   >
                     <Ionicons name="star-outline" size={16} color={colors.warning} />
                     <Typography variant="caption" style={styles.setDefaultText}>Set as Default</Typography>
@@ -297,6 +311,8 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
                   <TouchableOpacity
                     style={styles.bottomActionButton}
                     onPress={() => handleEditAddress(address)}
+                    accessibilityLabel="Edit address"
+                    accessibilityRole="button"
                   >
                     <Ionicons name="create-outline" size={18} color={colors.accent} />
                     <Typography variant="caption" style={styles.editButtonText}>Edit</Typography>
@@ -304,6 +320,8 @@ const SavedAddressesScreen: React.FC<SavedAddressesScreenProps> = ({ navigation 
                   <TouchableOpacity
                     style={styles.bottomActionButton}
                     onPress={() => handleDeleteAddress(address.id!)}
+                    accessibilityLabel="Delete address"
+                    accessibilityRole="button"
                   >
                     <Ionicons name="trash-outline" size={18} color={colors.error} />
                     <Typography variant="caption" style={styles.deleteButtonText}>Delete</Typography>

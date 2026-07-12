@@ -135,7 +135,7 @@ const AppScreenHeader: React.FC<AppScreenHeaderProps> = ({
           <Typography variant="body" style={styles.subtitleFirstLine}>
             {subtitle}
           </Typography>
-          <Typography variant="h2" style={styles.titleAfterSubtitle}>
+          <Typography variant="h2" style={styles.titleAfterSubtitle} accessibilityRole="header">
             {title}
           </Typography>
         </View>
@@ -146,6 +146,7 @@ const AppScreenHeader: React.FC<AppScreenHeaderProps> = ({
         <Typography
           variant="h2"
           style={[styles.title, hasSubtitle && styles.titleWithSubtitleBelow]}
+          accessibilityRole="header"
         >
           {title}
         </Typography>
@@ -163,7 +164,7 @@ const AppScreenHeader: React.FC<AppScreenHeaderProps> = ({
       <View style={[styles.header, style]}>
         <View style={styles.sideSlot}>{renderLeft()}</View>
         <View style={styles.centerSlot}>
-          <Typography variant="h2" style={styles.titleCentered}>
+          <Typography variant="h2" style={styles.titleCentered} accessibilityRole="header">
             {title}
           </Typography>
           {hasSubtitle ? (

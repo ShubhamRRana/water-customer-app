@@ -180,6 +180,8 @@ const SetNewPasswordScreen: React.FC<Props> = ({ navigation }) => {
             <TouchableOpacity
               style={styles.eyeIcon}
               onPress={() => setShowPassword(!showPassword)}
+              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+              accessibilityRole="button"
             >
               <Ionicons
                 name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -213,6 +215,8 @@ const SetNewPasswordScreen: React.FC<Props> = ({ navigation }) => {
             <TouchableOpacity
               style={styles.eyeIcon}
               onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              accessibilityLabel={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+              accessibilityRole="button"
             >
               <Ionicons
                 name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}

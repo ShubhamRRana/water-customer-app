@@ -12,7 +12,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useCustomerBookingsQuery } from '../../hooks/queries';
 import { useAuthStore } from '../../store/authStore';
-import { Typography, CustomerMenuDrawer, MonthYearFilterRow } from '../../components/common';
+import {
+  Typography,
+  CustomerMenuDrawer,
+  MonthYearFilterRow,
+  ScreenLoading,
+  ScreenEmpty,
+} from '../../components/common';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import { UI_CONFIG } from '../../constants/config';
 import type { ThemeColors } from '../../constants/config';
@@ -43,9 +49,14 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
   const colors = useThemeColors();
   const styles = useMemo(() => createPastOrdersStyles(colors), [colors]);
   const { user, logout, customerAccountKind } = useAuthStore();
-  const { data: bookings = [], refetch: refetchBookings } = useCustomerBookingsQuery(user?.id);
+  const {
+    data: bookings = [],
+    isPending: isLoading,
+    refetch: refetchBookings,
+  } = useCustomerBookingsQuery(user?.id);
   const [refreshing, setRefreshing] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
@@ -128,6 +139,7 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
   };
 
   const handleDownloadExcel = async () => {
+    setIsExporting(true);
     try {
       await exportReportToExcel(
         'month',
@@ -141,8 +153,18 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
     } catch (error) {
       Alert.alert('Error', 'Failed to export report. Please try again.');
       errorLogger.medium('Failed to export report', error);
+    } finally {
+      setIsExporting(false);
     }
   };
+
+  if (isLoading && !bookings.length) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <ScreenLoading message="Loading past orders..." />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -155,10 +177,12 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <TouchableOpacity 
-              style={styles.menuButton} 
+            <TouchableOpacity
+              style={styles.menuButton}
               onPress={() => setMenuVisible(true)}
               activeOpacity={0.7}
+              accessibilityLabel="Open menu"
+              accessibilityRole="button"
             >
               <Ionicons name="menu" size={24} color={colors.text} />
             </TouchableOpacity>
@@ -170,10 +194,13 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
                 Your order history & analytics
               </Typography>
             </View>
-            <TouchableOpacity 
-              style={styles.downloadButton} 
+            <TouchableOpacity
+              style={styles.downloadButton}
               onPress={handleDownloadExcel}
               activeOpacity={0.7}
+              disabled={isExporting}
+              accessibilityLabel="Download report"
+              accessibilityRole="button"
             >
               <Ionicons name="download-outline" size={24} color={colors.text} />
             </TouchableOpacity>
@@ -261,9 +288,11 @@ const PastOrdersScreen: React.FC<PastOrdersScreenProps> = ({ navigation }) => {
             Orders this month
           </Typography>
           {monthlyOrders.length === 0 ? (
-            <Typography variant="body" style={styles.emptyOrdersText}>
-              No orders in {monthLabels[selectedMonth]} {selectedYear}.
-            </Typography>
+            <ScreenEmpty
+              icon="receipt-outline"
+              title={`No orders in ${monthLabels[selectedMonth]} ${selectedYear}`}
+              compact
+            />
           ) : (
             monthlyOrders.map((booking) => (
               <Card
@@ -334,24 +363,24 @@ function createPastOrdersStyles(colors: ThemeColors) {
     alignItems: 'center',
   },
   menuButton: {
-    padding: 8,
-    marginRight: 12,
+    padding: UI_CONFIG.spacing.sm,
+    marginRight: UI_CONFIG.spacing.md,
   },
   downloadButton: {
-    padding: 8,
-    marginLeft: 12,
+    padding: UI_CONFIG.spacing.sm,
+    marginLeft: UI_CONFIG.spacing.md,
   },
   headerTextContainer: {
     flex: 1,
   },
   title: {
-    fontSize: 24,
+    fontSize: UI_CONFIG.fontSize.xxl,
     fontWeight: 'bold',
     color: colors.text,
-    marginBottom: 4,
+    marginBottom: UI_CONFIG.spacing.xs,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: UI_CONFIG.fontSize.md,
     color: colors.textSecondary,
   },
   summarySection: {
@@ -360,7 +389,7 @@ function createPastOrdersStyles(colors: ThemeColors) {
     alignItems: 'center',
   },
   summaryTitle: {
-    fontSize: 20,
+    fontSize: UI_CONFIG.fontSize.xl,
     fontWeight: 'bold',
     color: colors.text,
     marginBottom: UI_CONFIG.spacing.lg,
@@ -373,26 +402,26 @@ function createPastOrdersStyles(colors: ThemeColors) {
   summaryMetric: {
     alignItems: 'center',
     flex: 1,
-    paddingHorizontal: 8,
+    paddingHorizontal: UI_CONFIG.spacing.sm,
     maxWidth: '50%',
   },
   summaryValueContainer: {
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
-    paddingHorizontal: 4,
+    marginBottom: UI_CONFIG.spacing.xs,
+    paddingHorizontal: UI_CONFIG.spacing.xs,
     minHeight: 40,
   },
   summaryValue: {
-    fontSize: 28,
+    fontSize: UI_CONFIG.fontSize.xxl, // was 28, nearest token 24 (16.7% diff)
     fontWeight: 'bold',
     color: colors.accent,
     textAlign: 'center',
     width: '100%',
   },
   summaryLabel: {
-    fontSize: 14,
+    fontSize: UI_CONFIG.fontSize.sm,
     color: colors.text,
     fontWeight: '500',
   },
@@ -408,7 +437,7 @@ function createPastOrdersStyles(colors: ThemeColors) {
     marginBottom: UI_CONFIG.spacing.sm,
   },
   dailyHeaderText: {
-    fontSize: 14,
+    fontSize: UI_CONFIG.fontSize.sm,
     fontWeight: '600',
     color: colors.text,
   },
@@ -430,24 +459,24 @@ function createPastOrdersStyles(colors: ThemeColors) {
     paddingHorizontal: UI_CONFIG.spacing.sm,
     backgroundColor: colors.background,
     borderRadius: 8,
-    marginBottom: 4,
+    marginBottom: UI_CONFIG.spacing.xs,
     alignItems: 'center',
   },
   dailyDay: {
     flex: 1,
-    fontSize: 16,
+    fontSize: UI_CONFIG.fontSize.md,
     fontWeight: '500',
     color: colors.text,
   },
   dailyRevenue: {
     flex: 1,
-    fontSize: 14,
+    fontSize: UI_CONFIG.fontSize.sm,
     color: colors.text,
     textAlign: 'center',
   },
   dailyOrders: {
     flex: 1,
-    fontSize: 14,
+    fontSize: UI_CONFIG.fontSize.sm,
     color: colors.text,
     textAlign: 'right',
   },
@@ -456,7 +485,7 @@ function createPastOrdersStyles(colors: ThemeColors) {
     paddingBottom: UI_CONFIG.spacing.lg,
   },
   ordersSectionTitle: {
-    fontSize: 18,
+    fontSize: UI_CONFIG.fontSize.lg,
     fontWeight: '600',
     color: colors.text,
     marginBottom: UI_CONFIG.spacing.md,
@@ -473,27 +502,27 @@ function createPastOrdersStyles(colors: ThemeColors) {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: UI_CONFIG.spacing.sm,
   },
   orderCardDate: {
-    fontSize: 14,
+    fontSize: UI_CONFIG.fontSize.sm,
     color: colors.textSecondary,
     flex: 1,
   },
   paymentChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: UI_CONFIG.spacing.sm, // was 10, nearest token 8 (25% diff)
+    paddingVertical: UI_CONFIG.spacing.xs,
     borderRadius: 12,
   },
   paymentChipText: {
-    fontSize: 11,
+    fontSize: UI_CONFIG.fontSize.xs, // was 11, nearest token 12 (8.3% diff)
     fontWeight: '600',
     color: colors.textLight,
   },
   orderCardDetail: {
-    fontSize: 14,
+    fontSize: UI_CONFIG.fontSize.sm,
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: UI_CONFIG.spacing.sm,
   },
   orderCardFooter: {
     flexDirection: 'row',
@@ -501,7 +530,7 @@ function createPastOrdersStyles(colors: ThemeColors) {
     justifyContent: 'space-between',
   },
   orderCardAmount: {
-    fontSize: 16,
+    fontSize: UI_CONFIG.fontSize.md,
     fontWeight: '600',
     color: colors.accent,
   },

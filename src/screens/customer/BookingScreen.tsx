@@ -468,7 +468,12 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
         showsVerticalScrollIndicator={false}
       >
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+        >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Typography variant="h2" style={styles.title}>Book Water Tanker</Typography>
@@ -546,6 +551,8 @@ const BookingScreen: React.FC<BookingScreenProps> = () => {
         <TouchableOpacity
           style={styles.savedAddressButton}
           onPress={() => setShowSavedAddressModal(true)}
+          accessibilityLabel="Select from saved addresses"
+          accessibilityRole="button"
         >
           <Ionicons name="location-outline" size={20} color={colors.accent} />
           <Typography variant="body" style={styles.savedAddressButtonText}>Select from Saved Addresses</Typography>
@@ -622,37 +629,37 @@ function createBookingStyles(colors: ThemeColors) {
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 24,
+    paddingBottom: UI_CONFIG.spacing.lg,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: UI_CONFIG.spacing.lg,
+    paddingVertical: UI_CONFIG.spacing.md,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   backButton: {
-    marginRight: 16,
+    marginRight: UI_CONFIG.spacing.md,
   },
   title: {
-    fontSize: 20,
+    fontSize: UI_CONFIG.fontSize.xl,
     fontWeight: 'bold',
     color: colors.text,
   },
   section: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: UI_CONFIG.spacing.lg,
+    paddingVertical: UI_CONFIG.spacing.md,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: UI_CONFIG.fontSize.lg,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 12,
+    marginBottom: UI_CONFIG.spacing.md,
   },
   selectionCard: {
-    marginBottom: 8,
+    marginBottom: UI_CONFIG.spacing.sm,
   },
   selectionCardDisabled: {
     opacity: 0.5,
@@ -666,46 +673,46 @@ function createBookingStyles(colors: ThemeColors) {
     flex: 1,
   },
   selectionLabel: {
-    fontSize: 16,
+    fontSize: UI_CONFIG.fontSize.md,
     fontWeight: '500',
     color: colors.text,
-    marginBottom: 4,
+    marginBottom: UI_CONFIG.spacing.xs,
   },
   selectionSubtext: {
-    fontSize: 14,
+    fontSize: UI_CONFIG.fontSize.sm,
     color: colors.textSecondary,
   },
   inputCard: {
-    marginBottom: 8,
+    marginBottom: UI_CONFIG.spacing.sm,
     minHeight: 60,
     justifyContent: 'center',
   },
   textArea: {
-    fontSize: 16,
+    fontSize: UI_CONFIG.fontSize.md,
     color: colors.text,
     textAlignVertical: 'top',
   },
   bookButton: {
-    marginTop: 8,
+    marginTop: UI_CONFIG.spacing.sm,
   },
   savedAddressButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: UI_CONFIG.spacing.md,
+    paddingVertical: UI_CONFIG.spacing.md,
     backgroundColor: colors.surfaceLight,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.border,
-    marginTop: 8,
+    marginTop: UI_CONFIG.spacing.sm,
   },
   savedAddressButtonText: {
-    fontSize: 16,
+    fontSize: UI_CONFIG.fontSize.md,
     fontWeight: '500',
     color: colors.accent,
     flex: 1,
-    marginLeft: 8,
+    marginLeft: UI_CONFIG.spacing.sm,
   },
   });
 }

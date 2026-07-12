@@ -24,7 +24,7 @@ import DateTimeInput from '../../components/customer/DateTimeInput';
 import AgencySelectionModal from '../../components/customer/AgencySelectionModal';
 import TankerSelectionModal from '../../components/customer/TankerSelectionModal';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
-import { UI_CONFIG, BOOKING_CONFIG } from '../../constants/config';
+import { BOOKING_CONFIG } from '../../constants/config';
 import type { ThemeColors } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { ValidationUtils, SanitizationUtils } from '../../utils';

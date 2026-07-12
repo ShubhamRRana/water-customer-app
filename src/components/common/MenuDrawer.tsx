@@ -7,6 +7,7 @@ import {
   TouchableWithoutFeedback,
   Alert,
   Animated,
+  AccessibilityInfo,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -214,8 +215,13 @@ const MenuDrawer = <T extends string>({
 
   // Keep the Modal mounted through the exit animation.
   const [rendered, setRendered] = useState(visible);
+  const [reduceMotion, setReduceMotion] = useState(false);
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+  }, []);
 
   useEffect(() => {
     if (visible) {
@@ -223,12 +229,12 @@ const MenuDrawer = <T extends string>({
       Animated.parallel([
         Animated.timing(translateX, {
           toValue: 0,
-          duration: 260,
+          duration: reduceMotion ? 0 : 260,
           useNativeDriver: true,
         }),
         Animated.timing(backdropOpacity, {
           toValue: 1,
-          duration: 260,
+          duration: reduceMotion ? 0 : 260,
           useNativeDriver: true,
         }),
       ]).start();
@@ -236,12 +242,12 @@ const MenuDrawer = <T extends string>({
       Animated.parallel([
         Animated.timing(translateX, {
           toValue: -DRAWER_WIDTH,
-          duration: 220,
+          duration: reduceMotion ? 0 : 220,
           useNativeDriver: true,
         }),
         Animated.timing(backdropOpacity, {
           toValue: 0,
-          duration: 220,
+          duration: reduceMotion ? 0 : 220,
           useNativeDriver: true,
         }),
       ]).start(({ finished }) => {
@@ -250,7 +256,7 @@ const MenuDrawer = <T extends string>({
         }
       });
     }
-  }, [visible, rendered, translateX, backdropOpacity]);
+  }, [visible, rendered, translateX, backdropOpacity, reduceMotion]);
 
   if (!rendered) {
     return null;

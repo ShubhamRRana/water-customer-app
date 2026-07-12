@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   ViewStyle,
   StyleProp,
+  AccessibilityRole,
 } from 'react-native';
 import { UI_CONFIG } from '../../constants/config';
 import type { ThemeColors } from '../../constants/config';
@@ -19,6 +20,8 @@ interface ButtonProps {
   disabled?: boolean;
   loading?: boolean;
   style?: StyleProp<ViewStyle>;
+  accessibilityLabel?: string;
+  accessibilityRole?: AccessibilityRole;
 }
 
 function createButtonStyles(colors: ThemeColors) {
@@ -100,6 +103,8 @@ const Button: React.FC<ButtonProps> = ({
   disabled = false,
   loading = false,
   style,
+  accessibilityLabel,
+  accessibilityRole,
 }) => {
   const colors = useThemeColors();
   const styles = useMemo(() => createButtonStyles(colors), [colors]);
@@ -131,6 +136,8 @@ const Button: React.FC<ButtonProps> = ({
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.7}
+      accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityRole={accessibilityRole ?? 'button'}
     >
       {loading ? (
         <ActivityIndicator color={indicatorColor} size="small" />

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
+import { TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
 import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { AuthStackParamList } from '../../types/index';
@@ -122,7 +122,13 @@ const VerifyEmailScreen: React.FC<Props> = ({ navigation, route }) => {
           style={styles.secondaryCta}
         />
 
-        <TouchableOpacity onPress={openMail} style={styles.linkRow} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={openMail}
+          style={styles.linkRow}
+          activeOpacity={0.7}
+          accessibilityLabel="Open mail app"
+          accessibilityRole="button"
+        >
           <Typography variant="body" style={styles.linkText}>
             {SUCCESS_MESSAGES.auth.verifyEmailOpenMail}
           </Typography>

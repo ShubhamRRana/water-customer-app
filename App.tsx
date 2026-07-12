@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, View } from 'react-native';
 import { DarkTheme, DefaultTheme, NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -97,9 +97,9 @@ const App: React.FC = () => {
     syncRootRoute(nav, getInitialRouteName(u, resetNeeded));
   };
 
-  // Don't render until fonts are loaded
+  // Don't render the real UI until fonts are loaded; show a themed frame instead of a blank flash.
   if (!fontsLoaded) {
-    return null; // or a loading screen
+    return <View style={{ flex: 1, backgroundColor: themeColors.background }} />;
   }
 
   return (

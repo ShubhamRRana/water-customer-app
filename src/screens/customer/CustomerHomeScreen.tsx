@@ -30,6 +30,7 @@ import { PricingUtils } from '../../utils/pricing';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
 import SubscriptionExpiryBanner from '../../components/customer/SubscriptionExpiryBanner';
+import StatusBadge from '../../components/customer/StatusBadge';
 
 type CustomerHomeScreenNavigationProp = StackNavigationProp<AppStackParamList, 'Home'>;
 
@@ -97,16 +98,6 @@ function createCustomerHomeStyles(colors: ThemeColors) {
     orderDate: {
       fontSize: 14,
       color: colors.textSecondary,
-    },
-    statusBadge: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
-    },
-    statusText: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: colors.textLight,
     },
     orderDetails: {
       flexDirection: 'row',
@@ -188,23 +179,6 @@ function createCustomerHomeStyles(colors: ThemeColors) {
       paddingRight: 8,
     },
   });
-}
-
-function getStatusColor(status: BookingStatus, colors: ThemeColors) {
-  switch (status) {
-    case 'pending':
-      return colors.warning;
-    case 'accepted':
-      return colors.accent;
-    case 'in_transit':
-      return colors.secondary;
-    case 'delivered':
-      return colors.success;
-    case 'cancelled':
-      return colors.error;
-    default:
-      return colors.textSecondary;
-  }
 }
 
 const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
@@ -452,11 +426,7 @@ const CustomerHomeScreen: React.FC<CustomerHomeScreenProps> = () => {
                       ? `Delivered: ${formatDate(booking.deliveredAt)}`
                       : booking.scheduledFor ? `Scheduled: ${formatDate(booking.scheduledFor)}` : `Placed: ${formatDate(booking.createdAt)}`}
                   </Typography>
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status, colors) }]}>
-                    <Typography variant="caption" style={styles.statusText}>
-                      {getStatusText(booking.status)}
-                    </Typography>
-                  </View>
+                  <StatusBadge status={booking.status} label={getStatusText(booking.status)} />
                 </View>
               </Card>
             ))

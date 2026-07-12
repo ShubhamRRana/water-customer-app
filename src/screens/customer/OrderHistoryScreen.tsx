@@ -15,17 +15,19 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuthStore } from '../../store/authStore';
 import { useCustomerBookingsQuery, useCancelBookingMutation } from '../../hooks/queries';
 import Card from '../../components/common/Card';
-import { Typography, CustomerMenuDrawer, ScreenLoading, ScreenEmpty } from '../../components/common';
+import { Typography, CustomerMenuDrawer, ScreenLoading, ScreenEmpty, ScreenError } from '../../components/common';
 import { useRefreshControl } from '../../hooks/useRefreshControl';
 import type { CustomerMenuRoute } from '../../components/common/CustomerMenuDrawer';
 import AppScreenHeader from '../../components/layouts/AppScreenHeader';
 import { Booking, BookingStatus } from '../../types';
 import type { AppStackParamList } from '../../navigation/rootNavigation';
 import { PricingUtils } from '../../utils/pricing';
+import { UI_CONFIG } from '../../constants/config';
 import type { ThemeColors } from '../../constants/config';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { errorLogger } from '../../utils/errorLogger';
 import { formatDateTime } from '../../utils/dateUtils';
+import StatusBadge from '../../components/customer/StatusBadge';
 import {
   getBookingPaymentChip,
   getBookingPaymentChipLabel,
@@ -44,6 +46,8 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
   const {
     data: bookings = [],
     isPending: isLoading,
+    isError,
+    error,
     refetch: refetchBookings,
   } = useCustomerBookingsQuery(user?.id);
   const cancelBookingMutation = useCancelBookingMutation();
@@ -144,17 +148,6 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
     [user?.id, cancelBookingMutation],
   );
 
-  const getStatusColor = useCallback((status: BookingStatus) => {
-    switch (status) {
-      case 'pending': return colors.warning;
-      case 'accepted': return colors.accent;
-      case 'in_transit': return colors.secondary;
-      case 'delivered': return colors.success;
-      case 'cancelled': return colors.error;
-      default: return colors.textSecondary;
-    }
-  }, [colors]);
-
   const getStatusText = useCallback((status: BookingStatus) => {
     switch (status) {
       case 'pending': return 'Pending';
@@ -211,6 +204,18 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
     );
   }
 
+  if (isError && !bookings.length) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <ScreenError
+          title="Unable to Load Orders"
+          message={error instanceof Error ? error.message : 'Something went wrong while loading your orders.'}
+          onRetry={() => refetchBookings()}
+        />
+      </SafeAreaView>
+    );
+  }
+
   const handleMenuNavigate = (route: CustomerMenuRoute) => {
     if (route === 'Orders') {
       // Already on Orders, just close menu
@@ -240,7 +245,11 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              accessibilityLabel="Clear search"
+              accessibilityRole="button"
+            >
               <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
@@ -262,6 +271,8 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
                 selectedFilter === filter.key && styles.filterButtonActive
               ]}
               onPress={() => setSelectedFilter(filter.key as BookingStatus | 'all')}
+              accessibilityLabel={`Filter by ${filter.label}`}
+              accessibilityRole="button"
             >
               <Ionicons 
                 name={filter.icon as any} 
@@ -310,15 +321,12 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
                       {getBookingPaymentChipLabel(getBookingPaymentChip(booking))}
                     </Typography>
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
-                    <Ionicons 
-                      name={getStatusIcon(booking.status)} 
-                      size={16} 
-                      color={colors.textLight} 
-                      style={styles.statusIcon}
-                    />
-                    <Typography variant="caption" style={styles.statusText}>{getStatusText(booking.status)}</Typography>
-                  </View>
+                  <StatusBadge
+                    status={booking.status}
+                    variant="pill-icon"
+                    label={getStatusText(booking.status)}
+                    icon={getStatusIcon(booking.status)}
+                  />
                 </View>
               </View>
 
@@ -364,6 +372,9 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ navigation }) =
                   <TouchableOpacity
                     style={[styles.actionButton, styles.cancelButton]}
                     onPress={() => handleCancelBooking(booking)}
+                    disabled={cancelBookingMutation.isPending}
+                    accessibilityLabel="Cancel booking"
+                    accessibilityRole="button"
                   >
                     <Ionicons name="close-outline" size={16} color={colors.error} />
                     <Typography variant="caption" style={[styles.actionText, styles.cancelText]}>Cancel</Typography>
@@ -427,8 +438,8 @@ function createOrderHistoryStyles(colors: ThemeColors) {
     backgroundColor: colors.background,
   },
   searchContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: UI_CONFIG.spacing.lg,
+    paddingVertical: UI_CONFIG.spacing.md,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -438,14 +449,14 @@ function createOrderHistoryStyles(colors: ThemeColors) {
     alignItems: 'center',
     backgroundColor: colors.background,
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: UI_CONFIG.spacing.md,
+    paddingVertical: UI_CONFIG.spacing.md,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: UI_CONFIG.fontSize.md,
     color: colors.text,
-    marginLeft: 12,
+    marginLeft: UI_CONFIG.spacing.md,
   },
   filterSection: {
     backgroundColor: colors.surface,
@@ -454,29 +465,29 @@ function createOrderHistoryStyles(colors: ThemeColors) {
     minHeight: 60,
   },
   filterContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: UI_CONFIG.spacing.lg,
+    paddingVertical: UI_CONFIG.spacing.md,
   },
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: UI_CONFIG.spacing.md,
+    paddingVertical: UI_CONFIG.spacing.sm,
     borderRadius: 20,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,
-    marginRight: 12,
+    marginRight: UI_CONFIG.spacing.md,
   },
   filterButtonActive: {
     backgroundColor: colors.accent,
     borderColor: colors.accent,
   },
   filterButtonText: {
-    fontSize: 14,
+    fontSize: UI_CONFIG.fontSize.sm,
     fontWeight: '500',
     color: colors.text,
-    marginLeft: 6,
+    marginLeft: UI_CONFIG.spacing.sm,
   },
   filterButtonTextActive: {
     color: colors.textLight,
@@ -484,9 +495,9 @@ function createOrderHistoryStyles(colors: ThemeColors) {
   countBadge: {
     backgroundColor: colors.border,
     borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginLeft: 6,
+    paddingHorizontal: UI_CONFIG.spacing.sm,
+    paddingVertical: 2, // TODO: token gap, needs design input (was 2px, nearest token is 4px)
+    marginLeft: UI_CONFIG.spacing.sm,
     minWidth: 20,
     alignItems: 'center',
   },
@@ -494,7 +505,7 @@ function createOrderHistoryStyles(colors: ThemeColors) {
     backgroundColor: colors.overlayMedium,
   },
   countText: {
-    fontSize: 12,
+    fontSize: UI_CONFIG.fontSize.xs,
     fontWeight: '600',
     color: colors.textSecondary,
   },
@@ -503,22 +514,22 @@ function createOrderHistoryStyles(colors: ThemeColors) {
   },
   ordersContainer: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: UI_CONFIG.spacing.lg,
+    paddingTop: UI_CONFIG.spacing.md,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
   },
   orderCard: {
-    marginBottom: 16,
-    padding: 16,
+    marginBottom: UI_CONFIG.spacing.md,
+    padding: UI_CONFIG.spacing.md,
   },
   orderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: UI_CONFIG.spacing.md,
   },
   orderInfo: {
     flex: 1,
@@ -526,83 +537,68 @@ function createOrderHistoryStyles(colors: ThemeColors) {
   headerBadges: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: UI_CONFIG.spacing.sm,
   },
   paymentChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: UI_CONFIG.spacing.sm, // was 10, nearest token 8 (25% diff)
+    paddingVertical: UI_CONFIG.spacing.xs,
     borderRadius: 12,
   },
   paymentChipText: {
-    fontSize: 11,
+    fontSize: UI_CONFIG.fontSize.xs, // was 11, nearest token 12 (8.3% diff)
     fontWeight: '600',
     color: colors.textLight,
   },
   orderDate: {
-    fontSize: 14,
+    fontSize: UI_CONFIG.fontSize.sm,
     color: colors.textSecondary,
   },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  statusIcon: {
-    marginRight: 4,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textLight,
-  },
   orderDetails: {
-    marginBottom: 12,
+    marginBottom: UI_CONFIG.spacing.md,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: UI_CONFIG.spacing.sm,
   },
   detailText: {
-    fontSize: 14,
+    fontSize: UI_CONFIG.fontSize.sm,
     color: colors.text,
-    marginLeft: 8,
+    marginLeft: UI_CONFIG.spacing.sm,
     flex: 1,
   },
   driverInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    paddingTop: 12,
+    marginBottom: UI_CONFIG.spacing.md,
+    paddingTop: UI_CONFIG.spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   driverText: {
-    fontSize: 14,
+    fontSize: UI_CONFIG.fontSize.sm,
     color: colors.textLight,
-    marginLeft: 8,
+    marginLeft: UI_CONFIG.spacing.sm,
     fontWeight: '500',
   },
   driverPhone: {
-    fontSize: 14,
+    fontSize: UI_CONFIG.fontSize.sm,
     color: colors.textLight,
-    marginLeft: 8,
+    marginLeft: UI_CONFIG.spacing.sm,
   },
   orderActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 12,
-    paddingTop: 12,
+    gap: UI_CONFIG.spacing.md,
+    paddingTop: UI_CONFIG.spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: UI_CONFIG.spacing.md,
+    paddingVertical: UI_CONFIG.spacing.sm,
     backgroundColor: colors.background,
     borderRadius: 16,
   },
@@ -610,10 +606,10 @@ function createOrderHistoryStyles(colors: ThemeColors) {
     backgroundColor: colors.surfaceLight,
   },
   actionText: {
-    fontSize: 12,
+    fontSize: UI_CONFIG.fontSize.xs,
     fontWeight: '500',
     color: colors.text,
-    marginLeft: 4,
+    marginLeft: UI_CONFIG.spacing.xs,
   },
   cancelText: {
     color: colors.error,
