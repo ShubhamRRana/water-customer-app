@@ -10,6 +10,12 @@ import { SubscriptionService } from '../../services/subscription.service';
 jest.mock('../../lib/supabaseClient', () => ({
   supabase: {
     from: jest.fn(),
+    auth: {
+      getSession: jest.fn().mockResolvedValue({
+        data: { session: { user: { id: 'cust-1' } } },
+        error: null,
+      }),
+    },
   },
 }));
 
@@ -56,5 +62,41 @@ describe('SocietyTripService.createTrip', () => {
     await expect(SocietyTripService.createTrip(baseInput)).rejects.toThrow(
       ERROR_MESSAGES.societyTrip.subscriptionRequired
     );
+  });
+});
+
+describe('SocietyTripService.deleteAllDataForCustomer', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('deletes trips then payment transactions then completed periods', async () => {
+    const deletedTables: string[] = [];
+    mockFrom.mockImplementation((table: string) => {
+      deletedTables.push(table);
+      return {
+        delete: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({ error: null }),
+        }),
+      };
+    });
+
+    await SocietyTripService.deleteAllDataForCustomer('cust-1');
+
+    expect(deletedTables).toEqual([
+      'society_trips',
+      'society_payment_transactions',
+      'society_payment_periods_completed',
+    ]);
+  });
+
+  it('throws when a delete fails', async () => {
+    mockFrom.mockReturnValue({
+      delete: jest.fn().mockReturnValue({
+        eq: jest.fn().mockResolvedValue({ error: { message: 'boom' } }),
+      }),
+    });
+
+    await expect(SocietyTripService.deleteAllDataForCustomer('cust-1')).rejects.toThrow('boom');
   });
 });

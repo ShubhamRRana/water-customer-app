@@ -3,6 +3,7 @@
 import { dataAccess } from '../lib';
 import { User, UserRole, isDriverUser, isCustomerUser, isAdminUser } from '../types/index';
 import { handleAsyncOperationWithRethrow, handleError } from '../utils/errorHandler';
+import { deleteAuthUserAfterAccountDeletion } from './authUserCleanup';
 
 /**
  * UserService - Handles user management operations for admin users
@@ -169,6 +170,8 @@ export class UserService {
         } else {
           throw new Error('Unknown user role');
         }
+        // Also remove Authentication → Users entry (not just public.users)
+        await deleteAuthUserAfterAccountDeletion(id);
       },
       {
         context: { operation: 'deleteUser', id },

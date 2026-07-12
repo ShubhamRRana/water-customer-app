@@ -743,6 +743,26 @@ class SupabaseUserDataAccess implements IUserDataAccess {
 
   async deleteCustomerAccount(customerId: string): Promise<void> {
     try {
+      // Society data FKs auth.users — clear before profile/auth deletion so Auth cleanup cannot fail
+      const societyTables = [
+        'society_trips',
+        'society_payment_transactions',
+        'society_payment_periods_completed',
+      ] as const;
+      for (const table of societyTables) {
+        const { error: societyError } = await supabase
+          .from(table)
+          .delete()
+          .eq('customer_id', customerId);
+        if (societyError) {
+          throw new DataAccessError(
+            `Failed to delete ${table}`,
+            'deleteCustomerAccount',
+            { error: societyError, customerId }
+          );
+        }
+      }
+
       // Delete in order: bookings (FK to customer), then customers, then only the customer role (so admin/driver for same email remain)
       const { error: bookingsError } = await supabase
         .from('bookings')

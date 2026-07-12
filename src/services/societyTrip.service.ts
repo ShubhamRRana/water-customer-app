@@ -135,6 +135,34 @@ export class SocietyTripService {
     }
   }
 
+  /**
+   * Remove all society trip/payment rows for a customer before Auth deletion.
+   * Order: trips first (period trigger may briefly recreate periods), then
+   * payment transactions and completed periods.
+   */
+  static async deleteAllDataForCustomer(customerId: string): Promise<void> {
+    try {
+      const tables = [
+        'society_trips',
+        'society_payment_transactions',
+        'society_payment_periods_completed',
+      ] as const;
+
+      for (const table of tables) {
+        const { error } = await supabase.from(table).delete().eq('customer_id', customerId);
+        if (error) {
+          throw new Error(error.message || `Failed to delete ${table}`);
+        }
+      }
+    } catch (error) {
+      handleError(error, {
+        context: { operation: 'deleteAllSocietyDataForCustomer', customerId },
+        userFacing: false,
+      });
+      throw error;
+    }
+  }
+
   /** Keys match `societyPaymentPeriodKey` (e.g. `m:2026-2`, `y:2026`). */
   static async listCompletedPaymentPeriods(
     customerId: string,

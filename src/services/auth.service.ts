@@ -19,6 +19,7 @@ import { deserializeDate } from '../utils/dateSerialization';
 import { handleError } from '../utils/errorHandler';
 import { getErrorMessage } from '../utils/errors';
 import { getPasswordResetRedirectUrl } from '../utils/recoveryLink';
+import { deleteAuthUserAfterAccountDeletion } from './authUserCleanup';
 
 /** Optional fields passed only from app registration flows */
 type RegisterAdditionalData = Partial<AppUser> & { customerAccountKind?: CustomerAccountKind };
@@ -1538,17 +1539,20 @@ export class AuthService {
       }
 
       await dataAccess.users.deleteCustomerAccount(customerId);
-      // Remove user from Auth so they no longer appear under Authentication → Users
-      const { error: fnError } = await supabase.functions.invoke('delete-auth-user-on-account-deletion', {
-        body: { user_id: customerId },
-      });
-      if (fnError) {
+      try {
+        await deleteAuthUserAfterAccountDeletion(customerId);
+      } catch (cleanupError) {
+        const cleanupMessage = getErrorMessage(
+          cleanupError,
+          'Failed to remove authentication user'
+        );
         securityLogger.log(
           SecurityEventType.SECURITY_POLICY_VIOLATION,
           SecuritySeverity.CRITICAL,
-          { message: 'Auth user cleanup failed after customer account deletion', error: fnError.message },
+          { message: 'Auth user cleanup failed after customer account deletion', error: cleanupMessage },
           customerId
         );
+        return { success: false, error: cleanupMessage };
       }
       await AuthService.logout();
       return { success: true };
@@ -1577,16 +1581,20 @@ export class AuthService {
       }
 
       await dataAccess.users.deleteAdminAccount(adminId);
-      const { error: fnError } = await supabase.functions.invoke('delete-auth-user-on-account-deletion', {
-        body: { user_id: adminId },
-      });
-      if (fnError) {
+      try {
+        await deleteAuthUserAfterAccountDeletion(adminId);
+      } catch (cleanupError) {
+        const cleanupMessage = getErrorMessage(
+          cleanupError,
+          'Failed to remove authentication user'
+        );
         securityLogger.log(
           SecurityEventType.SECURITY_POLICY_VIOLATION,
           SecuritySeverity.CRITICAL,
-          { message: 'Auth user cleanup failed after admin account deletion', error: fnError.message },
+          { message: 'Auth user cleanup failed after admin account deletion', error: cleanupMessage },
           adminId
         );
+        return { success: false, error: cleanupMessage };
       }
       await AuthService.logout();
       return { success: true };
