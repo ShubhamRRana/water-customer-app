@@ -168,4 +168,103 @@ describe('AuthService customer account kind', () => {
     });
     await expect(AuthService.getCustomerAccountKind(userId)).resolves.toBe('society');
   });
+
+  it('heals DB from auth metadata when society signup was stored as individual', async () => {
+    mockSignIn.mockResolvedValue({
+      data: {
+        user: { id: userId, email },
+        session: {
+          user: {
+            id: userId,
+            user_metadata: { customer_account_kind: 'society' },
+          },
+        },
+      },
+      error: null,
+    });
+    mockGetSession.mockResolvedValue({
+      data: {
+        session: {
+          user: {
+            id: userId,
+            user_metadata: { customer_account_kind: 'society' },
+          },
+        },
+      },
+      error: null,
+    });
+
+    const userRolesQb = {
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockResolvedValue({
+          data: [{ role: 'customer' }],
+          error: null,
+        }),
+      }),
+    };
+    const userRow = {
+      id: userId,
+      email,
+      name: 'T',
+      phone: '1234567890',
+      created_at: new Date().toISOString(),
+    };
+    const usersQb = {
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({
+            data: userRow,
+            error: null,
+          }),
+        }),
+      }),
+    };
+
+    const updateEq = jest.fn().mockResolvedValue({ data: null, error: null });
+    const updateFn = jest.fn().mockReturnValue({ eq: updateEq });
+    let accountKindReads = 0;
+    const customersQb = {
+      select: jest.fn().mockImplementation((cols: string) => {
+        if (cols === 'account_kind') {
+          return {
+            eq: jest.fn().mockReturnValue({
+              maybeSingle: jest.fn().mockImplementation(async () => {
+                accountKindReads += 1;
+                // First read is pre-heal (wrong individual); after update, treat as society
+                if (accountKindReads === 1) {
+                  return { data: { account_kind: 'individual' }, error: null };
+                }
+                return { data: { account_kind: 'society' }, error: null };
+              }),
+            }),
+          };
+        }
+        return {
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({
+              data: {
+                user_id: userId,
+                saved_addresses: [],
+                account_kind: 'individual',
+              },
+              error: null,
+            }),
+          }),
+        };
+      }),
+      update: updateFn,
+    };
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'user_roles') return userRolesQb;
+      if (table === 'users') return usersQb;
+      if (table === 'customers') return customersQb;
+      return usersQb;
+    });
+
+    const result = await AuthService.login(email, 'pw', 'customer', 'society');
+    expect(result.success).toBe(true);
+    expect(updateFn).toHaveBeenCalledWith({ account_kind: 'society' });
+    expect(updateEq).toHaveBeenCalledWith('user_id', userId);
+  });
 });

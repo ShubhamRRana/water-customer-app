@@ -298,7 +298,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     { key: 'system', label: 'System' },
   ];
   const isSocietyAccount = customerAccountKind === 'society';
-  const accountEyebrow = isSocietyAccount ? 'Society account' : 'Individual account';
   const nameFieldLabel = isSocietyAccount ? 'Society name' : 'Name';
 
   return (
@@ -333,12 +332,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
               end={{ x: 1, y: 1 }}
               style={styles.identityStrip}
             >
-              <Typography variant="caption" style={styles.accountEyebrow}>
-                {accountEyebrow}
-              </Typography>
-              <Typography variant="caption" style={styles.identityLabel}>
-                {nameFieldLabel}
-              </Typography>
               <Typography variant="h2" style={styles.userName}>
                 {displayUser.name}
               </Typography>
@@ -677,22 +670,6 @@ function createProfileStyles(colors: ThemeColors) {
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 3,
-  },
-  accountEyebrow: {
-    color: colors.accent,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    marginBottom: 16,
-    textTransform: 'uppercase',
-  },
-  identityLabel: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    marginBottom: 4,
-    textTransform: 'uppercase',
   },
   userName: {
     fontSize: 24,

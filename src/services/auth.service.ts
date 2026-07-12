@@ -28,8 +28,9 @@ function normalizeCustomerAccountKind(value: unknown): CustomerAccountKind {
 }
 
 /**
- * Reads customers.account_kind, syncs from auth user_metadata.customer_account_kind when needed
- * (e.g. email confirmation flow before DB was updated).
+ * Reads customers.account_kind. When signup stored kind only in auth user_metadata
+ * (common with email-confirm flow before the customers row was updated), sync metadata → DB.
+ * Only syncs when metadata explicitly has individual|society; empty metadata leaves DB as-is.
  */
 async function resolveAndSyncCustomerAccountKind(userId: string): Promise<CustomerAccountKind> {
   const { data: row } = await supabase
@@ -39,7 +40,41 @@ async function resolveAndSyncCustomerAccountKind(userId: string): Promise<Custom
     .maybeSingle();
 
   const dbKind = normalizeCustomerAccountKind(row?.account_kind);
-  return dbKind;
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  const metaRaw = sessionData?.session?.user?.user_metadata?.customer_account_kind;
+  if (metaRaw !== 'society' && metaRaw !== 'individual') {
+    return dbKind;
+  }
+
+  const metaKind = normalizeCustomerAccountKind(metaRaw);
+  if (metaKind === dbKind && row) {
+    return dbKind;
+  }
+
+  if (row) {
+    const { error } = await supabase
+      .from('customers')
+      .update({ account_kind: metaKind })
+      .eq('user_id', userId);
+    if (error) {
+      return dbKind;
+    }
+  } else {
+    const { error } = await supabase.from('customers').upsert(
+      {
+        user_id: userId,
+        saved_addresses: [],
+        account_kind: metaKind,
+      },
+      { onConflict: 'user_id' }
+    );
+    if (error) {
+      return dbKind;
+    }
+  }
+
+  return metaKind;
 }
 
 /** When login used the wrong screen (individual vs society), block and sign out. */
@@ -164,13 +199,17 @@ async function fetchUserWithRole(userId: string, role?: UserRole, retryCount: nu
       if (customerError) {
         const isNoRows = (customerError as any)?.code === 'PGRST116';
         if (isNoRows && retryCount === 0) {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const kindFromMeta = normalizeCustomerAccountKind(
+            sessionData?.session?.user?.user_metadata?.customer_account_kind
+          );
           const { error: createCustomerError } = await supabase
             .from('customers')
             .upsert(
               {
                 user_id: userId,
                 saved_addresses: [],
-                account_kind: 'individual',
+                account_kind: kindFromMeta,
               },
               { onConflict: 'user_id' }
             );

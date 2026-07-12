@@ -172,27 +172,28 @@ describe('ProfileScreen account labels', () => {
     mockCustomerAccountKind = 'individual';
   });
 
-  it('shows individual account labels without the removed member or old banner content', () => {
+  it('shows profile identity without account-type labels or removed banner content', () => {
     const { getByText, queryByText } = render(<ProfileScreen navigation={{ navigate: mockNavigate } as never} />);
 
-    expect(getByText('Individual account')).toBeTruthy();
-    expect(getByText('Name')).toBeTruthy();
+    expect(getByText('River Resident')).toBeTruthy();
+    expect(queryByText('Individual account')).toBeNull();
+    expect(queryByText('Name')).toBeNull();
     expect(queryByText('Member Since')).toBeNull();
     expect(queryByText(/Subscription expires/i)).toBeNull();
     expect(getByText('SubscriptionPanelStub')).toBeTruthy();
   });
 
-  it('shows society account labels in the identity strip and inline edit form', () => {
+  it('shows society name label only in the inline edit form', () => {
     mockCustomerAccountKind = 'society';
-    const { getByText, getAllByText } = render(
+    const { getByText, queryByText } = render(
       <ProfileScreen navigation={{ navigate: mockNavigate } as never} />
     );
 
-    expect(getByText('Society account')).toBeTruthy();
-    expect(getByText('Society name')).toBeTruthy();
+    expect(queryByText('Society account')).toBeNull();
+    expect(queryByText('Society name')).toBeNull();
 
     fireEvent.press(getByText('Edit Profile'));
 
-    expect(getAllByText('Society name').length).toBeGreaterThanOrEqual(2);
+    expect(getByText('Society name')).toBeTruthy();
   });
 });
